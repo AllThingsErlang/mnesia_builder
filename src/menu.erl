@@ -1,138 +1,52 @@
 -module(menu).
--include("../include/coverage_analysis.hrl").
+-include("../include/schemas.hrl").
 -export([start/0]).
 
 
 start() -> 
     LoadedModules = load_query_modules(),
     clear_screen(),
-    display_menu(main, LoadedModules).
+    display_menu(LoadedModules).
 
 %-------------------------------------------------------------
 % Function: menu
 % Purpose:  Displays the user menu
 % Returns:  
 %-------------------------------------------------------------
-display_menu(Menu, LoadedModules) ->
+display_menu(LoadedModules) ->
+    
+    io:format("~n~n"),
+    io:format("-------------------------------------~n"),
+    io:format("   - install: install schemas~n"),
+    io:format("   - start:   start the db~n"),
+    io:format("   - stop:    stop the db~n"),
+    io:format("   - tables:  list tables~n"),
+    io:format("   - size:    get table size~n"),
+    io:format("   - clear:   clear all data in table~n"),
+    io:format("   - load:    load data from csv file~n"),
+    io:format("   - fields:  display field names~n"),
+    io:format("   - del:     delete a record~n"),
+    io:format("   - read:    read record based on subscriber id~n"),
+    io:format("   - fields:  display field names~n"),
+    io:format("   - oper:    list query operators~n"),
+    io:format("   - q:       query table using 1 criteria~n"),
+    io:format("   - qor:     query table using 2 criteria, OR operator~n"),
+    io:format("   - qand:    query table using 2 criteria, AND operator~n"),
+    io:format("   - qdl      prebuilt queries, dynamically loaded~n"),
+    io:format("-------------------------------------~n"),
+    io:format("   - help:    list menu commands~n"),
+    io:format("   - exit:    exit shell~n"),
+    io:format("-------------------------------------~n"),
+    io:format("~n~n"),
 
-    case Menu of
-
-        main ->
-            io:format("~n~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   M A I N   M E N U~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   - admin: administer db~n"),
-            io:format("   - data:  manage data~n"),
-            io:format("   - query: run queries~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   - help:    list menu commands~n"),
-            io:format("   - exit:  exit shell~n"),
-            io:format("-------------------------------------~n"),
-            io:format("~n~n");
-
-        admin ->
-            io:format("~n~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   D B   A D M I N I S T R A T I O N~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   - tables:  list tables~n"),
-            io:format("   - start:   start the db~n"),
-            io:format("   - stop:    stop the db~n"),
-            io:format("   - size:    get table size~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   - help:    list menu commands~n"),
-            io:format("   - return:  return to previous menu~n"),
-            io:format("   - exit:    exit shell~n"),
-            io:format("-------------------------------------~n"),
-            io:format("~n~n");
-
-        data ->
-            mnesia_running_banner_warning(),
-            
-            io:format("~n~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   D A T A   M A N A G E M E N T~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   - clear:   clear all data in table~n"),
-            io:format("   - load:    load data from csv file~n"),
-            io:format("   - size:    get table size~n"),
-            io:format("   - fields:  display field names~n"),
-            io:format("   - del:     delete a record~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   - help:    list menu commands~n"),
-            io:format("   - return:  return to previous menu~n"),
-            io:format("   - exit:    exit shell~n"),
-            io:format("-------------------------------------~n"),
-            io:format("~n~n");
-
-        query ->
-            mnesia_running_banner_warning(),
-            
-            io:format("~n~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   Q U E R I E S~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   - read:    read record based on subscriber id~n"),
-            io:format("   - fields:  display field names~n"),
-            io:format("   - oper:    list query operators~n"),
-            io:format("   - q:       query table using 1 criteria~n"),
-            io:format("   - qor:     query table using 2 criteria, OR operator~n"),
-            io:format("   - qand:    query table using 2 criteria, AND operator~n"),
-            io:format("   - qdl      prebuilt queries, dynamically loaded~n"),
-            io:format("-------------------------------------~n"),
-            io:format("   - help:    list menu commands~n"),
-            io:format("   - return:  return to previous menu~n"),
-            io:format("   - exit:    exit shell~n"),
-            io:format("-------------------------------------~n"),
-            io:format("~n~n")
-    end,
-
-    prompt(Menu, LoadedModules).
+    prompt(LoadedModules).
 
 
-prompt(main, LoadedModules) -> 
-    io:format("~nmain menu> "),
+prompt(LoadedModules) -> 
+    io:format("~nmnesia> "),
     Input = get_user_input(),
-    process_main_menu_input(Input, LoadedModules);
+    process_user_input(Input, LoadedModules).
 
-prompt(admin, LoadedModules) -> 
-    io:format("~nadmin> "),
-    Input = get_user_input(),
-    process_admin_menu_input(Input, LoadedModules);
-
-prompt(data, LoadedModules) -> 
-    io:format("~ndata> "),
-    Input = get_user_input(),
-    process_data_menu_input(Input, LoadedModules);
-
-prompt(query, LoadedModules) -> 
-    io:format("~nquery> "),
-    Input = get_user_input(),
-    process_query_menu_input(Input, LoadedModules).
-
-
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose: 
-% Returns:  
-%-------------------------------------------------------------
-process_main_menu_input(Input, LoadedModules) ->
-   
-   MyMenu = main,
-
-    case Input of
-        "admin" -> clear_screen(), display_menu(admin, LoadedModules);
-        "data" -> clear_screen(), display_menu(data, LoadedModules);
-        "query" -> clear_screen(), display_menu(query, LoadedModules);
-        "help" -> display_menu(MyMenu, LoadedModules);
-        "exit" -> ok;
-        "" -> prompt(MyMenu, LoadedModules);
-        _ -> 
-            io:format("invalid input~n"),
-            prompt(MyMenu, LoadedModules)
-    end.
 
 
 %-------------------------------------------------------------
@@ -140,324 +54,353 @@ process_main_menu_input(Input, LoadedModules) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-process_admin_menu_input(Input, LoadedModules) ->
+process_user_input(Input, LoadedModules) ->
 
-    MyMenu = admin,
+    case string:tokens(Input, " ") of
 
-    case Input of
-        "tables" ->
-            display_tables(),
-            prompt(MyMenu, LoadedModules);
-            
-        "start" -> 
-            Result = manage_db:start(),
-            io:format("Result: ~w~n", [Result]),
-            prompt(MyMenu, LoadedModules);
+        [Command] ->
 
-        "stop" -> 
-            Result = manage_db:stop(),
-            io:format("Result: ~w~n", [Result]),
-            prompt(MyMenu, LoadedModules);
-
-        "size" -> 
-            case mnesia:system_info(running_db_nodes) of
-                [] -> io:format("must start mnesia db~n");
-                _ ->
-                    Result = manage_db:size(), 
-                    io:format("Result: ~w~n", [Result])
-            end,
-
-            prompt(MyMenu, LoadedModules);
-
-        "help" -> display_menu(MyMenu, LoadedModules);
-        "return" -> prompt(main, LoadedModules);
-        "exit" -> ok;
-        "" -> prompt(MyMenu, LoadedModules);
-        _ -> 
-            io:format("invalid input~n"),
-            prompt(MyMenu, LoadedModules)
-    end.
-
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose:   
-% Returns:  
-%-------------------------------------------------------------
-process_data_menu_input(Input, LoadedModules) ->
-
-    MyMenu = data,
-
-    case Input of
-        "clear" -> 
-            mnesia:clear_table(subscribers),
-            io:format("Data cleared~n~n"),
-            prompt(MyMenu, LoadedModules);
-
-        "load" -> 
-            io:format("File: "),
-            File = get_user_input(),
-            case load_from_csv(File) of
-                ok -> io:format("Data loaded~n~n");
-                {error, Reason} -> io:format("~s~n~n", [Reason])
-            end,
-
-            prompt(MyMenu, LoadedModules);
-
-        "size" -> 
-            Result = manage_db:size(), 
-            io:format("Result: ~w~n", [Result]),
-            prompt(MyMenu, LoadedModules);
-        
-        "fields" ->
-            display_field_names(),
-            prompt(MyMenu, LoadedModules);
-
-        "del" -> 
-            io:format("Subscriber ID: "),
-            SubId = get_user_input(),
-            Result = queries:delete(SubId),
-
-            case Result of
-                ok -> io:format("Delted~n~n");
-                {_, Other} -> io:format("~w~n~n", [Other])
-            end,
-
-            prompt(MyMenu, LoadedModules);
-        
-        "help" -> display_menu(MyMenu, LoadedModules);
-        "return" -> prompt(main, LoadedModules);
-        "exit" -> ok;
-        "" -> prompt(MyMenu, LoadedModules);
-        _ -> 
-            io:format("invalid input~n"),
-            prompt(MyMenu, LoadedModules)
-    end.
-
-%-------------------------------------------------------------
-% Function: query_menu
-% Purpose:  Displays the db admin menu
-% Returns:  
-%-------------------------------------------------------------
-process_query_menu_input(Input, LoadedModules) ->
-
-    MyMenu = query,
-    
-    case Input of
-        "read" -> 
-            io:format("Subscriber ID: "),
-            SubId = get_user_input(),
-            Result = queries:read(SubId),
-
-            case Result of
-                {ok, Record} -> print_subscriber_record(Record);
-                {_, Other} -> io:format("~w~n", [Other])
-            end,
-
-            prompt(MyMenu, LoadedModules);
-
-        "fields" ->
-            display_field_names(),
-            prompt(MyMenu, LoadedModules);
-
-        "oper" ->
-            io:format("   ==~n"),
-            io:format("   =:=~n"),
-            io:format("   >=~n"),
-            io:format("   =<~n"),
-            io:format("   /=~n"),
-            io:format("~n~n"),
-
-            prompt(MyMenu, LoadedModules);
-            
-        "q" -> 
-            io:format("Field: "),
-            Field = list_to_atom(get_user_input()),
-
-            case (lists:member(Field, record_info(fields, subscribers))) of
-
-                true ->
-
-                    io:format("Operator: "),
-                    Oper = list_to_atom(get_user_input()),
-
-                    io:format("Value: "),
-                    Value = get_user_input(),
-
-                    case get_field_type(Field) of
-                        string -> ConvertedValue = Value;
-                        float -> ConvertedValue = utilities:string_to_float(Value)
-                    end,
-
-                    QueryOutput = queries:select(Field, Oper, ConvertedValue), 
-                    process_query_output(QueryOutput);
-
-                false ->
-
-                    io:format("invalid field name~n")
-            end,
-
-            prompt(MyMenu, LoadedModules);
-
-        "qor" -> 
-            io:format("Field: "),
-            Field = list_to_atom(get_user_input()),
-
-            case (lists:member(Field, record_info(fields, subscribers))) of
-
-                true ->
-                    io:format("Operator 1: "),
-                    Oper1 = list_to_atom(get_user_input()),
-
-                    io:format("Value 1: "),
-                    Value1 = get_user_input(),
-
-                    io:format("Operator 2: "),
-                    Oper2 = list_to_atom(get_user_input()),
-
-                    io:format("Value 2: "),
-                    Value2 = get_user_input(),
-
-                    case get_field_type(Field) of
-                        string -> 
-                            ConvertedValue1 = Value1,
-                            ConvertedValue2 = Value2;
-
-                        float -> 
-                            ConvertedValue1 = utilities:string_to_float(Value1),
-                            ConvertedValue2 = utilities:string_to_float(Value2)
-                    end,
-
-                    QueryOutput = queries:select_or(Field, Oper1, ConvertedValue1, Oper2, ConvertedValue2), 
-                    process_query_output(QueryOutput);
-
-                false ->
-                    io:format("invalid field name~n")
-            end,
-
-            prompt(MyMenu, LoadedModules);
-
-        "qand" -> 
-            io:format("Field: "),
-            Field = list_to_atom(get_user_input()),
-
-            case (lists:member(Field, record_info(fields, subscribers))) of
-
-                true ->
-                    io:format("Operator 1: "),
-                    Oper1 = list_to_atom(get_user_input()),
-
-                    io:format("Value 1: "),
-                    Value1 = get_user_input(),
-
-                    io:format("Operator 2: "),
-                    Oper2 = list_to_atom(get_user_input()),
-
-                    io:format("Value 2: "),
-                    Value2 = get_user_input(),
-
-                    case get_field_type(Field) of
-                        string -> 
-                            ConvertedValue1 = Value1,
-                            ConvertedValue2 = Value2;
-
-                        float -> 
-                            ConvertedValue1 = utilities:string_to_float(Value1),
-                            ConvertedValue2 = utilities:string_to_float(Value2)
-                    end,
-
-                    QueryOutput = queries:select_and(Field, Oper1, ConvertedValue1, Oper2, ConvertedValue2), 
-                    process_query_output(QueryOutput);
-
-                false ->
-                    io:format("invalid field name~n")
-            end,
-
-            prompt(MyMenu, LoadedModules);
-
-
-        "qdl" ->
-            
-            LoadedModulesCount = length(LoadedModules),
-
-            case LoadedModulesCount of
-                0 -> 
-                    io:format("No dynamically loaded queries found.~n");
+            case Command of
+                "install" ->
+                    manage_db:install(),
+                    prompt(LoadedModules);
                 
+                "tables" ->
+                    process_tables(),
+                    prompt(LoadedModules);
+                    
+                "start" -> 
+                    Result = manage_db:start(),
+                    io:format("Result: ~w~n", [Result]),
+                    prompt(LoadedModules);
+
+                "stop" -> 
+                    Result = manage_db:stop(),
+                    io:format("Result: ~w~n", [Result]),
+                    prompt(LoadedModules);
+
+                "size" -> 
+                    process_size([]),
+                    prompt(LoadedModules);
+
+                "clear" ->
+                    process_clear([]),
+                    prompt(LoadedModules);
+
+                "fields" ->
+                    process_fields([]),
+                    prompt(LoadedModules);
+
+                "oper" ->
+                    io:format("   ==~n"),
+                    io:format("   =:=~n"),
+                    io:format("   >=~n"),
+                    io:format("   =<~n"),
+                    io:format("   /=~n"),
+                    prompt(LoadedModules);
+
+                "qdl" ->
+            
+                    LoadedModulesCount = length(LoadedModules),
+
+                    case LoadedModulesCount of
+
+                        0 -> 
+                            io:format("no dynamically loaded queries found~n");
+                        
+                        _ ->
+
+                            display_loaded_modules(LoadedModules),
+                            io:format("~nSelect query number or 0 to return: "),
+                            QueryNumberString = get_user_input(),
+
+                            case schemas:safe_convert_from_string(QueryNumberString, integer) of
+                                {ok, QueryNumber} ->
+
+                                    if 
+                                        QueryNumber == 0 ->
+                                            ok;
+
+                                        QueryNumber > LoadedModulesCount; QueryNumber < 0 ->
+                                            io:format("invalid query number~n");
+
+                                        true ->
+                                            SelectedModule = lists:nth(QueryNumber, LoadedModules),
+                                            QueryOutput = SelectedModule:select(),
+                                            process_query_output(QueryOutput)
+                                    end;
+
+                                _ -> io:format("invalid input~n")
+                            end
+                    end,
+
+                    prompt(LoadedModules);
+
+                "help" -> display_menu(LoadedModules);
+                "exit" -> ok;
+
+                "" -> prompt(LoadedModules);
+                _ -> 
+                    io:format("invalid input~n"),
+                    prompt(LoadedModules)
+            end;
+
+        [Command, Arg1] ->
+
+            case Command of
+
+                "size" -> 
+                    process_size(list_to_atom(Arg1)),
+                    prompt(LoadedModules);
+
+                "clear" ->
+                    process_clear(list_to_atom(Arg1)),
+                    prompt(LoadedModules);
+
+                "fields" ->
+                    process_fields(list_to_atom(Arg1)),
+                    prompt(LoadedModules);
+
+                _ -> 
+                    io:format("invalid input~n"),
+                    prompt(LoadedModules)
+            end;
+
+        [Command, Arg1, Arg2] -> 
+
+            case Command of
+
+                "del" -> 
+
+                    case mnesia:system_info(running_db_nodes) of
+                        [] -> io:format("must start mnesia db~n");
+
+                        _ ->
+
+                            % 1. Get the user provided table name and confirm it is valid
+                            % 2. Get the user provided key value and convert it 
+                            %    based on the expected type and confirm it is valid. 
+                            % 3. Execute the command
+
+                            Table = list_to_atom(Arg1),
+
+                            case lists:member(Table, schemas:get_tables()) of
+                                true -> 
+
+                                    % Table name is valid
+                                    case schemas:safe_convert_from_string(Arg2, schemas:get_key_type(Table)) of
+                                        
+                                        {ok, Key} ->
+
+                                            % Supplied key value is valid
+                                            Result = modify_db:delete(Table, Key),
+                                    
+                                            case Result of
+                                                ok -> io:format("delted~n");
+                                                {_, Other} -> io:format("~w~n", [Other])
+                                            end;
+                                        {error, Reason} -> io:format("delete failed, ~w~n", [Reason])
+                                    end;
+                                false -> 
+                                    io:format("table ~w not recognized ~n", [Table])
+                            end
+                        end,
+
+                    prompt(LoadedModules);
+
+                "read" -> 
+
+                    % q  Arg1          Arg2     Arg3   
+                    % q  <table_name>  <oper>   <value>
+
+                    case mnesia:system_info(running_db_nodes) of
+                        [] -> io:format("must start mnesia db~n");
+
+                        _ ->
+                            
+                            Table = list_to_atom(Arg1),
+
+                            case lists:member(Table, schemas:get_tables()) of
+                                true -> 
+                                    case schemas:safe_convert_from_string(Arg2, schemas:get_key_type(Table)) of
+                                        
+                                        {ok, Key} ->
+                                            Result = queries:read(Table, Key),
+
+                                            case Result of
+                                                {ok, Record} -> print_record(Record);
+                                                {_, Other} -> io:format("~w~n", [Other])
+                                            end;
+                                        {error, Reason} -> io:format("read failed, ~w~n", [Reason])
+                                    end;
+                                false -> io:format("table ~w not recognized ~n", [Table])
+                            end
+                    end,
+
+                    prompt(LoadedModules);
+
                 _ ->
+                    io:format("invalid input~n"),
+                    prompt(LoadedModules)
+            end;
 
-                    display_loaded_modules(LoadedModules),
-                    io:format("~nSelect query number or 0 to return: "),
-                    QueryNumberString = get_user_input(),
-                    QueryNumber = list_to_integer(QueryNumberString),
+        [Command, Arg1, Arg2, Arg3, Arg4] ->
 
-                    if 
-                        QueryNumber == 0 ->
-                            ok;
+            case Command of 
+                
+                "q" -> 
 
-                        QueryNumber > LoadedModulesCount; QueryNumber < 0 ->
-                            io:format("invalid query number~n");
+                    % q  Arg1          Arg2          Arg3     Arg4 
+                    % q  <table_name>  <field_name>  <oper>   <value>
 
-                        true ->
-                            SelectedModule = lists:nth(QueryNumber, LoadedModules),
-                            QueryOutput = SelectedModule:select(),
-                            process_query_output(QueryOutput)
-                    end
-            end,
+                    case mnesia:system_info(running_db_nodes) of
+                        [] -> io:format("must start mnesia db~n");
 
-            prompt(MyMenu, LoadedModules);
+                        _ ->
+                            
+                            Table = list_to_atom(Arg1),
+                            Field = list_to_atom(Arg2),
+                            Oper = list_to_atom(Arg3),
+                            
+                            case lists:member(Table, schemas:get_tables()) of
+                                true -> 
+                                    case schemas:is_field(Table, Field) of
+                                        true ->
+                                            case utilities:is_comparison(Oper) of 
+                                                true ->
+                                                    case schemas:safe_convert_from_string(Arg4, schemas:get_field_type(Table, Field)) of
+                                                        {ok, Value} -> 
+                                                            QueryOutput = queries:select(Table, Field, Oper, Value), 
+                                                            process_query_output(QueryOutput);
 
-        "help" -> display_menu(MyMenu, LoadedModules);
-        "return" -> prompt(main, LoadedModules);
-        "exit" -> ok;
-        "" -> prompt(MyMenu, LoadedModules);
+                                                        _ -> io:format("invalid data type~n")
+                                                    end;
+                                                false -> io:format("not a comparison operator~n")
+                                            end;
+                                        false -> io:format("not a field in table~n")
+                                    end;
+                                false -> io:format("table ~w not recognized ~n", [Table])
+                            end
+                    end,
+
+                    prompt(LoadedModules);
+
+                _ -> 
+                    io:format("invalid input~n"),
+                    prompt(LoadedModules)
+
+            end;
+
+        [Command, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6] ->
+
+            case Command of 
+                
+                "qor" ->
+                    
+                    % qor Arg1         Arg2         Arg3    Arg4     Arg5    Arg6
+                    % qor <table_name> <field_name> <oper1> <value1> <oper2> <value2>
+
+                    case mnesia:system_info(running_db_nodes) of
+                        [] -> io:format("must start mnesia db~n");
+
+                        _ ->
+                            
+                            Table = list_to_atom(Arg1),
+                            Field = list_to_atom(Arg2),
+                            Oper1 = list_to_atom(Arg3),
+                            Oper2 = list_to_atom(Arg5),
+
+                            case lists:member(Table, schemas:get_tables()) of
+                                true -> 
+                                    case schemas:is_field(Table, Field) of
+                                        true ->
+                                            case (utilities:is_comparison(Oper1) and utilities:is_comparison(Oper2)) of 
+                                                true ->
+                                                    case schemas:safe_convert_from_string(Arg4, schemas:get_field_type(Table, Field)) of
+                                                        {ok, Value1} -> 
+
+                                                            case schemas:safe_convert_from_string(Arg6, schemas:get_field_type(Table, Field)) of
+                                                                {ok, Value2} -> 
+                                                                    QueryOutput = queries:select_or(Field, Oper1, Value1, Oper2, Value2), 
+                                                                    process_query_output(QueryOutput);
+
+                                                                _ -> io:format("invalid data type~n")
+                                                            end;
+                                                        _ -> io:format("invalid data type~n")
+                                                    end;
+                                                false -> io:format("not a comparison operator~n")
+                                            end;
+                                        false -> io:format("not a field in table~n")
+                                    end;
+                                false -> io:format("table ~w not recognized ~n", [Table])
+                            end
+                    end,
+
+                    prompt(LoadedModules);
+
+                "qand" ->
+                    
+                    % qand Arg1         Arg2         Arg3    Arg4     Arg5    Arg6
+                    % qand <table_name> <field_name> <oper1> <value1> <oper2> <value2>
+
+                    case mnesia:system_info(running_db_nodes) of
+                        [] -> io:format("must start mnesia db~n");
+
+                        _ ->
+                            
+                            Table = list_to_atom(Arg1),
+                            Field = list_to_atom(Arg2),
+                            Oper1 = list_to_atom(Arg3),
+                            Oper2 = list_to_atom(Arg5),
+
+                            case lists:member(Table, schemas:get_tables()) of
+                                true -> 
+                                    case schemas:is_field(Table, Field) of
+                                        true ->
+                                            case (utilities:is_comparison(Oper1) and utilities:is_comparison(Oper2)) of 
+                                                true ->
+                                                    case schemas:safe_convert_from_string(Arg4, schemas:get_field_type(Table, Field)) of
+                                                        {ok, Value1} -> 
+
+                                                            case schemas:safe_convert_from_string(Arg6, schemas:get_field_type(Table, Field)) of
+                                                                {ok, Value2} -> 
+                                                                    QueryOutput = queries:select_and(Field, Oper1, Value1, Oper2, Value2), 
+                                                                    process_query_output(QueryOutput);
+
+                                                                _ -> io:format("invalid data type~n")
+                                                            end;
+                                                        _ -> io:format("invalid data type~n")
+                                                    end;
+                                                false -> io:format("not a comparison operator~n")
+                                            end;
+                                        false -> io:format("not a field in table~n")
+                                    end;
+                                false -> io:format("table ~w not recognized ~n", [Table])
+                            end
+                    end,
+
+                    prompt(LoadedModules);
+
+                 _ -> 
+                    io:format("invalid input~n"),
+                    prompt(LoadedModules)
+
+            end;
+        
         _ -> 
             io:format("invalid input~n"),
-            prompt(MyMenu, LoadedModules)
+            prompt(LoadedModules)
     end.
 
 
+        %"load" -> 
+        %    io:format("File: "),
+        %    File = get_user_input(),
+        %    case load_from_csv(File) of
+        %        ok -> io:format("Data loaded~n~n");
+        %        {error, Reason} -> io:format("~s~n~n", [Reason])
+        %    end,
 
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-print_subscriber_record(Record) ->
-    {subscribers,
-     Subscriber_id,
-     Nag_id,
-     Customer_name,
-     Device_type, 
-     Total_bad_gb_down,
-     Total_gb_down, 
-     Total_bad_periods, 
-     Total_periods, 
-     Total_bad_days,
-     Total_days_active,
-     Bad_period_pctg,
-     Bad_period_pctg_bucket,
-     City, 
-     Province,
-     Postal_code} = Record,
-
-
-     io:format("~n~n"),
-     io:format("        subscriber_id            ~s~n", [Subscriber_id]),
-     io:format("        nag_id                   ~s~n", [Nag_id]),
-     io:format("        customer_name            ~s~n", [Customer_name]),
-     io:format("        device_type              ~s~n", [Device_type]),
-     io:format("        total_bad_gb_down        ~w~n", [Total_bad_gb_down]),
-     io:format("        total_gb_down            ~w~n", [Total_gb_down]),
-     io:format("        total_bad_periods        ~w~n", [Total_bad_periods]),
-     io:format("        total_periods            ~w~n", [Total_periods]),
-     io:format("        total_bad_days           ~w~n", [Total_bad_days]),
-     io:format("        total_days_active        ~w~n", [Total_days_active]),
-     io:format("        bad_period_pctg          ~w~n", [Bad_period_pctg]),
-     io:format("        bad_period_pctg_bucket   ~w~n", [Bad_period_pctg_bucket]),
-     io:format("        city                     ~s~n", [City]),
-     io:format("        province                 ~s~n", [Province]),
-     io:format("        postal_code              ~s~n~n", [Postal_code]).
 
 
 
@@ -470,8 +413,8 @@ print_subscriber_record(Record) ->
 write_query_result_to_file(Result) ->
 
     case Result of
-        {ok, Records} -> write_subscribers_list_of_records_to_file(Records);
-        Records -> write_subscribers_list_of_records_to_file(Records)
+        {ok, Records} -> write_my_record_list_of_records_to_file(Records);
+        Records -> write_my_record_list_of_records_to_file(Records)
     end.
 
 
@@ -480,24 +423,24 @@ write_query_result_to_file(Result) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-write_subscribers_list_of_records_to_file(Records) ->
+write_my_record_list_of_records_to_file(Records) ->
 
     case create_csv_file() of
         {ok, File} ->
-            write_subscribers_list_of_records_to_file(File, Records);
+            write_my_record_list_of_records_to_file(File, Records);
         {error, Reason} -> {error, Reason}
     end.
 
 
-write_subscribers_list_of_records_to_file(File, []) -> 
+write_my_record_list_of_records_to_file(File, []) -> 
     file:close(File),
     ok;
-write_subscribers_list_of_records_to_file(File, [Next|Remaining]) ->
+write_my_record_list_of_records_to_file(File, [Next|Remaining]) ->
         
-    Record = convert_subscribers_tuple_record_to_list_record(Next),
+    Record = convert_my_record_tuple_record_to_list_record(Next),
 
     write_csv_record(File, Record),
-    write_subscribers_list_of_records_to_file(File, Remaining).
+    write_my_record_list_of_records_to_file(File, Remaining).
 
 
 %-------------------------------------------------------------
@@ -508,7 +451,7 @@ write_subscribers_list_of_records_to_file(File, [Next|Remaining]) ->
 create_csv_file() ->
     case utilities:create_timestamped_file("../reports") of
         {ok, File} -> 
-            write_csv_header(File, record_info(fields, subscribers)),
+            %write_csv_header(File, record_info(fields, schemas)),
             {ok, File};
 
         {error, Reason} -> {error, Reason}
@@ -536,7 +479,7 @@ write_csv_header(File, [Field | Remaining]) ->
 % Returns:  
 %-------------------------------------------------------------
 write_csv_record(File, []) -> file:write(File, "\n");
-write_csv_record(File, [subscribers | Remaining]) -> write_csv_record(File, Remaining);
+write_csv_record(File, [schemas | Remaining]) -> write_csv_record(File, Remaining);
 write_csv_record(File, [Next | Remaining]) ->
 
     case is_float(Next) of
@@ -643,10 +586,10 @@ parse_and_add(Line) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-convert_subscribers_tuple_record_to_list_record(Record) ->
+convert_my_record_tuple_record_to_list_record(Record) ->
     L1 = tuple_to_list(Record),
     case L1 of
-        {subscribers, L2} -> L2;
+        {schemas, L2} -> L2;
         _ -> L1
     end.
 
@@ -703,11 +646,45 @@ clear_screen() -> io:format("~c[2J~c[H", [27, 27]).
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-display_field_names() -> 
-    io:format("~n"),
-    Fields = record_info(fields, subscribers),
-    display_field_names(Fields).
+process_fields(Table) -> 
 
+    % This function makes a decision, is it all tables or just one.
+    % And then calls the proper processor.
+    case Table of
+        [] -> process_display_fields_all_tables(schemas:get_tables());
+        _ -> process_display_fields_one_table(Table)
+    end.
+
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+process_display_fields_one_table(Table) -> 
+    io:format("~w~n", [Table]),
+
+    case Table of
+        table_1 -> display_field_names(record_info(fields, table_1));
+        table_2 -> display_field_names(record_info(fields, table_2));
+        _ -> io:format("table not recognized~n")
+    end.
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+process_display_fields_all_tables([]) -> io:format("~n");
+process_display_fields_all_tables([H|T]) ->
+    process_display_fields_one_table(H),
+    process_display_fields_all_tables(T).
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
 display_field_names([]) -> io:format("~n");
 display_field_names([Next | Remaining]) -> 
     io:format("   ~w~n", [Next]),
@@ -719,21 +696,30 @@ display_field_names([Next | Remaining]) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-display_tables() ->
+process_tables() ->
 
-    Tables = mnesia:system_info(tables),
-    io:format("~n~n"),
-    lists:foreach(fun(Table) -> io:format("   ~p~n", [Table]) end, Tables).
+    case mnesia:system_info(running_db_nodes) of
+        [] -> 
+            io:format("must start mnesia db~n");
+
+        _ ->
+            Tables = mnesia:system_info(tables),
+            io:format("~n"),
+            lists:foreach(fun(Table) -> io:format("   ~p~n", [Table]) end, Tables)
+    end.
 
 
-
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
 mnesia_running_banner_warning() ->
 
     case mnesia:system_info(running_db_nodes) of
         [] -> 
-            io:format("*************************************************~n"),
-            io:format("   Must start mnesia db before using this menu~n"),
-            io:format("*************************************************~n~n");
+            io:format("must start mnesia before using this command~n"),
+            {error, not_running};
         _ -> ok
     end.
 
@@ -743,9 +729,84 @@ mnesia_running_banner_warning() ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
+process_size(Table) ->
+
+    case mnesia:system_info(running_db_nodes) of
+        [] -> io:format("must start mnesia db~n");
+        _ ->
+
+        case Table of
+            [] -> display_list_of_tuples_of_pairs(manage_db:table_sizes());
+            _ ->
+
+                case lists:member(Table, schemas:get_tables()) of
+                    true ->
+                        Result = manage_db:table_size(Table), 
+                        io:format("~w ~w~n", [Table, Result]);
+                    false ->
+                        io:format("Table ~w not recognized ~n", [Table])
+                end
+        end
+    end.
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+process_clear(Table) ->
+
+    case mnesia:system_info(running_db_nodes) of
+        [] -> io:format("must start mnesia db~n");
+        _ ->
+
+        case Table of
+            [] -> 
+                io:format("clear *all* tables? [y/n]: "),
+                Input = get_user_input(),
+
+                case string:to_lower(Input) of
+                    "y" -> 
+                        {Cleared, NotCleared} = modify_db:clear_all_tables(),
+                        io:format("cleared ~w out of ~w~n", [Cleared, Cleared+NotCleared]);
+
+                    _ -> 
+                        io:format("aborted~n")
+                end;
+            
+            _ ->
+
+                case lists:member(Table, schemas:get_tables()) of
+                    true ->
+                        io:format("clear table ~w? [y/n]: ", [Table]),
+                        Input = get_user_input(),
+
+                        case string:to_lower(Input) of
+                            "y" -> 
+                                case mnesia:clear_table(Table) of
+                                    {atomic, _} -> io:format("table ~w cleared~n", [Table]);
+                                    {aborted, Reason} -> io:format("failed to clear table, ~w~n", [Reason])
+                                end;
+
+                            _ -> 
+                                io:format("aborted~n")
+                        end;
+
+                    false ->
+                        io:format("table ~w not recognized ~n", [Table])
+                end
+        end
+    end.
+
+    
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
 load_query_modules() ->
     % Find all .beam files that start with "query" in the current directory
-    Files = filelib:wildcard("query*.beam"),
+    Files = filelib:wildcard("userquery*.beam"),
     io:format("~w~n", [Files]),
     % Convert filenames to module names and load each one
     %lists:foreach(fun load_module/1, Files)
@@ -774,6 +835,13 @@ load_modules([Next|Remaining], Loaded) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
+print_record(_Record) -> ok.
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
 display_loaded_modules([]) -> ok;
 display_loaded_modules(LoadedModules) -> display_loaded_modules(lists:reverse(LoadedModules), 1).
 
@@ -782,3 +850,14 @@ display_loaded_modules([Next | Remaining], N) ->
 
     io:format("   ~3w ~15w  ~s~n", [N, Next, Next:description()]),
     display_loaded_modules(Remaining, N+1).
+
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+display_list_of_tuples_of_pairs([]) -> io:format("~n");
+display_list_of_tuples_of_pairs([{A, B} | T]) -> 
+    io:format("~w ~w~n", [A, B]),
+    display_list_of_tuples_of_pairs(T).
