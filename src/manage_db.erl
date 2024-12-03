@@ -1,37 +1,37 @@
 -module(manage_db).
 -include("../include/schemas.hrl").
 
--export([install/0, start/0, stop/0, table_sizes/0, table_size/1]).
+-export([install/1, install/2, start/0, stop/0, table_sizes/0, table_size/1]).
 
-install() ->
+
+install(SS) -> install([node()], SS).
+
+install(NodeList, SS) ->
     
-    case mnesia:create_schema([node()]) of
+    case mnesia:create_schema(NodeList) of
         ok -> ok;
         {error, Reason1} -> io:format("failed to create get_schema: ~w~n", [Reason1])
     end,
 
     mnesia:start(),
     
-    case mnesia:create_table(table_1, [
-        {disc_copies, [node()]},
-        {attributes, record_info(fields, table_1)},
-        {type, set}
-    ]) of 
+    SchemaNames = schemas:schema_names(SS),
 
-        {atomic, _} -> ok;
+    install_next(SchemaNames, SS).
+
+
+install_next([], _) -> ok;
+install_next([NextSchemaName | T], SS) ->
+
+    case mnesia:create_table(NextSchemaName, {attributes, schemas:fields(NextSchemaName, SS)},
+                             {type, schemas:get_schema_attribute(type, NextSchemaName,SS)},
+                             {disc_copies, schemas:get_schema_attribute(disc_copies, NextSchemaName,SS)},
+                             {disc_only_copies, schemas:get_schema_attribute(disc_only_copies, NextSchemaName, SS)},
+                             {ram_copies, schemas:get_schema_attribute(ram_only_copies, NextSchemaName, SS)}) of
+
+        {atomic, _} -> install_next(T, SS);
         {aborted, Reason2} -> io:format("failed to create table_1: ~w~n", [Reason2])
-    end,
-
-    case mnesia:create_table(table_2, [
-        {disc_copies, [node()]},
-        {attributes, record_info(fields, table_2)},
-        {type, set}
-    ]) of 
-        {atomic, _} -> ok;
-        {aborted, Reason3} -> io:format("failed to create table_2: ~w~n", [Reason3])
-    end,
-
-    ok.
+    end.
 
 
 start() ->
