@@ -3,7 +3,7 @@
 
 -include("../include/schemas.hrl").
 
--export([add/3, delete/2, clear_all_tables/0]).
+-export([add/4, delete/2, clear_all_tables/0]).
 
 
 %-------------------------------------------------------------
@@ -11,7 +11,7 @@
 % Purpose:  Adds a record to the specified table
 % Returns: ok | {error, Reason}
 %-------------------------------------------------------------
-add(Table, Key, Data) ->
+add(SS, Table, Key, Data) ->
 
     case schemas:build_record(Table, Key, Data) of
         {ok, Record} ->

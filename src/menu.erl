@@ -1,6 +1,6 @@
 -module(menu).
 -include("../include/schemas.hrl").
--export([start/0]).
+-export([start/1]).
 
 -define(N, 10).
 -define(CMD_INSTALL, "install").
@@ -27,11 +27,11 @@
 % Purpose:  Displays the user menu
 % Returns:  
 %-------------------------------------------------------------
-start() -> 
-    LoadedModules = load_query_modules(),
+start(SchemasModule) -> 
+    QueryModules = load_query_modules(),
     %%clear_screen(),
     process_help(),
-    prompt(LoadedModules).
+    prompt({SchemasModule, QueryModules}).
 
 
 %-------------------------------------------------------------
@@ -237,15 +237,15 @@ process_user_input(Input, LoadedModules) ->
                     prompt(LoadedModules);
 
                 ?CMD_SIZE -> 
-                    process_size([]),
+                    process_size([], LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_WIPE ->
-                    process_wipe([]),
+                    process_wipe([], LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_FIELDS ->
-                    process_fields([]),
+                    process_fields([], LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_OPER ->
@@ -273,15 +273,15 @@ process_user_input(Input, LoadedModules) ->
             case Command of
 
                 ?CMD_SIZE -> 
-                    process_size(list_to_atom(Arg1)),
+                    process_size(list_to_atom(Arg1), LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_WIPE ->
-                    process_wipe(list_to_atom(Arg1)),
+                    process_wipe(list_to_atom(Arg1), LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_FIELDS ->
-                    process_fields(list_to_atom(Arg1)),
+                    process_fields(list_to_atom(Arg1), LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_HELP ->
@@ -299,12 +299,12 @@ process_user_input(Input, LoadedModules) ->
 
                 ?CMD_DEL -> 
 
-                    process_del(Arg1, Arg2),
+                    process_del(Arg1, Arg2, LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_READ -> 
 
-                    process_read(Arg1, Arg2),
+                    process_read(Arg1, Arg2, LoadedModules),
                     prompt(LoadedModules);
 
                 _ ->
@@ -317,7 +317,7 @@ process_user_input(Input, LoadedModules) ->
             case Command of 
                 
                 ?CMD_QUERY -> 
-                    process_q(Arg1, Arg2, Arg3, Arg4),
+                    process_q(Arg1, Arg2, Arg3, Arg4, LoadedModules),
                     prompt(LoadedModules);
 
                 _ -> 
@@ -331,11 +331,11 @@ process_user_input(Input, LoadedModules) ->
             case Command of 
                 
                 ?CMD_QOR ->
-                    process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6),
+                    process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_QAND ->
-                    process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6),
+                    process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules),
                     prompt(LoadedModules);
 
                  _ -> 
@@ -420,13 +420,15 @@ process_oper() ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_fields(Table) -> 
+process_fields(Table, LoadedModules) -> 
+
+    {SchemaModule, _} = LoadedModules,
 
     % This function makes a decision, is it all tables or just one.
     % And then calls the proper processor.
     case Table of
-        [] -> display_fields_all_tables(schemas:get_tables());
-        _ -> display_fields_one_table(Table)
+        [] -> display_fields_all_tables(SchemaModule);
+        _ -> display_fields_one_table(Table, SchemaModule)
     end.
 
 
@@ -435,35 +437,46 @@ process_fields(Table) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-display_fields_one_table(Table) -> 
-    io:format("~w~n", [Table]),
+display_fields_one_table(Table, SchemaModule) -> 
 
-    case Table of
-        table_1 -> display_field_names(record_info(fields, table_1));
-        table_2 -> display_field_names(record_info(fields, table_2));
-        _ -> unknown_table(Table)
+    case SchemaModule:is_schema(Table) of
+        true ->
+            io:format("Table ~p fields: ~n~n", [Table]),
+            display_field_info(Table, SchemaModule);
+
+        false -> io:format("~p not a valid table in ~p. ~n", [Table, SchemaModule]) 
     end.
 
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
-%-------------------------------------------------------------
-display_fields_all_tables([]) -> io:format("~n");
-display_fields_all_tables([H|T]) ->
-    display_fields_one_table(H),
-    display_fields_all_tables(T).
 
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-display_field_names([]) -> io:format("~n");
-display_field_names([Next | Remaining]) -> 
-    io:format("   ~w~n", [Next]),
-    display_field_names(Remaining).
+display_field_info(Table, SchemaModule) -> 
+    Fields = SchemaModule:fields(Table),
+    display_field_info(Fields, Table, SchemaModule).
 
+display_field_info([], _, _) -> io:format("~n");
+display_field_info([Field | T], Table, SchemaModule) ->
+    io:format("   ~p: ~p, ~p~n", [Field, 
+                                  SchemaModule:get_field_attribute(type, Field, Table),
+                                  SchemaModule:get_field_attribute(priority, Field, Table)]),
+
+    display_field_info(T, Table, SchemaModule).
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+display_fields_all_tables(SchemaModule) ->
+    display_fields_all_tables(SchemaModule:schema_names(), SchemaModule).
+
+display_fields_all_tables([], _) -> io:format("~n");
+display_fields_all_tables([H|T], SchemaModule) ->
+    display_fields_one_table(H, SchemaModule),
+    display_fields_all_tables(T, SchemaModule).
 
 %-------------------------------------------------------------
 % Function: 
@@ -488,7 +501,9 @@ process_tables() ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_wipe(Table) ->
+process_wipe(Table, LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
 
     case mnesia:system_info(running_db_nodes) of
         [] -> mnesia_not_running();
@@ -510,7 +525,7 @@ process_wipe(Table) ->
             
             _ ->
 
-                case lists:member(Table, schemas:get_tables()) of
+                case lists:member(Table, SchemaModule:schema_names()) of
                     true ->
                         io:format("clear table ~w? [y/n]: ", [Table]),
                         Input = get_user_input(),
@@ -537,7 +552,10 @@ process_wipe(Table) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_del(Arg1, Arg2) ->
+process_del(Arg1, Arg2, LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
+
     case mnesia:system_info(running_db_nodes) of
         [] -> mnesia_not_running();
 
@@ -550,11 +568,11 @@ process_del(Arg1, Arg2) ->
 
             Table = list_to_atom(Arg1),
 
-            case lists:member(Table, schemas:get_tables()) of
+            case lists:member(Table, SchemaModule:schema_names()) of
                 true -> 
 
                     % Table name is valid
-                    case schemas:safe_convert_from_string(Arg2, schemas:get_key_type(Table)) of
+                    case schemas:safe_convert_from_string(Arg2, SchemaModule:key_type(Table)) of
                         
                         {ok, Key} ->
 
@@ -581,7 +599,9 @@ process_del(Arg1, Arg2) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_read(Arg1, Arg2) ->
+process_read(Arg1, Arg2, LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
 
     case mnesia:system_info(running_db_nodes) of
         [] -> mnesia_not_running();
@@ -590,9 +610,9 @@ process_read(Arg1, Arg2) ->
             
             Table = list_to_atom(Arg1),
 
-            case lists:member(Table, schemas:get_tables()) of
+            case lists:member(Table, SchemaModule:schema_names()) of
                 true -> 
-                    case schemas:safe_convert_from_string(Arg2, schemas:get_key_type(Table)) of
+                    case schemas:safe_convert_from_string(Arg2, SchemaModule:key_type(Table)) of
                         
                         {ok, Key} ->
                             Result = queries:read(Table, Key),
@@ -613,7 +633,9 @@ process_read(Arg1, Arg2) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_q(Arg1, Arg2, Arg3, Arg4) ->
+process_q(Arg1, Arg2, Arg3, Arg4, LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
 
     case mnesia:system_info(running_db_nodes) of
         [] -> mnesia_not_running();
@@ -624,13 +646,15 @@ process_q(Arg1, Arg2, Arg3, Arg4) ->
             Field = list_to_atom(Arg2),
             Oper = list_to_atom(Arg3),
             
-            case lists:member(Table, schemas:get_tables()) of
+            case lists:member(Table, SchemaModule:schema_names()) of
                 true -> 
-                    case schemas:is_field(Table, Field) of
+                    FieldType = SchemaModule:get_field_attribute(type, Field, Table),
+
+                    case SchemaModule:is_field(Field, Table) of
                         true ->
                             case utilities:is_comparison(Oper) of 
                                 true ->
-                                    case schemas:safe_convert_from_string(Arg4, schemas:get_field_type(Table, Field)) of
+                                    case schemas:safe_convert_from_string(Arg4, FieldType) of
                                         {ok, Value} -> 
                                             QueryOutput = queries:select(Table, Field, Oper, Value), 
                                             process_query_output(QueryOutput);
@@ -653,7 +677,10 @@ process_q(Arg1, Arg2, Arg3, Arg4) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) ->
+process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
+
     case mnesia:system_info(running_db_nodes) of
         [] -> mnesia_not_running();
 
@@ -664,16 +691,18 @@ process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) ->
             Oper1 = list_to_atom(Arg3),
             Oper2 = list_to_atom(Arg5),
 
-            case lists:member(Table, schemas:get_tables()) of
+            case lists:member(Table, SchemaModule:schema_names()) of
                 true -> 
-                    case schemas:is_field(Table, Field) of
+                    case SchemaModule:is_field(Field, Table) of
                         true ->
                             case (utilities:is_comparison(Oper1) and utilities:is_comparison(Oper2)) of 
                                 true ->
-                                    case schemas:safe_convert_from_string(Arg4, schemas:get_field_type(Table, Field)) of
+                                    FieldType = SchemaModule:get_field_attribute(type, Field, Table),
+
+                                    case schemas:safe_convert_from_string(Arg4,  FieldType) of
                                         {ok, Value1} -> 
 
-                                            case schemas:safe_convert_from_string(Arg6, schemas:get_field_type(Table, Field)) of
+                                            case schemas:safe_convert_from_string(Arg6, FieldType) of
                                                 {ok, Value2} -> 
                                                     QueryOutput = queries:select_or(Field, Oper1, Value1, Oper2, Value2), 
                                                     process_query_output(QueryOutput);
@@ -698,7 +727,9 @@ process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) -> 
+process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
     
     case mnesia:system_info(running_db_nodes) of
         [] -> mnesia_not_running();
@@ -710,16 +741,18 @@ process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) ->
             Oper1 = list_to_atom(Arg3),
             Oper2 = list_to_atom(Arg5),
 
-            case lists:member(Table, schemas:get_tables()) of
+            case lists:member(Table, SchemaModule:schema_names()) of
                 true -> 
-                    case schemas:is_field(Table, Field) of
+                    case SchemaModule:is_field(Field, Table) of
                         true ->
                             case (utilities:is_comparison(Oper1) and utilities:is_comparison(Oper2)) of 
                                 true ->
-                                    case schemas:safe_convert_from_string(Arg4, schemas:get_field_type(Table, Field)) of
+                                    FieldType = SchemaModule:get_field_attribute(type, Field, Table),
+
+                                    case schemas:safe_convert_from_string(Arg4, FieldType) of
                                         {ok, Value1} -> 
 
-                                            case schemas:safe_convert_from_string(Arg6, schemas:get_field_type(Table, Field)) of
+                                            case schemas:safe_convert_from_string(Arg6, FieldType) of
                                                 {ok, Value2} -> 
                                                     QueryOutput = queries:select_and(Field, Oper1, Value1, Oper2, Value2), 
                                                     process_query_output(QueryOutput);
@@ -743,16 +776,18 @@ process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6) ->
 %-------------------------------------------------------------
 process_qdl(LoadedModules) ->
 
-    LoadedModulesCount = length(LoadedModules),
+    {_, QueryModules} = LoadedModules,
 
-    case LoadedModulesCount of
+    QueryModuleCount = length(QueryModules),
+
+    case QueryModuleCount of
 
         0 -> 
             io:format("no dynamically loaded queries found~n");
         
         _ ->
 
-            display_loaded_modules(LoadedModules),
+            display_query_modules(QueryModules),
             io:format("~nSelect query number or 0 to return: "),
             QueryNumberString = get_user_input(),
 
@@ -763,11 +798,11 @@ process_qdl(LoadedModules) ->
                         QueryNumber == 0 ->
                             ok;
 
-                        QueryNumber > LoadedModulesCount; QueryNumber < 0 ->
+                        QueryNumber > QueryModuleCount; QueryNumber < 0 ->
                             io:format("invalid query number~n");
 
                         true ->
-                            SelectedModule = lists:nth(QueryNumber, LoadedModules),
+                            SelectedModule = lists:nth(QueryNumber, QueryModules),
                             QueryOutput = SelectedModule:select(),
                             process_query_output(QueryOutput)
                     end;
@@ -1032,7 +1067,9 @@ mnesia_running_banner_warning() ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_size(Table) ->
+process_size(Table, LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
 
     case mnesia:system_info(running_db_nodes) of
         [] -> mnesia_not_running();
@@ -1042,7 +1079,7 @@ process_size(Table) ->
             [] -> display_list_of_tuples_of_pairs(manage_db:table_sizes());
             _ ->
 
-                case lists:member(Table, schemas:get_tables()) of
+                case lists:member(Table, SchemaModule:schema_names()) of
                     true ->
                         Result = manage_db:table_size(Table), 
                         io:format("~w ~w~n", [Table, Result]);
@@ -1097,14 +1134,14 @@ print_record(_Record) -> ok.
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-display_loaded_modules([]) -> ok;
-display_loaded_modules(LoadedModules) -> display_loaded_modules(lists:reverse(LoadedModules), 1).
+display_query_modules([]) -> ok;
+display_query_modules(LoadedModules) -> display_query_modules(lists:reverse(LoadedModules), 1).
 
-display_loaded_modules([], _) -> ok;
-display_loaded_modules([Next | Remaining], N) ->
+display_query_modules([], _) -> ok;
+display_query_modules([Next | Remaining], N) ->
 
     io:format("   ~3w ~15w  ~s~n", [N, Next, Next:description()]),
-    display_loaded_modules(Remaining, N+1).
+    display_query_modules(Remaining, N+1).
 
 
 %-------------------------------------------------------------

@@ -7,7 +7,7 @@ install() ->
     
     case mnesia:create_schema([node()]) of
         ok -> ok;
-        {error, Reason1} -> io:format("failed to create schema: ~w~n", [Reason1])
+        {error, Reason1} -> io:format("failed to create get_schema: ~w~n", [Reason1])
     end,
 
     mnesia:start(),
