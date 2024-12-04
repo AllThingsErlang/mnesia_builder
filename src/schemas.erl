@@ -502,7 +502,7 @@ key_name(SchemaName, SS) ->
 %-------------------------------------------------------------
 key_type(SchemaName, SS) -> 
 
-    case fields(SchemaName, SS) of 
+    case field_names(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
          [Key|_] -> get_field_attribute(type, Key, SchemaName, SS)
     end.
@@ -647,7 +647,6 @@ safe_convert_from_string(Value, Type) ->
   case is_list(Value) of
     true ->
       case Type of
-
         integer -> utilities:string_to_integer(Value);
         float -> utilities:string_to_float(Value);
         string -> {ok, Value};

@@ -21,11 +21,11 @@ find_list_pos(Field, [_Next | Remaining], Pos) -> find_list_pos(Field, Remaining
 %-------------------------------------------------------------
 string_to_float(String) ->
     case string:to_float(String) of
-        {ok, FloatValue} -> {ok, FloatValue};  % Valid float
-        {error, _} ->
+        {FloatValue, []} -> {ok, FloatValue};  % Valid float
+        _ ->
             case string:to_integer(String) of
-                {ok, IntValue} -> {ok, IntValue * 1.0};  % Convert integer to float
-                {error, Reason} -> {error, Reason}  % Not a number
+                {IntValue, []} -> {ok, IntValue * 1.0};  % Convert integer to float
+                _ -> {error, {not_a_number, String}}  % Not a number
             end
     end.
 
@@ -45,17 +45,17 @@ string_to_integer(String) -> string_to_integer(String, false).
 string_to_integer(String, Round) ->
 
     case string:to_integer(String) of
-        {ok, IntValue} -> {ok, IntValue};
-        {error, Reason} -> 
+        {IntValue, []} -> {ok, IntValue};
+        _ -> 
             %% Maybe it is a float. 
             case string:to_float(String) of
-                {ok, FloatValue} ->
+                {FloatValue, []} ->
                     if 
                         Round -> {ok, round(FloatValue)};  % Rounds the float
                         true -> {ok, trunc(FloatValue)}   % Drops the decimal part
                     end;
 
-                _ -> {error, Reason}
+                _ -> {error, {not_a_number, String}}
             end
     end.
 

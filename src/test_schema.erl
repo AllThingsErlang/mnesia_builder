@@ -35,7 +35,7 @@ schema_specifications() ->
                  fields =>
                      [{department_id,
                           #{label => [],name => department_id,position => 1,
-                            priority => mandatory,type => not_defined,
+                            priority => mandatory,type => string,
                             description => [],default_value => not_defined,
                             role => key}},
                       {manager_last_name,

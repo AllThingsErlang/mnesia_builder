@@ -32,7 +32,8 @@ run() ->
 
     SS12 = schemas:set_field_attribute(type, string, manager_last_name, departments, SS11),
     SS13 = schemas:set_field_attribute(type, string, manager_first_name, departments, SS12),
+    SS14 = schemas:set_field_attribute(type, string, department_id, departments, SS13),
 
-    schemas:generate(test_schema, SS13).
+    schemas:generate(test_schema, SS14).
 
 
