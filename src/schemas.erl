@@ -123,7 +123,7 @@ get_schema(SchemaName, SS) ->
         Schemas ->
             case lists:keyfind(SchemaName, 1, Schemas) of 
                 {SchemaName, Specifications} -> Specifications;
-                error -> {error, {schema_name_not_found, SchemaName, Schemas}}
+                false -> {error, {schema_name_not_found, {SchemaName, SS}}}
             end
     end.
 
@@ -281,8 +281,6 @@ add_field(FieldName, SchemaName, SS) ->
     Schemas = schemas(SS),
 
     case lists:keyfind(SchemaName, 1, Schemas) of 
-        error -> {error, schema_not_found};
-
         {SchemaName, SchemaSpecifications} ->
             FieldList = maps:get(?FIELDS, SchemaSpecifications),
 
@@ -294,7 +292,9 @@ add_field(FieldName, SchemaName, SS) ->
                     UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
                     UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
                     maps:update(?SCHEMAS, UpdatedSchemas, SS)
-            end
+            end;
+
+        false -> {error, {schema_name_not_found, {SchemaName, SS}}}
     end.
 
 %-------------------------------------------------------------
@@ -305,11 +305,16 @@ add_field(FieldName, SchemaName, SS) ->
 fields(SchemaName, SS) ->
 
     Schemas = schemas(SS),
-    {SchemaName, SchemaSpecifications} = lists:keyfind(SchemaName, 1, Schemas),
+    
+    case lists:keyfind(SchemaName, 1, Schemas) of 
+        {SchemaName, SchemaSpecifications} ->
   
-    case maps:find(?FIELDS, SchemaSpecifications) of 
-        {ok, Fields} -> Fields;
-        error -> {error, {fields_not_found, {SchemaName, SS}}} 
+            case maps:find(?FIELDS, SchemaSpecifications) of 
+                {ok, Fields} -> Fields;
+                error -> {error, {fields_not_found, {SchemaName, SS}}} 
+            end;
+
+        false -> {error, {schema_name_not_found, {SchemaName, SS}}}
     end.
 
 
@@ -345,15 +350,20 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) ->
     end,
 
     Schemas = schemas(SS),
-    {SchemaName, SchemaSpecifications} = lists:keyfind(SchemaName, 1, Schemas),
-    FieldList = maps:get(?FIELDS, SchemaSpecifications),
+    
+    case lists:keyfind(SchemaName, 1, Schemas) of 
+        {SchemaName, SchemaSpecifications} -> 
+            FieldList = maps:get(?FIELDS, SchemaSpecifications),
 
-    UpdatedFieldList = update_field(Attribute, Value, FieldName, FieldList),
+            UpdatedFieldList = update_field(Attribute, Value, FieldName, FieldList),
 
-    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-    maps:update(?SCHEMAS, UpdatedSchemas, SS).
+            UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
+            UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
+            maps:update(?SCHEMAS, UpdatedSchemas, SS);
 
+        false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+
+    end.
 
 
 %-------------------------------------------------------------
@@ -373,16 +383,27 @@ set_field_attributes(AvpList, FieldName, SchemaName, SS) ->
     % 8. Update the get_schema specifications map
 
     Schemas = schemas(SS),
-    {SchemaName, SchemaSpecifications} = lists:keyfind(SchemaName, 1, Schemas),
-    FieldList = maps:get(?FIELDS, SchemaSpecifications),
-    {FieldName, FieldSpecifications} = lists:keyfind(FieldName, 1, FieldList),
-    
-    UpdatedFieldSpecifications = set_field_attributes(AvpList, FieldSpecifications),
-    UpdatedFieldList = lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications}),
 
-    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-    maps:update(?SCHEMAS, UpdatedSchemas, SS).
+    case lists:keyfind(SchemaName, 1, Schemas) of
+
+        {SchemaName, SchemaSpecifications} -> 
+            FieldList = maps:get(?FIELDS, SchemaSpecifications),
+
+            case lists:keyfind(FieldName, 1, FieldList) of 
+                {FieldName, FieldSpecifications} -> 
+                
+                    UpdatedFieldSpecifications = set_field_attributes(AvpList, FieldSpecifications),
+                    UpdatedFieldList = lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications}),
+
+                    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
+                    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
+                    maps:update(?SCHEMAS, UpdatedSchemas, SS);
+                
+                false -> {error, {field_name_not_found, {FieldName, SS}}}
+            end;
+
+        false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+    end.
 
 
 %-------------------------------------------------------------
@@ -394,11 +415,11 @@ get_field_attribute(Attribute, FieldName, SchemaName, SS) ->
 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
-
+        
         Fields ->
             case lists:keyfind(FieldName, 1, Fields) of 
                 {FieldName, FieldSpecifications} -> maps:get(Attribute, FieldSpecifications);
-                error -> {error, {field_name_not_found, {FieldName, SchemaName}}}
+                false -> {error, {field_name_not_found, {FieldName, SS}}}
             end
     end.
 
@@ -426,11 +447,16 @@ update_fields(FieldList, SchemaName, SS) ->
         true -> 
             SchemasList = schemas(SS),
 
-            {SchemaName, SchemaSpecifications} = lists:keyfind(SchemaName, 1, SchemasList),
-            UpdatedSchemaSpecifications = maps:update(?FIELDS, FieldList, SchemaSpecifications),
+            case lists:keyfind(SchemaName, 1, SchemasList) of
 
-            UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
-            maps:update(?SCHEMAS, UpdatedSchemasList, SS);
+                {SchemaName, SchemaSpecifications} ->
+                    UpdatedSchemaSpecifications = maps:update(?FIELDS, FieldList, SchemaSpecifications),
+
+                    UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
+                    maps:update(?SCHEMAS, UpdatedSchemasList, SS);
+
+                false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+            end;
 
         false -> {error, {bad_field_list, FieldList}}
     end.
@@ -818,9 +844,14 @@ update_field(Attribute, Value, FieldName, FieldList) ->
         ?POSITION -> {error, {attribute_already_set, Attribute}};
         ?ROLE -> {error, {attribute_already_set, Attribute}};
         _ ->
-            {FieldName, FieldSpecifications} = lists:keyfind(FieldName, 1, FieldList),
-            UpdatedFieldSpecifications = maps:update(Attribute, Value, FieldSpecifications),
-            lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications})
+            case lists:keyfind(FieldName, 1, FieldList) of 
+                
+                {FieldName, FieldSpecifications} ->
+                    UpdatedFieldSpecifications = maps:update(Attribute, Value, FieldSpecifications),
+                    lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications});
+
+                false -> {error, {field_name_not_found, {FieldName, FieldList}}}
+            end
     end.
 
       

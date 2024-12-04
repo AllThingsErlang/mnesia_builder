@@ -459,10 +459,9 @@ process_fields(Table, LoadedModules) ->
 display_fields_one_table(Table, SchemaModule) -> 
 
     case SchemaModule:is_schema(Table) of
-        true ->
-            io:format("Table ~p fields: ~n~n", [Table]),
+        true -> 
+            io:format("~nTable ~p~n~n", [Table]),
             display_field_info(Table, SchemaModule);
-
         false -> io:format("~p not a valid table in ~p. ~n", [Table, SchemaModule]) 
     end.
 
@@ -473,12 +472,12 @@ display_fields_one_table(Table, SchemaModule) ->
 % Returns: 
 %-------------------------------------------------------------
 display_field_info(Table, SchemaModule) -> 
-    Fields = SchemaModule:fields(Table),
+    Fields = SchemaModule:field_names(Table),
     display_field_info(Fields, Table, SchemaModule).
 
 display_field_info([], _, _) -> io:format("~n");
 display_field_info([Field | T], Table, SchemaModule) ->
-    io:format("   ~p: ~p, ~p~n", [Field, 
+    io:format("   ~p:   ~p   ~p~n", [Field, 
                                   SchemaModule:get_field_attribute(type, Field, Table),
                                   SchemaModule:get_field_attribute(priority, Field, Table)]),
 
