@@ -598,7 +598,7 @@ process_del(Arg1, Arg2, LoadedModules) ->
                             Result = modify_db:delete(Table, Key),
                     
                             case Result of
-                                ok -> io:format("delted~n");
+                                ok -> io:format("ok~n");
                                 {_, Other} -> io:format("~w~n", [Other])
                             end;
                         {error, Reason} -> io:format("delete failed, ~w~n", [Reason])
@@ -722,7 +722,7 @@ process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
 
                                             case schemas:safe_convert_from_string(Arg6, FieldType) of
                                                 {ok, Value2} -> 
-                                                    QueryOutput = SchemaModule:select_or(Field, Oper1, Value1, Oper2, Value2), 
+                                                    QueryOutput = SchemaModule:select_or(Table, Field, Oper1, Value1, Oper2, Value2), 
                                                     process_query_output(QueryOutput);
 
                                                 _ -> io:format("invalid data type~n")
@@ -772,7 +772,7 @@ process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
 
                                             case schemas:safe_convert_from_string(Arg6, FieldType) of
                                                 {ok, Value2} -> 
-                                                    QueryOutput = SchemaModule:select_and(Field, Oper1, Value1, Oper2, Value2), 
+                                                    QueryOutput = SchemaModule:select_and(Table, Field, Oper1, Value1, Oper2, Value2), 
                                                     process_query_output(QueryOutput);
 
                                                 _ -> io:format("invalid data type~n")
