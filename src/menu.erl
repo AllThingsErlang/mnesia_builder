@@ -19,6 +19,7 @@
 -define(CMD_QOR, "qor").
 -define(CMD_QAND, "qand").
 -define(CMD_QDL, "qdl").
+-define(CMD_CLS, "cls").
 -define(CMD_HELP, "help").
 -define(CMD_EXIT, "exit").
 
@@ -27,11 +28,11 @@
 % Purpose:  Displays the user menu
 % Returns:  
 %-------------------------------------------------------------
-start(SchemasModule) -> 
+start(SchemaModule) -> 
     QueryModules = load_query_modules(),
     %%clear_screen(),
     process_help(),
-    prompt({SchemasModule, QueryModules}).
+    prompt({SchemaModule, QueryModules}).
 
 
 %-------------------------------------------------------------
@@ -76,6 +77,7 @@ process_help() ->
     io:format("   - ~-10s ... ~s~n", [?CMD_QDL, command_info(?CMD_QDL, description)]),
     io:format("~n"),
     io:format("-------------------------------------~n"),
+    io:format("   - ~-10s ... ~s~n", [?CMD_CLS, command_info(?CMD_CLS, description)]),
     io:format("   - ~-10s ... ~s~n", [?CMD_HELP, command_info(?CMD_HELP, description)]),
     io:format("   - ~-10s ... ~s~n", [?CMD_EXIT, command_info(?CMD_EXIT, description)]),
     io:format("-------------------------------------~n"),
@@ -101,109 +103,115 @@ command_info(Command, Info) ->
         ?CMD_INSTALL ->
             case Info of
                 description -> "install schemas";
-                syntax -> "install"
+                syntax -> ?CMD_INSTALL
             end;
 
         ?CMD_START   ->
             case Info of
                 description -> "start mnesia application";
-                syntax -> "start"
+                syntax -> ?CMD_START
             end;
 
         ?CMD_STOP    ->
             case Info of
                 description -> "stop mnesia application";
-                syntax -> "stop"
+                syntax -> ?CMD_STOP
             end;
 
         ?CMD_TABLES  ->
             case Info of
                 description -> "display table names";
-                syntax -> "tables  [table_name]"
+                syntax -> ?CMD_TABLES ++ " [table_name]"
             end;
 
         ?CMD_SIZE    ->
             case Info of
                 description -> "display table sizes";
-                syntax -> "size [table_name]"
+                syntax -> ?CMD_SIZE ++ " [table_name]"
             end;
 
         ?CMD_ADD     -> 
             case Info of
                 description -> "add record to table";
-                syntax -> "add <table_name> <key_value> <field_value> [field_value]*"
+                syntax -> ?CMD_ADD ++ " <table_name> <key_value> <field_value> [field_value]*"
             end;
 
         ?CMD_DEL     -> 
             case Info of
                 description -> "delete record from table";
-                syntax -> "del <table_name> <key_value>"
+                syntax -> ?CMD_DEL ++ " <table_name> <key_value>"
             end;
 
         ?CMD_LOAD    -> 
             case Info of
                 description -> "load data into table from csv file";
-                syntax -> "load <table_name> <file_path/file_name.csv> (not supported)"
+                syntax -> ?CMD_LOAD ++ " <table_name> <file_path/file_name.csv> (not supported)"
             end;
 
         ?CMD_WIPE    -> 
             case Info of
                 description -> "wipe data from table or all tables";
-                syntax -> "wipe [table_name]"
+                syntax -> ?CMD_WIPE ++ " [table_name]"
             end;
 
         ?CMD_FIELDS  -> 
             case Info of
                 description -> "display table field names, 1st field is key";
-                syntax -> "fields [table_name]"
+                syntax -> ?CMD_FIELDS ++ " [table_name]"
             end;
 
         ?CMD_OPER    -> 
             case Info of
                 description -> "display supported operators";
-                syntax -> "oper"
+                syntax -> ?CMD_OPER
             end;
 
         ?CMD_READ    -> 
             case Info of
                 description -> "read from table";
-                syntax -> "read <table_name> <key_value>"
+                syntax -> ?CMD_READ ++ " <table_name> <key_value>"
             end;
 
         ?CMD_QUERY   -> 
             case Info of
                 description -> "query table based on one field and one operator comparison";
-                syntax -> "q <table_name> <field_name> <oper> <value>"
+                syntax -> ?CMD_QUERY ++ " <table_name> <field_name> <oper> <value>"
             end;
 
         ?CMD_QOR     -> 
             case Info of
                 description -> "query table based on one field using OR";
-                syntax -> "qor <table_name> <field_name> <oper1> <value1> <oper2> <value2>"
+                syntax -> ?CMD_QOR ++ " <table_name> <field_name> <oper1> <value1> <oper2> <value2>"
             end;
 
         ?CMD_QAND    -> 
             case Info of
                 description -> "query table based on one field using AND";
-                syntax -> "qand <table_name> <field_name> <oper1> <value1> <oper2> <value2>"
+                syntax -> ?CMD_QAND ++ " <table_name> <field_name> <oper1> <value1> <oper2> <value2>"
             end;
 
         ?CMD_QDL     -> 
             case Info of
                 description -> "run prebuilt query from dynamically loaded modules";
-                syntax -> "qdl (follow prompts)"
+                syntax -> ?CMD_QDL ++ " (follow prompts)"
+            end;
+
+        ?CMD_CLS -> 
+            case Info of 
+                description -> "clear the screen";
+                syntax -> ?CMD_CLS
             end;
 
         ?CMD_HELP    -> 
             case Info of
                 description -> "run the help command";
-                syntax -> "help [command_name]"
+                syntax -> ?CMD_HELP ++ " [command_name]"
             end;
 
         ?CMD_EXIT    -> 
             case Info of
                 description -> "exit the menu and return to Erlang shell";
-                syntax -> "exit"
+                syntax -> ?CMD_EXIT
             end
     end.
 
@@ -215,13 +223,15 @@ command_info(Command, Info) ->
 %-------------------------------------------------------------
 process_user_input(Input, LoadedModules) ->
 
+    {SchemaModule, _} = LoadedModules,
+
     case string:tokens(Input, " ") of
 
         [Command] ->
 
             case Command of
                 ?CMD_INSTALL ->
-                    manage_db:install(),
+                    SchemaModule:install(),
                     prompt(LoadedModules);
                 
                 ?CMD_TABLES ->
@@ -254,6 +264,10 @@ process_user_input(Input, LoadedModules) ->
 
                 ?CMD_QDL ->
                     process_qdl(LoadedModules),
+                    prompt(LoadedModules);
+
+                ?CMD_CLS ->
+                    clear_screen(),
                     prompt(LoadedModules);
 
                 ?CMD_HELP -> 
@@ -998,37 +1012,6 @@ convert_my_record_tuple_record_to_list_record(Record) ->
         _ -> L1
     end.
 
-
-
-%get_field_type(Position, Fields) ->
-%    get_field_type(lists:nth(Position, Fields)).
-
-%-------------------------------------------------------------
-% Function: get_field_type
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-
-get_field_type(Field) ->
-
-    case Field of
-        subscriber_id -> string;
-        nag_id -> string;
-        customer_name -> string;
-        device_type -> string;
-        total_bad_gb_down -> float;
-        total_gb_down -> float;
-        total_bad_periods -> float;
-        total_periods -> float;
-        total_bad_days -> float;
-        total_days_active -> float;
-        bad_period_pctg -> float;
-        bad_period_pctg_bucket -> float;
-        city -> string;
-        province -> string;
-        postal_code -> string;
-        _ -> uknown
-    end.
 
 %-------------------------------------------------------------
 % Function: get_user_input

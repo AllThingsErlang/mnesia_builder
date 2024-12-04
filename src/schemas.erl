@@ -23,6 +23,7 @@
 -define(GEN_H_FILE_NAME, "test.hrl").
 -define(QUERY_MODULE, query_db).
 -define(MODIFY_MODULE, modify_db).
+-define(MANAGE_DB_MODULE, manage_db).
 
 % Schema management APIs
 -export([new/0, 
@@ -45,6 +46,7 @@
          is_field/3, 
          fields/2, 
          field_count/2,
+         field_names/2,
          key_name/2, 
          key_type/2,
          field_position/3, 
@@ -262,6 +264,8 @@ set_schema_attribute(Attribute, Value, SchemaName, SS) ->
 % Returns:  
 %------------------------------------------------------------- 
 get_schema_attribute(Attribute, SchemaName, SS) -> 
+    io:format("~nattribute: ~p~n", [Attribute]),
+
     case get_schema(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
         Schema -> maps:get(Attribute, Schema)
@@ -453,6 +457,16 @@ field_count(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
+field_names(SchemaName, SS) -> 
+    case fields(SchemaName, SS) of 
+        {error, Reason} -> {error, Reason};
+        Fields -> field_names_next(Fields, [])
+    end. 
+%-------------------------------------------------------------
+% Function:
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
 key_name(SchemaName, SS) -> 
 
     case fields(SchemaName, SS) of 
@@ -516,8 +530,8 @@ generate(Module, SrcPath, HrlPath, SS) ->
                             io:format(SrcIoDevice, "~n", []),
                             io:format(SrcIoDevice, "-export([schema_specifications/0]).~n", []),
 
-                            io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
-                            io:format(SrcIoDevice, "-export([fields/1, field_count/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
+                            io:format(SrcIoDevice, "-export([install/0, install/1, schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
+                            io:format(SrcIoDevice, "-export([fields/1, field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
                             io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
                             io:format(SrcIoDevice, "-export([add/3, delete/2, clear_all_tables/0]).~n", []),
                             io:format(SrcIoDevice, "-export([build_record_from_specifications/1, validate_record/1]).~n", []),
@@ -530,6 +544,9 @@ generate(Module, SrcPath, HrlPath, SS) ->
                             io:format(SrcIoDevice, "%                     Schema Functions~n",[]),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
+                            generate_spec_function(install, ?MANAGE_DB_MODULE, SrcIoDevice),
+                            generate_spec_function(install, "NodeList", ?MANAGE_DB_MODULE, SrcIoDevice),
+
                             generate_spec_function(schema_names, ?MODULE, SrcIoDevice),
                             generate_spec_function(is_schema, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(is_field, "FieldName", "SchemaName", ?MODULE, SrcIoDevice),     
@@ -538,6 +555,7 @@ generate(Module, SrcPath, HrlPath, SS) ->
                             generate_spec_function(get_schema_attribute, "Attribute", "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(fields, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(field_count, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(field_names, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(key_name, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(key_type, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(field_position, "FieldNAme", "SchemaName", ?MODULE, SrcIoDevice),
@@ -659,7 +677,7 @@ build_record(SchemaName, Key, Data) -> list_to_tuple([SchemaName | [Key | tuple_
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-build_record_from_specifications(SchemaName, SS) -> tuple_to_list([SchemaName, fields(SchemaName, SS)]).
+build_record_from_specifications(SchemaName, SS) -> tuple_to_list([SchemaName, field_names(SchemaName, SS)]).
 
 
 %-------------------------------------------------------------
@@ -678,7 +696,7 @@ validate_record(Record, SS) ->
 
     case is_schema(SchemaName, SS) of 
         true ->
-            SchemaFields = fields(SchemaName, SS),
+            SchemaFields = field_names(SchemaName, SS),
             compare_field_name_order(RecordFields, SchemaFields);
         false -> false
     end.
@@ -801,6 +819,14 @@ update_field(Attribute, Value, FieldName, FieldList) ->
     end.
 
       
+%-------------------------------------------------------------
+% Function:
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+field_names_next([], FinalList) -> lists:reverse(FinalList);
+field_names_next([{FieldName, _} | T], CompiledList) -> field_names_next(T, [FieldName | CompiledList]).
+
 %-------------------------------------------------------------
 % Function:
 % Purpose:  
@@ -1079,7 +1105,7 @@ schema_specifications() ->
         ?SCHEMAS=>[
                     {table_1, 
                         #{
-                            ?NAME=>table_1,
+                            ?NAME=>table_x,
                             ?DISC_COPIES=>[node()],
                             ?DISC_ONLY_COPIES=>[],
                             ?RAM_COPIES=>[],
@@ -1091,7 +1117,7 @@ schema_specifications() ->
                                                 ?LABEL=>"Employee ID",
                                                 ?ROLE=>key,
                                                 ?TYPE=>string,
-                                                ?DESCRIPTION=>"table_1 key"
+                                                ?DESCRIPTION=>"table_x key"
                                             }
                                         },
 
@@ -1102,7 +1128,7 @@ schema_specifications() ->
                                                 ?ROLE=>field,
                                                 ?TYPE=>integer,
                                                 ?PRIORITY=>mandatory,
-                                                ?DESCRIPTION=>"table_1 field 2"
+                                                ?DESCRIPTION=>"table_x field 2"
                                             }
                                         },
 
@@ -1113,7 +1139,7 @@ schema_specifications() ->
                                                 ?ROLE=>field,
                                                 ?TYPE=>float,
                                                 ?PRIORITY=>mandatory,
-                                                ?DESCRIPTION=>"table_1 field 3"
+                                                ?DESCRIPTION=>"table_x field 3"
                                             }
                                         },
                         
@@ -1125,7 +1151,7 @@ schema_specifications() ->
                                             ?TYPE=>string,
                                             ?PRIORITY=>optional,
                                             ?DEFAULT_VALUE=>"not defined",
-                                            ?DESCRIPTION=>"table_1 field 4"
+                                            ?DESCRIPTION=>"table_x field 4"
                                             }
                                         }
                             ]

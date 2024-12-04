@@ -23,14 +23,14 @@ install(NodeList, SS) ->
 install_next([], _) -> ok;
 install_next([NextSchemaName | T], SS) ->
 
-    case mnesia:create_table(NextSchemaName, {attributes, schemas:fields(NextSchemaName, SS)},
+    case mnesia:create_table(NextSchemaName, [{attributes, schemas:field_names(NextSchemaName, SS)},
                              {type, schemas:get_schema_attribute(type, NextSchemaName,SS)},
                              {disc_copies, schemas:get_schema_attribute(disc_copies, NextSchemaName,SS)},
                              {disc_only_copies, schemas:get_schema_attribute(disc_only_copies, NextSchemaName, SS)},
-                             {ram_copies, schemas:get_schema_attribute(ram_only_copies, NextSchemaName, SS)}) of
+                             {ram_copies, schemas:get_schema_attribute(ram_copies, NextSchemaName, SS)}]) of
 
         {atomic, _} -> install_next(T, SS);
-        {aborted, Reason2} -> io:format("failed to create table_1: ~w~n", [Reason2])
+        {aborted, Reason2} -> io:format("failed to create table ~p~n", [Reason2])
     end.
 
 
