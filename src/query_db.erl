@@ -33,7 +33,7 @@ select(Table, FieldName, Operator, Value, SS) ->
 
     Fun = fun() -> 
 
-        FieldPos = schemas:get_field_position(FieldName, Table, SS),
+        FieldPos = schemas:field_position(FieldName, Table, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -58,7 +58,7 @@ select_or(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
     MatchHead = build_matchhead(Table, SS),
 
     Fun = fun() -> 
-        FieldPos = schemas:get_field_position(FieldName, Table, SS),
+        FieldPos = schemas:field_position(FieldName, Table, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -86,7 +86,7 @@ select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
     MatchHead = build_matchhead(Table, SS),
 
     Fun = fun() -> 
-        FieldPos = schemas:get_field_position(FieldName, Table, SS),
+        FieldPos = schemas:field_position(FieldName, Table, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -110,17 +110,17 @@ select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
 %           used by select calls
 % Returns:  Tuple
 %-------------------------------------------------------------
-build_matchhead(Table, SS) -> list_to_tuple([Table | build_matchhead_list(SS, Table)]).
+build_matchhead(Table, SS) -> list_to_tuple([Table | build_matchhead_list(Table, SS)]).
 
 
 build_matchhead_list(Table, SS) ->
-    
+
     FieldCount = schemas:field_count(Table, SS),
     build_matchhead_list_next(FieldCount, []).
 
 build_matchhead_list_next(0, MatchHeadList) -> MatchHeadList;
 build_matchhead_list_next(N, MatchHeadList) -> 
-    build_matchhead_list(N-1, [list_to_atom("$" ++ integer_to_list(N)) | MatchHeadList]).
+    build_matchhead_list_next(N-1, [list_to_atom("$" ++ integer_to_list(N)) | MatchHeadList]).
 
 
 

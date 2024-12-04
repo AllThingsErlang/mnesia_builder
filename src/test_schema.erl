@@ -94,7 +94,7 @@ key_name(SchemaName) -> schemas:key_name(SchemaName, schema_specifications()).
 
 key_type(SchemaName) -> schemas:key_type(SchemaName, schema_specifications()).
 
-field_position(FieldNAme, SchemaName) -> schemas:field_position(FieldNAme, SchemaName, schema_specifications()).
+field_position(FieldName, SchemaName) -> schemas:field_position(FieldName, SchemaName, schema_specifications()).
 
 get_field_attribute(Attribute, FieldName, SchemaName) -> schemas:get_field_attribute(Attribute, FieldName, SchemaName, schema_specifications()).
 

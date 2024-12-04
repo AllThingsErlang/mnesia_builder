@@ -76,7 +76,7 @@
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-schema_specifications(Module) -> Module:schema_specification().
+schema_specifications(Module) when is_atom(Module) -> Module:schema_specification().
 
 %-------------------------------------------------------------
 % Function:
@@ -91,7 +91,7 @@ new() -> #{?VERSION=>?CURRENT_VERSION,
 % Purpose:  Add a new get_schema to the specifications.
 % Returns:  
 %-------------------------------------------------------------
-add_schema(SchemaName, SS) ->
+add_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
 
     % Get the list of schemas and their specification maps.
     SchemasList = schemas(SS),
@@ -115,8 +115,8 @@ add_schema(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-get_schema(SchemaName, SS) ->
-    
+get_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+
     case schemas(SS) of 
         {error, Reason} -> {error, Reason};
         
@@ -133,7 +133,8 @@ get_schema(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-schemas(SS) -> 
+schemas(SS) when is_map(SS) ->
+
     case maps:find(?SCHEMAS, SS) of 
         {ok, Schemas} -> Schemas; 
         error -> {error, {invalid_specifications, SS}}
@@ -144,7 +145,7 @@ schemas(SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-schema_names(SS) -> 
+schema_names(SS) when is_map(SS) -> 
     SchemasList = schemas(SS),
     schema_names([], SchemasList).
 
@@ -158,7 +159,7 @@ schema_names(NameList, [{Name, _} |T]) ->
 % Purpose:  
 % Returns:  boolean()
 %-------------------------------------------------------------
-is_schema(SchemaName, SS) ->
+is_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
 
     case maps:find(?SCHEMAS, SS) of 
         {ok, Schemas} -> lists:keymember(SchemaName, 1, Schemas);
@@ -170,7 +171,7 @@ is_schema(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-is_schema_attribute(Attribute) -> 
+is_schema_attribute(Attribute) when is_atom(Attribute) -> 
 
    case Attribute of 
         type -> true;
@@ -186,7 +187,7 @@ is_schema_attribute(Attribute) ->
 % Purpose:  
 % Returns:  boolean()
 %-------------------------------------------------------------
-is_schema_attribute(Attribute, Value) -> 
+is_schema_attribute(Attribute, Value) when is_atom(Attribute) -> 
 
    case Attribute of 
         type -> 
@@ -209,9 +210,9 @@ is_schema_attribute(Attribute, Value) ->
 % Purpose:  Sets the schema attributes in batch but not fields.
 % Returns:  boolean()
 %-------------------------------------------------------------
-set_schema_attributes([], _, SS) -> SS;
+set_schema_attributes([], _, SS) when is_map(SS) -> SS;
 
-set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) ->
+set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
     
     case (is_schema_attribute(Attribute, Value) and Attribute /= fields) of 
         true -> ok
@@ -236,7 +237,7 @@ set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) ->
 % Purpose: 
 % Returns:  
 %-------------------------------------------------------------
-set_schema_attribute(Attribute, Value, SchemaName, SS) ->
+set_schema_attribute(Attribute, Value, SchemaName, SS) when (is_atom(Attribute) and is_atom(SchemaName) and is_map(SS)) ->
 
     case is_schema_attribute(Attribute, Value) of 
         true -> ok
@@ -258,7 +259,7 @@ set_schema_attribute(Attribute, Value, SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %------------------------------------------------------------- 
-get_schema_attribute(Attribute, SchemaName, SS) -> 
+get_schema_attribute(Attribute, SchemaName, SS) when (is_atom(Attribute) and is_atom(SchemaName) and is_map(SS)) -> 
     io:format("~nattribute: ~p~n", [Attribute]),
 
     case get_schema(SchemaName, SS) of 
@@ -276,7 +277,7 @@ get_schema_attribute(Attribute, SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-add_field(FieldName, SchemaName, SS) ->
+add_field(FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) ->
 
     Schemas = schemas(SS),
 
@@ -302,7 +303,7 @@ add_field(FieldName, SchemaName, SS) ->
 % Purpose:  
 % Returns:  [{FieldName, FieldSpecifications}]
 %-------------------------------------------------------------
-fields(SchemaName, SS) ->
+fields(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
 
     Schemas = schemas(SS),
     
@@ -323,7 +324,7 @@ fields(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) ->
+set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) when (is_atom(Attribute) and is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) ->
 
     % Screen the attribute/value pair.
     case Attribute of
@@ -371,7 +372,7 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-set_field_attributes(AvpList, FieldName, SchemaName, SS) ->
+set_field_attributes(AvpList, FieldName, SchemaName, SS) when (is_list(AvpList) and is_atom(SchemaName) and is_map(SS)) ->
 
     % 1. Get the schemas list
     % 2. Extract the specifications for SchemaName
@@ -411,7 +412,7 @@ set_field_attributes(AvpList, FieldName, SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-get_field_attribute(Attribute, FieldName, SchemaName, SS) -> 
+get_field_attribute(Attribute, FieldName, SchemaName, SS) when (is_atom(Attribute) and is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) -> 
 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
@@ -429,7 +430,7 @@ get_field_attribute(Attribute, FieldName, SchemaName, SS) ->
 % Purpose:  
 % Returns:  boolean()
 %-------------------------------------------------------------
-is_field(FieldName, SchemaName, SS) ->
+is_field(FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) ->
 
     Fields = fields(SchemaName, SS),
     lists:keymember(FieldName, 1, Fields).
@@ -440,7 +441,7 @@ is_field(FieldName, SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %------------------------------------------------------------- 
-update_fields(FieldList, SchemaName, SS) -> 
+update_fields(FieldList, SchemaName, SS) when (is_list(FieldList) and is_atom(SchemaName) and is_map(SS)) -> 
 
     %% First, validate the field list
     case is_field_list(FieldList) of 
@@ -466,7 +467,7 @@ update_fields(FieldList, SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-field_count(SchemaName, SS) ->
+field_count(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
 
     case fields(SchemaName, SS) of 
         {error, _} -> 0;
@@ -478,7 +479,7 @@ field_count(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-field_names(SchemaName, SS) -> 
+field_names(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
         Fields -> field_names_next(Fields, [])
@@ -488,7 +489,7 @@ field_names(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-key_name(SchemaName, SS) -> 
+key_name(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
@@ -500,7 +501,7 @@ key_name(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-key_type(SchemaName, SS) -> 
+key_type(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
 
     case field_names(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
@@ -512,7 +513,8 @@ key_type(SchemaName, SS) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-field_position(FieldName, SchemaName, SS) -> get_field_attribute(?POSITION, FieldName, SchemaName, SS).
+field_position(FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) -> 
+    get_field_attribute(?POSITION, FieldName, SchemaName, SS).
 
 
 
@@ -532,7 +534,7 @@ generate(Module, SS) -> generate(Module, ".", ".", SS).
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate(Module, SrcPath, HrlPath, SS) ->
+generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath) and is_list(HrlPath) and is_map(SS)) ->
 
     case utilities:is_unquoted_atom(Module) of 
         true ->
@@ -589,7 +591,7 @@ generate(Module, SrcPath, HrlPath, SS) ->
                             generate_spec_function(field_names, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(key_name, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(key_type, "SchemaName", ?MODULE, SrcIoDevice),
-                            generate_spec_function(field_position, "FieldNAme", "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(field_position, "FieldName", "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(get_field_attribute, "Attribute", "FieldName", "SchemaName", ?MODULE, SrcIoDevice),
 
                             io:format(SrcIoDevice, "~n~n", []),
@@ -642,7 +644,7 @@ generate(Module, SrcPath, HrlPath, SS) ->
 % Purpose:  
 % Returns: converts the value or crashes
 %-------------------------------------------------------------
-safe_convert_from_string(Value, Type) ->
+safe_convert_from_string(Value, Type) when is_atom(Type) ->
 
   case is_list(Value) of
     true ->
@@ -666,7 +668,7 @@ safe_convert_from_string(Value, Type) ->
 % Purpose:  
 % Returns: converts the value or crashes
 %-------------------------------------------------------------
-convert_from_string(Value, Type) when is_list(Value) ->
+convert_from_string(Value, Type) when (is_list(Value) and is_atom(Type)) ->
 
   case Type of
 
@@ -700,14 +702,15 @@ convert_from_string(Value, Type) when is_list(Value) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-build_record(SchemaName, Key, Data) -> list_to_tuple([SchemaName | [Key | tuple_to_list(Data)]]).
+build_record(SchemaName, Key, Data) when is_atom(SchemaName) -> list_to_tuple([SchemaName | [Key | tuple_to_list(Data)]]).
 
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-build_record_from_specifications(SchemaName, SS) -> tuple_to_list([SchemaName, field_names(SchemaName, SS)]).
+build_record_from_specifications(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
+    tuple_to_list([SchemaName, field_names(SchemaName, SS)]).
 
 
 %-------------------------------------------------------------
@@ -715,7 +718,7 @@ build_record_from_specifications(SchemaName, SS) -> tuple_to_list([SchemaName, f
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-validate_record(Record, SS) -> 
+validate_record(Record, SS) when (is_tuple(Record) and is_map(SS)) -> 
 
     % 1. Convert record tuple to list and take out the head, that is the schema name.
     % 2. Extract the corresponding schema field specifications.
@@ -777,7 +780,7 @@ compare_fields_from_specs([Next1 | T1], [Next2 | T2]) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-create_schema(SchemaName)-> 
+create_schema(SchemaName) when is_atom(SchemaName) -> 
 
   S1 = maps:put(?NAME, SchemaName, maps:new()),
   S2 = maps:put(type, set, S1),
@@ -792,9 +795,9 @@ create_schema(SchemaName)->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-create_field(Name) ->
+create_field(FieldName) when is_atom(FieldName) ->
 
-  F1 = maps:put(?NAME, Name, maps:new()),
+  F1 = maps:put(?NAME, FieldName, maps:new()),
   F2 = maps:put(?LABEL, "", F1),
   F3 = maps:put(?ROLE, field, F2),
   F4 = maps:put(?TYPE, not_defined, F3),
@@ -808,7 +811,7 @@ create_field(Name) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-add_field(FieldName, FieldList) ->
+add_field(FieldName, FieldList) when (is_atom(FieldName) and is_list(FieldList)) ->
 
     % We are building a field list for a get_schema.
     % We will create a default field specifications
@@ -837,7 +840,7 @@ add_field(FieldName, FieldList) ->
 %           they are unchangeable.
 % Returns:  
 %-------------------------------------------------------------
-update_field(Attribute, Value, FieldName, FieldList) ->
+update_field(Attribute, Value, FieldName, FieldList) when (is_atom(Attribute) and is_atom(FieldName) and is_list(FieldList)) ->
 
     case Attribute of 
         ?POSITION -> {error, {attribute_already_set, Attribute}};
