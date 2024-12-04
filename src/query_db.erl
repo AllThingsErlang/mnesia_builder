@@ -29,7 +29,7 @@ read(Table, Key) ->
 % Purpose:  Selects all the tuples that satisfy the specifications
 % Returns:  {ok, List} | {error, Reason}
 %-------------------------------------------------------------
-select(SS, Table, FieldName, Operator, Value) -> 
+select(Table, FieldName, Operator, Value, SS) -> 
     MatchHead = build_matchhead(Table, SS),
 
     Fun = fun() -> 
@@ -54,7 +54,7 @@ select(SS, Table, FieldName, Operator, Value) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-select_or(SS, Table, FieldName, Operator1, Value1, Operator2, Value2) -> 
+select_or(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
     
     MatchHead = build_matchhead(Table, SS),
 
@@ -83,7 +83,7 @@ select_or(SS, Table, FieldName, Operator1, Value1, Operator2, Value2) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-select_and(SS, Table, FieldName, Operator1, Value1, Operator2, Value2) -> 
+select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
     MatchHead = build_matchhead(Table, SS),
 
     Fun = fun() -> 
@@ -114,7 +114,7 @@ select_and(SS, Table, FieldName, Operator1, Value1, Operator2, Value2) ->
 build_matchhead(Table, SS) -> list_to_tuple([Table | build_matchhead_list(SS, Table)]).
 
 
-build_matchhead_list(SS, Table) ->
+build_matchhead_list(Table, SS) ->
     
     FieldCount = schemas:field_count(Table, SS),
     build_matchhead_list_next(FieldCount, []).

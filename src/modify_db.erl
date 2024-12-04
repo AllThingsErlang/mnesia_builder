@@ -3,7 +3,7 @@
 
 -include("../include/schemas.hrl").
 
--export([add/4, delete/2, clear_all_tables/0]).
+-export([add/3, delete/2, clear_all_tables/0]).
 
 
 %-------------------------------------------------------------
@@ -11,16 +11,13 @@
 % Purpose:  Adds a record to the specified table
 % Returns: ok | {error, Reason}
 %-------------------------------------------------------------
-add(SS, Table, Key, Data) ->
+add(Table, Key, Data) ->
 
-    case schemas:build_record(Table, Key, Data) of
-        {ok, Record} ->
-            case mnesia:transaction(fun() -> mnesia:write(Record) end) of
-                {atomic, ok} -> ok;
-                {aborted, Reason} -> {error, Reason}
-            end;
-
-        {error, Reason} -> {error, Reason}
+    Record = schemas:build_record(Table, Key, Data),
+    
+    case mnesia:transaction(fun() -> mnesia:write(Record) end) of
+        {atomic, ok} -> ok;
+        {aborted, Reason} -> {error, Reason}
     end.
 
 

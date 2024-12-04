@@ -24,39 +24,48 @@
 -define(QUERY_MODULE, query_db).
 -define(MODIFY_MODULE, modify_db).
 
+% Schema management APIs
 -export([new/0, 
          add_schema/2, 
-         add_field/3, 
-         set_schema_attributes/3,
-         set_schema_attribute/4,
-         get_schema_attribute/3,
-         set_field_attributes/4, 
-         set_field_attribute/5, 
-         update_fields/3]).
-
--export([generate/2, generate/3]).
-
--export([schema_specifications/0, 
-         schema_specifications/1, 
-         schema_names/1, 
          is_schema_attribute/1,
          is_schema_attribute/2,
          is_schema/2, 
-         is_field/3, 
          schemas/1, 
          get_schema/2, 
+         set_schema_attributes/3,
+         set_schema_attribute/4,
+         get_schema_attribute/3,
+         schema_specifications/1, 
+         schema_names/1]).
+
+-export([generate/2, generate/4]).
+
+% Field Management APIs
+-export([add_field/3, 
+         is_field/3, 
          fields/2, 
          field_count/2,
          key_name/2, 
          key_type/2,
          field_position/3, 
-         get_field_attribute/4]).
+         get_field_attribute/4,
+         set_field_attributes/4, 
+         set_field_attribute/5, 
+         update_fields/3]).
 
--export([build_and_validate_record/4, build_record/2]).
-
+% Utility APIs
 -export([convert_from_string/2, 
          safe_convert_from_string/2, 
-         get_type/1]).
+         get_type/1,
+         build_record/3, 
+         build_record_from_specifications/2, 
+         validate_record/2, 
+         compare_fields_from_specs/2]).
+
+
+% Prototype/Testing
+-export([schema_specifications/0]).
+
 
 
 
@@ -65,6 +74,11 @@
 %    SCHEMA MANAGEMENT APIs
 %============================================================
 
+%-------------------------------------------------------------
+% Function:
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
 schema_specifications(Module) -> Module:schema_specification().
 
 %-------------------------------------------------------------
@@ -476,72 +490,92 @@ field_position(FieldName, SchemaName, SS) -> get_field_attribute(?POSITION, Fiel
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate(SS, Module) -> generate(SS, Module, ".").
+generate(Module, SS) -> generate(Module, ".", ".", SS).
 
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate(SS, Module, SrcPath) ->
+generate(Module, SrcPath, HrlPath, SS) ->
 
     case utilities:is_unquoted_atom(Module) of 
-        true -> 
-            case file:open(SrcPath ++ "/" ++ atom_to_list(Module) ++ ".erl", [write]) of
-                {ok, SrcIoDevice}  -> 
-                    
-                    io:format(SrcIoDevice, "-module(~p).~n", [Module]),
+        true ->
+            case file:open(HrlPath ++ "/" ++ atom_to_list(Module) ++ ".hrl", [write]) of 
+                {ok, HrlIoDevice} ->
 
-                    generate_records(SS, SrcIoDevice),
+                    generate_records(SS, HrlIoDevice),
 
-                    io:format(SrcIoDevice, "~n", []),
-                    io:format(SrcIoDevice, "-export([schema_specifications/0]).~n", []),
+                    case file:open(SrcPath ++ "/" ++ atom_to_list(Module) ++ ".erl", [write]) of
+                        {ok, SrcIoDevice}  -> 
+                            
+                            io:format(SrcIoDevice, "-module(~p).~n", [Module]),
 
-                    io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1]).~n", []),
-                    io:format(SrcIoDevice, "-export([fields/1, field_count/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
-                    io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
-                    io:format(SrcIoDevice, "-export([add/3]).~n", []),
-                    io:format(SrcIoDevice, "~n", []),
-                    io:format(SrcIoDevice, "schema_specifications() ->~n", []),
-                    io:format(SrcIoDevice, "    ~p.~n", [SS]),    
+                            
 
-                    io:format(SrcIoDevice, "~n~n", []),
-                    io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
-                    io:format(SrcIoDevice, "%                     Schema Functions~n",[]),
-                    io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+                            io:format(SrcIoDevice, "~n", []),
+                            io:format(SrcIoDevice, "-export([schema_specifications/0]).~n", []),
 
-                    generate_spec_function(schema_names, SrcIoDevice),
-                    generate_spec_function(is_schema, "SchemaName", SrcIoDevice),
-                    generate_spec_function(is_field, "FieldName", "SchemaName", SrcIoDevice),     
-                    generate_spec_function(schemas, SrcIoDevice),
-                    generate_spec_function(get_schema, "SchemaName", SrcIoDevice),
-                    generate_spec_function(fields, "SchemaName", SrcIoDevice),
-                    generate_spec_function(field_count, "SchemaName", SrcIoDevice),
-                    generate_spec_function(key_name, "SchemaName", SrcIoDevice),
-                    generate_spec_function(key_type, "SchemaName", SrcIoDevice),
-                    generate_spec_function(field_position, "FieldNAme", "SchemaName", SrcIoDevice),
-                    generate_spec_function(get_field_attribute, "Attribute", "FieldName", "SchemaName", SrcIoDevice),
+                            io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
+                            io:format(SrcIoDevice, "-export([fields/1, field_count/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
+                            io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
+                            io:format(SrcIoDevice, "-export([add/3, delete/2, clear_all_tables/0]).~n", []),
+                            io:format(SrcIoDevice, "-export([build_record_from_specifications/1, validate_record/1]).~n", []),
+                            io:format(SrcIoDevice, "~n", []),
+                            io:format(SrcIoDevice, "schema_specifications() ->~n", []),
+                            io:format(SrcIoDevice, "    ~p.~n", [SS]),    
 
-                    io:format(SrcIoDevice, "~n~n", []),
-                    io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
-                    io:format(SrcIoDevice, "%                     Query Functions~n",[]),
-                    io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+                            io:format(SrcIoDevice, "~n~n", []),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+                            io:format(SrcIoDevice, "%                     Schema Functions~n",[]),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
-                    generate_function(?QUERY_MODULE, read, "Table", "Key", SrcIoDevice),
+                            generate_spec_function(schema_names, ?MODULE, SrcIoDevice),
+                            generate_spec_function(is_schema, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(is_field, "FieldName", "SchemaName", ?MODULE, SrcIoDevice),     
+                            generate_spec_function(schemas, ?MODULE, SrcIoDevice),
+                            generate_spec_function(get_schema, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(get_schema_attribute, "Attribute", "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(fields, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(field_count, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(key_name, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(key_type, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(field_position, "FieldNAme", "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(get_field_attribute, "Attribute", "FieldName", "SchemaName", ?MODULE, SrcIoDevice),
 
-                    generate_query_function(select, "Table", "Field", "Oper", "Value", SrcIoDevice),
-                    generate_query_function(select_or, "Table", "Field", "Oper1", "Value1", "Oper2", "Value2", SrcIoDevice),
-                    generate_query_function(select_and, "Table", "Field", "Oper1", "Value1", "Oper2", "Value2", SrcIoDevice),
-                    generate_query_function(build_matchhead, "Table", SrcIoDevice),
+                            io:format(SrcIoDevice, "~n~n", []),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+                            io:format(SrcIoDevice, "%                     Query Functions~n",[]),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
-                    io:format(SrcIoDevice, "~n~n", []),
-                    io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
-                    io:format(SrcIoDevice, "%                     Modify Functions~n",[]),
-                    io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+                            generate_function(read, "Table", "Key", ?QUERY_MODULE, SrcIoDevice),
 
-                    generate_modify_function(add, "Table", "Key", "Data", SrcIoDevice),
+                            generate_spec_function(select, "Table", "Field", "Oper", "Value", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(select_or, "Table", "Field", "Oper1", "Value1", "Oper2", "Value2", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(select_and, "Table", "Field", "Oper1", "Value1", "Oper2", "Value2", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(build_matchhead, "Table", ?QUERY_MODULE, SrcIoDevice),
 
-                    file:close(SrcIoDevice);
+                            io:format(SrcIoDevice, "~n~n", []),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+                            io:format(SrcIoDevice, "%                     Modify Functions~n",[]),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+
+                            generate_function(add, "Table", "Key", "Data", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_function(delete, "Table", "Key", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_function(clear_all_tables, ?MODIFY_MODULE, SrcIoDevice),
+
+                            io:format(SrcIoDevice, "~n~n", []),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+                            io:format(SrcIoDevice, "%                     Utility Functions~n",[]),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+
+                            generate_spec_function(build_record_from_specifications, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(validate_record, "Record", ?MODULE, SrcIoDevice),
+                           
+                            file:close(SrcIoDevice);
+
+                        {error, Reason} -> {error, Reason}
+                    end;
 
                 {error, Reason} -> {error, Reason}
             end;
@@ -549,6 +583,10 @@ generate(SS, Module, SrcPath) ->
         false -> {error, {invalid_module_name, Module}}
     end.
 
+
+%============================================================
+%    UTILITY APIs
+%============================================================
 
 %-------------------------------------------------------------
 % Function: 
@@ -609,6 +647,76 @@ convert_from_string(Value, Type) when is_list(Value) ->
     term -> Value
   end.
 
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+build_record(SchemaName, Key, Data) -> list_to_tuple([SchemaName | [Key | tuple_to_list(Data)]]).
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+build_record_from_specifications(SchemaName, SS) -> tuple_to_list([SchemaName, fields(SchemaName, SS)]).
+
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+validate_record(Record, SS) -> 
+
+    % 1. Convert record tuple to list and take out the head, that is the schema name.
+    % 2. Extract the corresponding schema field specifications.
+    % 3. Cycle through each field and validate name and position.
+
+    RecordList = tuple_to_list(Record),
+    [SchemaName | RecordFields] = RecordList,
+
+    case is_schema(SchemaName, SS) of 
+        true ->
+            SchemaFields = fields(SchemaName, SS),
+            compare_field_name_order(RecordFields, SchemaFields);
+        false -> false
+    end.
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+compare_field_name_order([], []) -> true;
+compare_field_name_order(_, []) -> false;
+compare_field_name_order([], _) -> false;
+compare_field_name_order([Next1 | T1], [Next2 | T2]) ->
+
+    case (Next1 == Next2) of 
+        true -> compare_field_name_order(T1, T2);
+
+        false -> false 
+    end.
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+compare_fields_from_specs([], []) -> true;
+compare_fields_from_specs(_, []) -> false;
+compare_fields_from_specs([], _) -> false;
+compare_fields_from_specs([Next1 | T1], [Next2 | T2]) ->
+
+    {FieldName1, FieldSpec1} = Next1,
+    {FieldName2, FieldSpec2} = Next2,
+
+    case ((FieldName1 == FieldName2) and (FieldSpec1 == FieldSpec2)) of 
+        true -> compare_fields_from_specs(T1, T2);
+
+        false -> false 
+    end.
 
 
 %============================================================
@@ -744,49 +852,41 @@ set_field_attributes([{?DESCRIPTION, Description} | T], FieldSpecifications) whe
     set_field_attributes(T, maps:update(?DESCRIPTION, Description, FieldSpecifications)).
 
 
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+generate_function(FunctionName, BaseModule, IoDevice) ->
+    io:format(IoDevice, "~n~p() -> ~p:~p().~n", 
+        [FunctionName, BaseModule, FunctionName]).
 
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_function(Module, FunctionName, Arg1, Arg2, IoDevice) ->
-    io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s).~n", [FunctionName, Arg1, Arg2, Module, FunctionName, Arg1, Arg2]).
-
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-generate_spec_function(FunctionName, IoDevice) -> 
-    io:format(IoDevice, "~n~p() -> ~p:~p(schema_specifications()).~n", [FunctionName, ?MODULE, FunctionName]).
-
+generate_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
+    io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s).~n", 
+        [FunctionName, Arg1, Arg2, BaseModule, FunctionName, Arg1, Arg2]).
 
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_spec_function(FunctionName, Arg1, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s, schema_specifications()).~n", [FunctionName, Arg1, ?MODULE, FunctionName, Arg1]).
+generate_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) ->
+    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s).~n", 
+        [FunctionName, Arg1, Arg2, Arg3, BaseModule, FunctionName, Arg1, Arg2, Arg3]).
 
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_spec_function(FunctionName, Arg1, Arg2, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s, schema_specifications()).~n", [FunctionName, Arg1, Arg2, ?MODULE, FunctionName, Arg1, Arg2]).
-
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-generate_spec_function(FunctionName, Arg1, Arg2, Arg3, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, schema_specifications()).~n", [FunctionName, Arg1, Arg2, Arg3, ?MODULE, FunctionName, Arg1, Arg2, Arg3]).
+generate_spec_function(FunctionName, BaseModule, IoDevice) -> 
+    io:format(IoDevice, "~n~p() -> ~p:~p(schema_specifications()).~n", 
+        [FunctionName, BaseModule, FunctionName]).
 
 
 %-------------------------------------------------------------
@@ -794,8 +894,18 @@ generate_spec_function(FunctionName, Arg1, Arg2, Arg3, IoDevice) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_query_function(FunctionName, Arg1, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s) -> ~p:~p(schema_specifications(), ~s).~n", [FunctionName, Arg1, ?QUERY_MODULE, FunctionName, Arg1]).
+generate_spec_function(FunctionName, Arg1, BaseModule, IoDevice) -> 
+    io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s, schema_specifications()).~n", 
+        [FunctionName, Arg1, BaseModule, FunctionName, Arg1]).
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+generate_spec_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) -> 
+    io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s, schema_specifications()).~n", 
+        [FunctionName, Arg1, Arg2, BaseModule, FunctionName, Arg1, Arg2]).
 
 
 %-------------------------------------------------------------
@@ -803,8 +913,9 @@ generate_query_function(FunctionName, Arg1, IoDevice) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_query_function(FunctionName, Arg1, Arg2, Arg3, Arg4, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s) -> ~p:~p(schema_specifications(), ~s, ~s, ~s, ~s).~n", [FunctionName, Arg1, Arg2, Arg3, Arg4, ?QUERY_MODULE, FunctionName, Arg1, Arg2, Arg3, Arg4]).
+generate_spec_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) -> 
+    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, schema_specifications()).~n", 
+        [FunctionName, Arg1, Arg2, Arg3, BaseModule, FunctionName, Arg1, Arg2, Arg3]).
 
 
 %-------------------------------------------------------------
@@ -812,8 +923,9 @@ generate_query_function(FunctionName, Arg1, Arg2, Arg3, Arg4, IoDevice) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_query_function(FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s, ~s, ~s) -> ~p:~p(schema_specifications(), ~s, ~s, ~s, ~s, ~s, ~s).~n", [FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, ?QUERY_MODULE, FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6]).
+generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, IoDevice) -> 
+    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, schema_specifications()).~n", 
+        [FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, FunctionName, Arg1, Arg2, Arg3, Arg4]).
 
 
 %-------------------------------------------------------------
@@ -821,8 +933,11 @@ generate_query_function(FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, IoDevi
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_modify_function(FunctionName, Arg1, Arg2, Arg3, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(schema_specifications(), ~s, ~s, ~s).~n", [FunctionName, Arg1, Arg2, Arg3, ?MODIFY_MODULE, FunctionName, Arg1, Arg2, Arg3]).
+generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, BaseModule, IoDevice) -> 
+    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, ~s, ~s, schema_specifications()).~n", 
+        [FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, 
+         BaseModule, FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6]).
+
 
 %-------------------------------------------------------------
 % Function: 
@@ -1103,33 +1218,4 @@ schema_specifications() ->
         ]
     }.
 
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-build_and_validate_record(Key, Data, SchemaName, SS) -> 
-    Record = build_record(Key, Data),
-    validate_record(Record, SchemaName, SS).
 
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-build_record(Key, Data) -> list_to_tuple([Key | tuple_to_list(Data)]).
-
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-build_record_from_specifications(SchemaName, SS) -> [SchemaName, ]
-  
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-validate_record(_Record, _SchemaName, _SS) -> true.
