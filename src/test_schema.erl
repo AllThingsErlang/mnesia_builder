@@ -1,7 +1,8 @@
 -module(test_schema).
 
 -export([schema_specifications/0]).
--export([install/0, install/1, schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).
+-export([install/0, install/1, start/0, stop/0, table_size/1, table_sizes/0]).
+-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).
 -export([fields/1, field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).
 -export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).
 -export([add/3, delete/2, clear_all_tables/0]).
@@ -51,12 +52,25 @@ schema_specifications() ->
 
 
 %-------------------------------------------------------
-%                     Schema Functions
+%                DB Management Functions
 %-------------------------------------------------------
 
 install() -> manage_db:install(schema_specifications()).
 
 install(NodeList) -> manage_db:install(NodeList, schema_specifications()).
+
+start() -> manage_db:start(schema_specifications()).
+
+stop() -> manage_db:stop().
+
+table_size(SchemaName) -> manage_db:table_size(SchemaName).
+
+table_sizes() -> manage_db:table_sizes(schema_specifications()).
+
+
+%-------------------------------------------------------
+%                     Schema Functions
+%-------------------------------------------------------
 
 schema_names() -> schemas:schema_names(schema_specifications()).
 

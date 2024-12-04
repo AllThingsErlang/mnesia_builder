@@ -1,5 +1,4 @@
 -module(menu).
--include("../include/schemas.hrl").
 -export([start/1]).
 
 -define(N, 10).
@@ -239,11 +238,11 @@ process_user_input(Input, LoadedModules) ->
                     prompt(LoadedModules);
                     
                 ?CMD_START -> 
-                    process_start(),
+                    process_start(LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_STOP -> 
-                    process_stop(),
+                    process_stop(LoadedModules),
                     prompt(LoadedModules);
 
                 ?CMD_SIZE -> 
@@ -402,8 +401,11 @@ mnesia_not_running() -> io:format("must start mnesia~n").
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_start() ->
-    Result = manage_db:start(),
+process_start(LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
+
+    Result = SchemaModule:start(),
     io:format("Result: ~w~n", [Result]).
 
 
@@ -412,8 +414,11 @@ process_start() ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-process_stop() -> 
-    Result = manage_db:stop(),
+process_stop(LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
+
+    Result = SchemaModule:stop(),
     io:format("Result: ~w~n", [Result]).
 
 
@@ -530,7 +535,7 @@ process_wipe(Table, LoadedModules) ->
 
                 case string:to_lower(Input) of
                     "y" -> 
-                        {Cleared, NotCleared} = modify_db:clear_all_tables(),
+                        {Cleared, NotCleared} = SchemaModule:clear_all_tables(),
                         io:format("cleared ~w out of ~w~n", [Cleared, Cleared+NotCleared]);
 
                     _ -> 
@@ -1059,12 +1064,12 @@ process_size(Table, LoadedModules) ->
         _ ->
 
         case Table of
-            [] -> display_list_of_tuples_of_pairs(manage_db:table_sizes());
+            [] -> display_list_of_tuples_of_pairs(SchemaModule:table_sizes());
             _ ->
 
                 case lists:member(Table, SchemaModule:schema_names()) of
                     true ->
-                        Result = manage_db:table_size(Table), 
+                        Result = SchemaModule:table_size(Table), 
                         io:format("~w ~w~n", [Table, Result]);
                     false ->
                         unknown_table(Table)

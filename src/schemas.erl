@@ -1,5 +1,4 @@
 -module(schemas).
--include("../include/schemas.hrl").
 
 -define(CURRENT_VERSION, "0.2").
 
@@ -63,10 +62,6 @@
          build_record_from_specifications/2, 
          validate_record/2, 
          compare_fields_from_specs/2]).
-
-
-% Prototype/Testing
--export([schema_specifications/0]).
 
 
 
@@ -530,7 +525,8 @@ generate(Module, SrcPath, HrlPath, SS) ->
                             io:format(SrcIoDevice, "~n", []),
                             io:format(SrcIoDevice, "-export([schema_specifications/0]).~n", []),
 
-                            io:format(SrcIoDevice, "-export([install/0, install/1, schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
+                            io:format(SrcIoDevice, "-export([install/0, install/1, start/0, stop/0, table_size/1, table_sizes/0]).~n", []),
+                            io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
                             io:format(SrcIoDevice, "-export([fields/1, field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
                             io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
                             io:format(SrcIoDevice, "-export([add/3, delete/2, clear_all_tables/0]).~n", []),
@@ -541,11 +537,20 @@ generate(Module, SrcPath, HrlPath, SS) ->
 
                             io:format(SrcIoDevice, "~n~n", []),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
-                            io:format(SrcIoDevice, "%                     Schema Functions~n",[]),
+                            io:format(SrcIoDevice, "%                DB Management Functions~n",[]),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
                             generate_spec_function(install, ?MANAGE_DB_MODULE, SrcIoDevice),
                             generate_spec_function(install, "NodeList", ?MANAGE_DB_MODULE, SrcIoDevice),
+                            generate_spec_function(start, ?MANAGE_DB_MODULE, SrcIoDevice),
+                            generate_function(stop, ?MANAGE_DB_MODULE, SrcIoDevice),
+                            generate_function(table_size, "SchemaName", ?MANAGE_DB_MODULE, SrcIoDevice),
+                            generate_spec_function(table_sizes, ?MANAGE_DB_MODULE, SrcIoDevice),
+
+                            io:format(SrcIoDevice, "~n~n", []),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
+                            io:format(SrcIoDevice, "%                     Schema Functions~n",[]),
+                            io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
                             generate_spec_function(schema_names, ?MODULE, SrcIoDevice),
                             generate_spec_function(is_schema, "SchemaName", ?MODULE, SrcIoDevice),
@@ -892,6 +897,15 @@ generate_function(FunctionName, BaseModule, IoDevice) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
+generate_function(FunctionName, Arg1, BaseModule, IoDevice) ->
+    io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s).~n", 
+        [FunctionName, Arg1, BaseModule, FunctionName, Arg1]).
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
 generate_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
     io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s).~n", 
         [FunctionName, Arg1, Arg2, BaseModule, FunctionName, Arg1, Arg2]).
@@ -1098,150 +1112,150 @@ get_type(Value) ->
 %
 % 
 %-------------------------------------------------------------
-schema_specifications() ->
+%schema_specifications() ->
 
-    #{
-        ?VERSION=>"0.2",
-        ?SCHEMAS=>[
-                    {table_1, 
-                        #{
-                            ?NAME=>table_x,
-                            ?DISC_COPIES=>[node()],
-                            ?DISC_ONLY_COPIES=>[],
-                            ?RAM_COPIES=>[],
+%    #{
+%        ?VERSION=>"0.2",
+%        ?SCHEMAS=>[
+%                    {table_1, 
+%                        #{
+%                            ?NAME=>table_x,
+%                            ?DISC_COPIES=>[node()],
+%                            ?DISC_ONLY_COPIES=>[],
+%                            ?RAM_COPIES=>[],
 
-                            ?FIELDS=>[
-                                        {employee_id, 
-                                            #{
-                                                ?NAME=>employee_id,
-                                                ?LABEL=>"Employee ID",
-                                                ?ROLE=>key,
-                                                ?TYPE=>string,
-                                                ?DESCRIPTION=>"table_x key"
-                                            }
-                                        },
-
-                                        {job_id,
-                                            #{
-                                                ?NAME=>job_id,
-                                                ?LABEL=>"Job ID",
-                                                ?ROLE=>field,
-                                                ?TYPE=>integer,
-                                                ?PRIORITY=>mandatory,
-                                                ?DESCRIPTION=>"table_x field 2"
-                                            }
-                                        },
-
-                                        {hourly_wage,
-                                            #{
-                                                ?NAME=>hourly_wage,
-                                                ?LABEL=>"Hourly Wage",
-                                                ?ROLE=>field,
-                                                ?TYPE=>float,
-                                                ?PRIORITY=>mandatory,
-                                                ?DESCRIPTION=>"table_x field 3"
-                                            }
-                                        },
-                        
-                                        {office_id, 
-                                            #{
-                                            ?NAME=>office_id,
-                                            ?LABEL=>"Office Bld ID",
-                                            ?ROLE=>field,
-                                            ?TYPE=>string,
-                                            ?PRIORITY=>optional,
-                                            ?DEFAULT_VALUE=>"not defined",
-                                            ?DESCRIPTION=>"table_x field 4"
-                                            }
-                                        }
-                            ]
-                        }
-                    },
-
-                    {table_2,
-                        
-                        #{
-                            ?NAME=>table_2,
-                            ?DISC_COPIES=>[node()],
-                            ?DISC_ONLY_COPIES=>[],
-                            ?RAM_COPIES=>[],
-
-                            ?FIELDS=>[
-                                        {job_id, 
-                                            #{
-                                                ?NAME=>job_id,
-                                                ?LABEL=>"Job ID",
-                                                ?ROLE=>key,
-                                                ?TYPE=>integer,
-                                                ?PRIORITY=>mandatory,
-                                                ?DESCRIPTION=>"Each job type has its own ID"
-                                            }
-                                        },
-
-                                        {max_job_class,      
-                                            #{
-                                                ?NAME=>max_job_class,
-                                                ?LABEL=>"Max Job Class",
-                                                ?ROLE=>field,
-                                                ?TYPE=>integer,
-                                                ?PRIORITY=>mandatory,
-                                                ?DESCRIPTION=>"Highest job classification qualified to take this job ID"
-                                            }
-                                        },
-
-                                        {max_hourly_wage,
-                  
-                                            #{
-                                                ?NAME=>max_hourly_wage,
-                                                ?LABEL=>"Max Hourly Wage",
-                                                ?ROLE=>field,
-                                                ?TYPE=>float,
-                                                ?PRIORITY=>optional,
-                                                ?DEFAULT_VALUE=>0.0,
-                                                ?DESCRIPTION=>"Highest hourly wage for this job ID"
-                                            }
-                                        },
-           
-                                        {admin_first_name,
-                                            #{
-                                                ?NAME=>admin_first_name,
-                                                ?LABEL=>"Admin First Name",
-                                                ?ROLE=>field,
-                                                ?TYPE=>string,
-                                                ?PRIORITY=>optional,
-                                                ?DEFAULT_VALUE=>"not defined",
-                                                ?DESCRIPTION=>"First name of admin that defined the job ID"
-                                            }
-                                        },
-                  
-                                        {admin_last_name, 
-                                            #{
-                                            
-                                                ?NAME=>admin_last_name,
-                                                ?LABEL=>"Admin Last Name",
-                                                ?ROLE=>field,
-                                                ?TYPE=>string,
-                                                ?PRIORITY=>optional,
-                                                ?DEFAULT_VALUE=>"not defined",
-                                                ?DESCRIPTION=>"Last name of admin that defined the job ID"
-                                            }
-                                        },                                 
-                  
-                                        {status,
-                                            #{
-                                            
-                                                ?NAME=>status,
-                                                ?LABEL=>"Status",
-                                                ?ROLE=>field,
-                                                ?TYPE=>atom,
-                                                ?PRIORITY=>mandatory,
-                                                ?DESCRIPTION=>"Job ID status"
-                                            }
-                                        }
-                            ]
-                        }
-                    }
-        ]
-    }.
+%                            ?FIELDS=>[
+%                                        {employee_id, 
+%                                            #{
+%                                                ?NAME=>employee_id,
+%                                                ?LABEL=>"Employee ID",
+%                                                ?ROLE=>key,
+%                                                ?TYPE=>string,
+%                                                ?DESCRIPTION=>"table_x key"
+%                                            }
+%                                        },
+%
+%                                        {job_id,
+%                                            #{
+%                                                ?NAME=>job_id,
+%                                                ?LABEL=>"Job ID",
+%                                                ?ROLE=>field,
+%                                                ?TYPE=>integer,
+%                                                ?PRIORITY=>mandatory,
+%                                                ?DESCRIPTION=>"table_x field 2"
+%                                            }
+%                                        },
+%
+%                                        {hourly_wage,
+%                                            #{
+%                                                ?NAME=>hourly_wage,
+%                                                ?LABEL=>"Hourly Wage",
+%                                                ?ROLE=>field,
+%                                                ?TYPE=>float,
+%                                                ?PRIORITY=>mandatory,
+%                                                ?DESCRIPTION=>"table_x field 3"
+%                                            }
+%                                        },
+%                        
+%                                        {office_id, 
+%                                            #{
+%                                            ?NAME=>office_id,
+%                                            ?LABEL=>"Office Bld ID",
+%                                            ?ROLE=>field,
+%                                            ?TYPE=>string,
+%                                            ?PRIORITY=>optional,
+%                                            ?DEFAULT_VALUE=>"not defined",
+%                                            ?DESCRIPTION=>"table_x field 4"
+%                                            }
+%                                        }
+%                            ]
+%                        }
+%                    },
+%
+%                    {table_2,
+%                        
+%                        #{
+%                            ?NAME=>table_2,
+%                            ?DISC_COPIES=>[node()],
+%                            ?DISC_ONLY_COPIES=>[],
+%                            ?RAM_COPIES=>[],
+%
+%                            ?FIELDS=>[
+%                                        {job_id, 
+%                                            #{
+%                                                ?NAME=>job_id,
+%                                                ?LABEL=>"Job ID",
+%                                                ?ROLE=>key,
+%                                                ?TYPE=>integer,
+%                                                ?PRIORITY=>mandatory,
+%                                                ?DESCRIPTION=>"Each job type has its own ID"
+%                                            }
+%                                        },
+%
+%                                        {max_job_class,      
+%                                            #{
+%                                                ?NAME=>max_job_class,
+%                                                ?LABEL=>"Max Job Class",
+%                                                ?ROLE=>field,
+%                                                ?TYPE=>integer,
+%                                                ?PRIORITY=>mandatory,
+%                                                ?DESCRIPTION=>"Highest job classification qualified to take this job ID"
+%                                            }
+%                                        },
+%
+%                                        {max_hourly_wage,
+%                  
+%                                            #{
+%                                                ?NAME=>max_hourly_wage,
+%                                                ?LABEL=>"Max Hourly Wage",
+%                                                ?ROLE=>field,
+%                                                ?TYPE=>float,
+%                                                ?PRIORITY=>optional,
+%                                                ?DEFAULT_VALUE=>0.0,
+%                                                ?DESCRIPTION=>"Highest hourly wage for this job ID"
+%                                            }
+%                                        },
+%           
+%                                        {admin_first_name,
+%                                            #{
+%                                                ?NAME=>admin_first_name,
+%                                                ?LABEL=>"Admin First Name",
+%                                                ?ROLE=>field,
+%                                                ?TYPE=>string,
+%                                                ?PRIORITY=>optional,
+%                                                ?DEFAULT_VALUE=>"not defined",
+%                                                ?DESCRIPTION=>"First name of admin that defined the job ID"
+%                                            }
+%                                        },
+%                  
+%                                        {admin_last_name, 
+%                                            #{
+%                                            
+%                                                ?NAME=>admin_last_name,
+%                                                ?LABEL=>"Admin Last Name",
+%                                                ?ROLE=>field,
+%                                                ?TYPE=>string,
+%                                                ?PRIORITY=>optional,
+%                                                ?DEFAULT_VALUE=>"not defined",
+%                                                ?DESCRIPTION=>"Last name of admin that defined the job ID"
+%                                            }
+%                                        },                                 
+%                  
+%                                        {status,
+%                                            #{
+%                                            
+%                                                ?NAME=>status,
+%                                                ?LABEL=>"Status",
+%                                                ?ROLE=>field,
+%                                                ?TYPE=>atom,
+%                                                ?PRIORITY=>mandatory,
+%                                                ?DESCRIPTION=>"Job ID status"
+%                                            }
+%                                        }
+%                            ]
+%                        }
+%                    }
+%        ]
+%    }.
 
 

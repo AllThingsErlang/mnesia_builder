@@ -1,2 +1,0 @@
--record(table_1, {employee_id, , job_id, hourly_wage, office_id="not defined"}).
--record(table_2, {job_id, , max_job_class, max_horly_wage=0.000000, admin_first_name="not defined", admin_last_name="not defined", status}).

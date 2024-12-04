@@ -1,7 +1,6 @@
 -module(manage_db).
--include("../include/schemas.hrl").
 
--export([install/1, install/2, start/0, stop/0, table_sizes/0, table_size/1]).
+-export([install/1, install/2, start/1, stop/0, table_sizes/1, table_size/1]).
 
 
 install(SS) -> install([node()], SS).
@@ -34,9 +33,9 @@ install_next([NextSchemaName | T], SS) ->
     end.
 
 
-start() ->
+start(SS) ->
     mnesia:start(),
-    mnesia:wait_for_tables(schemas:get_tables(), 10000).
+    mnesia:wait_for_tables(schemas:schema_names(SS), 10000).
  
 stop() -> mnesia:stop().
 
@@ -49,13 +48,13 @@ stop() -> mnesia:stop().
 %-------------------------------------------------------------
 table_size(Table) -> mnesia:table_info(Table, size).
 
-table_sizes() -> table_sizes(schemas:get_tables()).
+table_sizes(SS) -> table_sizes_next(schemas:schema_names(SS)).
 
-table_sizes([]) -> [];
-table_sizes(Tables) -> table_sizes(Tables, []).
+table_sizes_next([]) -> [];
+table_sizes_next(Tables) -> table_sizes_next(Tables, []).
 
-table_sizes([], Sizes) -> lists:reverse(Sizes);
-table_sizes([H|T], Sizes) -> table_sizes(T, [{H, table_size(H)} | Sizes]).
+table_sizes_next([], Sizes) -> lists:reverse(Sizes);
+table_sizes_next([H|T], Sizes) -> table_sizes_next(T, [{H, table_size(H)} | Sizes]).
 
 %-------------------------------------------------------------
 % Function: 

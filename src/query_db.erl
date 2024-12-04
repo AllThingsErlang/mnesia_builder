@@ -2,7 +2,6 @@
 -import(mnesia, [transaction/1]).
 -import(utilities, [find_list_pos/2]).
 
--include("../include/schemas.hrl").
 
 -export([read/2, select/5, select_or/7, select_and/7, build_matchhead/2]).
 

@@ -1,9 +1,7 @@
 -module(modify_db).
 -import(mnesia, [transaction/1]).
 
--include("../include/schemas.hrl").
-
--export([add/3, delete/2, clear_all_tables/0]).
+-export([add/3, delete/2, clear_all_tables/1]).
 
 
 %-------------------------------------------------------------
@@ -41,15 +39,15 @@ delete(Table, Key) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-clear_all_tables() ->
+clear_all_tables(SS) ->
 
-    Tables = schemas:get_tables(),
-    clear_all_tables(Tables).
+    Tables = schemas:schema_names(SS),
+    clear_all_tables_next(Tables).
 
-clear_all_tables(Tables) -> clear_all_tables(Tables, 0, 0).
+clear_all_tables_next(Tables) -> clear_all_tables_next(Tables, 0, 0).
 
-clear_all_tables([], Cleared, NotCleared) -> {Cleared, NotCleared};
-clear_all_tables([H|T], Cleared, NotCleared) ->
+clear_all_tables_next([], Cleared, NotCleared) -> {Cleared, NotCleared};
+clear_all_tables_next([H|T], Cleared, NotCleared) ->
 
     case mnesia:clear_table(H) of
         {atomic, _} -> 
@@ -61,4 +59,4 @@ clear_all_tables([H|T], Cleared, NotCleared) ->
             NewNotCleared = NotCleared + 1
     end,
 
-    clear_all_tables(T, NewCleared, NewNotCleared).
+    clear_all_tables_next(T, NewCleared, NewNotCleared).
