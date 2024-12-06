@@ -491,7 +491,7 @@ display_field_info(Table, SchemaModule) ->
 
 display_field_info([], _, _) -> io:format("~n");
 display_field_info([Field | T], Table, SchemaModule) ->
-    io:format("   ~p:   ~p   ~p~n", [Field, 
+    io:format("   ~-30w:  ~-10w  ~-12w~n", [Field, 
                                   SchemaModule:get_field_attribute(type, Field, Table),
                                   SchemaModule:get_field_attribute(priority, Field, Table)]),
 
@@ -970,7 +970,7 @@ process_query_output(QueryOutput) ->
         {ok, _} -> 
 
             io:format("~n~p~n~n", [QueryOutput]),
-            
+
             case write_query_result_to_file(QueryOutput) of
                 ok -> io:format("output written to file~n~n");
                 {_, Other} -> io:format("~w~n~n", [Other])
