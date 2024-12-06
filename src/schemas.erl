@@ -582,7 +582,7 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
                             io:format(SrcIoDevice, "-export([fields/1, field_count/1, mandatory_field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
                             io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
-                            io:format(SrcIoDevice, "-export([add/3, delete/2, clear_all_tables/0]).~n", []),
+                            io:format(SrcIoDevice, "-export([add/1, delete/2, clear_all_tables/0]).~n", []),
                             io:format(SrcIoDevice, "-export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).~n", []),
                             io:format(SrcIoDevice, "~n", []),
                             io:format(SrcIoDevice, "schema_specifications() ->~n", []),
@@ -637,7 +637,7 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             io:format(SrcIoDevice, "%                     Modify Functions~n",[]),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
-                            generate_function(add, "Table", "Key", "Data", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_function(add, "Record", ?MODIFY_MODULE, SrcIoDevice),
                             generate_function(delete, "Table", "Key", ?MODIFY_MODULE, SrcIoDevice),
                             generate_function(clear_all_tables, ?MODIFY_MODULE, SrcIoDevice),
 
@@ -993,9 +993,9 @@ generate_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) ->
-    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s).~n", 
-        [FunctionName, Arg1, Arg2, Arg3, BaseModule, FunctionName, Arg1, Arg2, Arg3]).
+%generate_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) ->
+%    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s).~n", 
+%        [FunctionName, Arg1, Arg2, Arg3, BaseModule, FunctionName, Arg1, Arg2, Arg3]).
 
 %-------------------------------------------------------------
 % Function: 

@@ -111,29 +111,25 @@ identify_type_in_string(String) ->
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
-% Returns: 
+% Returns: {ok, File} | {error, Reason}
 %-------------------------------------------------------------
 create_timestamped_file(Path) when is_list(Path) ->
     
-    filelib:ensure_dir(Path),
+    case filelib:ensure_path(Path) of 
+        ok -> 
+            % Get the current date and time
+            {{Year, Month, Day}, {Hour, Min, Sec}} = calendar:now_to_datetime(erlang:timestamp()),
+            
+            % Format the timestamp as "YYYYMMDD_HHMM"
+            Timestamp = io_lib:format("~4..0B~2..0B~2..0B_~2..0B~2..0B~2..0B.csv", [Year, Month, Day, Hour, Min, Sec]),
+            
+            % Create the filename
+            Filename = lists:concat(["output", Timestamp]),
+            
+            % Open the file for writing
+            file:open(Path ++ "/" ++ Filename, [write]);
 
-    % Get the current date and time
-    {{Year, Month, Day}, {Hour, Min, Sec}} = calendar:now_to_datetime(erlang:timestamp()),
-    
-    % Format the timestamp as "YYYYMMDD_HHMM"
-    Timestamp = io_lib:format("~4..0B~2..0B~2..0B_~2..0B~2..0B~2..0B.csv", [Year, Month, Day, Hour, Min, Sec]),
-    
-    % Create the filename
-    Filename = lists:concat(["output", Timestamp]),
-    
-    % Open the file for writing
-    case file:open(Path ++ "/" ++ Filename, [write]) of
-        {ok, File} ->
-            io:format("File ~s created successfully.~n", [Filename]),
-            {ok, File};
-        {error, Reason} ->
-            io:format("Failed to create file: ~s~n", [Filename]),
-            {error, Reason}
+        {error, Reason} -> {error, Reason}
     end.
 
 %-------------------------------------------------------------

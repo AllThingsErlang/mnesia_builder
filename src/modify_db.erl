@@ -1,7 +1,7 @@
 -module(modify_db).
 -import(mnesia, [transaction/1]).
 
--export([add/3, delete/2, clear_all_tables/1]).
+-export([add/1, delete/2, clear_all_tables/1]).
 
 
 %-------------------------------------------------------------
@@ -9,9 +9,7 @@
 % Purpose:  Adds a record to the specified table
 % Returns: ok | {error, Reason}
 %-------------------------------------------------------------
-add(Table, Key, Data, SS) ->
-
-    Record = schemas:build_data_record(Table, Key, Data),
+add(Record) when is_tuple(Record) ->
     
     case mnesia:transaction(fun() -> mnesia:write(Record) end) of
         {atomic, ok} -> ok;

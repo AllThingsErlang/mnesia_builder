@@ -227,18 +227,8 @@ process_user_input(Input, LoadedModules) ->
     case string:prefix(Input, ?CMD_ADD) of 
         nomatch -> SpecialParse = false;
         Remainder -> 
-
             SpecialParse = true,
-
-            %io:format("~nArguments: ~s~n", [Remainder ++ "."]),
-
-            case utilities:parse_input_erlang_terms(Remainder ++ ".") of
-                {ok, ParsedInput} -> 
-                    Result = convert_input_into_record_tuple(ParsedInput, SchemaModule),
-                    io:format("~n~p~n", [Result]);
-                
-                {error, _} -> io:format("~ninvalid formatted input~n")
-            end
+            process_add(Remainder ++ ".", LoadedModules)
     end,
 
     case SpecialParse of 
@@ -430,7 +420,7 @@ process_start(LoadedModules) ->
     {SchemaModule, _} = LoadedModules,
 
     Result = SchemaModule:start(),
-    io:format("Result: ~w~n", [Result]).
+    io:format("result: ~w~n", [Result]).
 
 
 %-------------------------------------------------------------
@@ -443,7 +433,7 @@ process_stop(LoadedModules) ->
     {SchemaModule, _} = LoadedModules,
 
     Result = SchemaModule:stop(),
-    io:format("Result: ~w~n", [Result]).
+    io:format("result: ~w~n", [Result]).
 
 
 %-------------------------------------------------------------
@@ -484,7 +474,7 @@ display_fields_one_table(Table, SchemaModule) ->
 
     case SchemaModule:is_schema(Table) of
         true -> 
-            io:format("~nTable ~p~n~n", [Table]),
+            io:format("~ntable: ~p~n~n", [Table]),
             display_field_info(Table, SchemaModule);
         false -> io:format("~p not a valid table in ~p. ~n", [Table, SchemaModule]) 
     end.
@@ -535,6 +525,31 @@ process_tables() ->
             Tables = mnesia:system_info(tables),
             io:format("~n"),
             lists:foreach(fun(Table) -> io:format("   ~p~n", [Table]) end, Tables)
+    end.
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+process_add(ArgumentsString, LoadedModules) ->
+
+    {SchemaModule, _} = LoadedModules,
+
+    case utilities:parse_input_erlang_terms(ArgumentsString) of
+        {ok, ParsedInput} -> 
+
+            case convert_input_into_record_tuple(ParsedInput, SchemaModule) of 
+                {error, Reason} -> io:format("error: ~p~n", [Reason]);
+                
+                RecordTuple -> 
+                    case SchemaModule:add(RecordTuple) of 
+                        ok -> io:format("added~n");
+                        {error, Reason} -> io:format("error: ~p~n", [Reason])
+                    end
+            end;
+
+        {error, _} -> io:format("~ninvalid input format~n")
     end.
 
 
@@ -830,7 +845,7 @@ process_qdl(LoadedModules) ->
         _ ->
 
             display_query_modules(QueryModules),
-            io:format("~nSelect query number or 0 to return: "),
+            io:format("~nselect query number or 0 to return: "),
             QueryNumberString = get_user_input(),
 
             case schemas:safe_convert_from_string(QueryNumberString, integer) of
@@ -953,8 +968,11 @@ process_query_output(QueryOutput) ->
 
     case QueryOutput of
         {ok, _} -> 
+
+            io:format("~n~p~n~n", [QueryOutput]),
+            
             case write_query_result_to_file(QueryOutput) of
-                ok -> io:format("Output written to file~n~n");
+                ok -> io:format("output written to file~n~n");
                 {_, Other} -> io:format("~w~n~n", [Other])
             end;
 
@@ -1129,7 +1147,7 @@ load_modules([Next|Remaining], Loaded) ->
         {module, ModuleName} ->
             load_modules(Remaining, [ModuleName | Loaded]);
         {error, _} ->
-            io:format("Failed to load module: ~w~n", [ModuleName]),
+            io:format("failed to load module: ~w~n", [ModuleName]),
             load_modules(Remaining, Loaded)
     end.
 
