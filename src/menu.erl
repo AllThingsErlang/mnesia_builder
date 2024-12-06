@@ -224,142 +224,166 @@ process_user_input(Input, LoadedModules) ->
 
     {SchemaModule, _} = LoadedModules,
 
-    case string:tokens(Input, " ") of
+    case string:prefix(Input, ?CMD_ADD) of 
+        nomatch -> SpecialParse = false;
+        Remainder -> 
 
-        [Command] ->
+            SpecialParse = true,
 
-            case Command of
-                ?CMD_INSTALL ->
-                    SchemaModule:install(),
-                    prompt(LoadedModules);
+            %io:format("~nArguments: ~s~n", [Remainder ++ "."]),
+
+            case utilities:parse_input_erlang_terms(Remainder ++ ".") of
+                {ok, ParsedInput} -> 
+                    Result = convert_input_into_record_tuple(ParsedInput, SchemaModule),
+                    io:format("~n~p~n", [Result]);
                 
-                ?CMD_TABLES ->
-                    process_tables(),
-                    prompt(LoadedModules);
-                    
-                ?CMD_START -> 
-                    process_start(LoadedModules),
-                    prompt(LoadedModules);
+                {error, _} -> io:format("~ninvalid formatted input~n")
+            end
+    end,
 
-                ?CMD_STOP -> 
-                    process_stop(LoadedModules),
-                    prompt(LoadedModules);
+    case SpecialParse of 
+        true -> prompt(LoadedModules); 
+            
+        false ->
+            Tokens = string:tokens(Input, " " ),
 
-                ?CMD_SIZE -> 
-                    process_size([], LoadedModules),
-                    prompt(LoadedModules);
+            case Tokens of
 
-                ?CMD_WIPE ->
-                    process_wipe([], LoadedModules),
-                    prompt(LoadedModules);
+                [Command] ->
 
-                ?CMD_FIELDS ->
-                    process_fields([], LoadedModules),
-                    prompt(LoadedModules);
+                    case Command of
+                        ?CMD_INSTALL ->
+                            SchemaModule:install(),
+                            prompt(LoadedModules);
+                        
+                        ?CMD_TABLES ->
+                            process_tables(),
+                            prompt(LoadedModules);
+                            
+                        ?CMD_START -> 
+                            process_start(LoadedModules),
+                            prompt(LoadedModules);
 
-                ?CMD_OPER ->
-                    process_oper(),
-                    prompt(LoadedModules);
+                        ?CMD_STOP -> 
+                            process_stop(LoadedModules),
+                            prompt(LoadedModules);
 
-                ?CMD_QDL ->
-                    process_qdl(LoadedModules),
-                    prompt(LoadedModules);
+                        ?CMD_SIZE -> 
+                            process_size([], LoadedModules),
+                            prompt(LoadedModules);
 
-                ?CMD_CLS ->
-                    clear_screen(),
-                    prompt(LoadedModules);
+                        ?CMD_WIPE ->
+                            process_wipe([], LoadedModules),
+                            prompt(LoadedModules);
 
-                ?CMD_HELP -> 
-                    process_help(),
-                    prompt(LoadedModules);
+                        ?CMD_FIELDS ->
+                            process_fields([], LoadedModules),
+                            prompt(LoadedModules);
 
-                ?CMD_EXIT -> ok;
+                        ?CMD_OPER ->
+                            process_oper(),
+                            prompt(LoadedModules);
 
-                "" -> prompt(LoadedModules);
+                        ?CMD_QDL ->
+                            process_qdl(LoadedModules),
+                            prompt(LoadedModules);
+
+                        ?CMD_CLS ->
+                            clear_screen(),
+                            prompt(LoadedModules);
+
+                        ?CMD_HELP -> 
+                            process_help(),
+                            prompt(LoadedModules);
+
+                        ?CMD_EXIT -> ok;
+
+                        "" -> prompt(LoadedModules);
+                        _ -> 
+                            invalid_input(),
+                            prompt(LoadedModules)
+                    end;
+
+                [Command, Arg1] ->
+
+                    case Command of
+
+                        ?CMD_SIZE -> 
+                            process_size(list_to_atom(Arg1), LoadedModules),
+                            prompt(LoadedModules);
+
+                        ?CMD_WIPE ->
+                            process_wipe(list_to_atom(Arg1), LoadedModules),
+                            prompt(LoadedModules);
+
+                        ?CMD_FIELDS ->
+                            process_fields(list_to_atom(Arg1), LoadedModules),
+                            prompt(LoadedModules);
+
+                        ?CMD_HELP ->
+                            process_help(Arg1),
+                            prompt(LoadedModules);
+
+                        _ -> 
+                            invalid_input(),
+                            prompt(LoadedModules)
+                    end;
+
+                [Command, Arg1, Arg2] -> 
+
+                    case Command of
+
+                        ?CMD_DEL -> 
+
+                            process_del(Arg1, Arg2, LoadedModules),
+                            prompt(LoadedModules);
+
+                        ?CMD_READ -> 
+
+                            process_read(Arg1, Arg2, LoadedModules),
+                            prompt(LoadedModules);
+
+                        _ ->
+                            invalid_input(),
+                            prompt(LoadedModules)
+                    end;
+
+                [Command, Arg1, Arg2, Arg3, Arg4] ->
+
+                    case Command of 
+                        
+                        ?CMD_QUERY -> 
+                            process_q(Arg1, Arg2, Arg3, Arg4, LoadedModules),
+                            prompt(LoadedModules);
+
+                        _ -> 
+                            invalid_input(),
+                            prompt(LoadedModules)
+
+                    end;
+
+                [Command, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6] ->
+
+                    case Command of 
+                        
+                        ?CMD_QOR ->
+                            process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules),
+                            prompt(LoadedModules);
+
+                        ?CMD_QAND ->
+                            process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules),
+                            prompt(LoadedModules);
+
+                        _ -> 
+                            invalid_input(),
+                            prompt(LoadedModules)
+
+                    end;
+                
                 _ -> 
                     invalid_input(),
                     prompt(LoadedModules)
-            end;
-
-        [Command, Arg1] ->
-
-            case Command of
-
-                ?CMD_SIZE -> 
-                    process_size(list_to_atom(Arg1), LoadedModules),
-                    prompt(LoadedModules);
-
-                ?CMD_WIPE ->
-                    process_wipe(list_to_atom(Arg1), LoadedModules),
-                    prompt(LoadedModules);
-
-                ?CMD_FIELDS ->
-                    process_fields(list_to_atom(Arg1), LoadedModules),
-                    prompt(LoadedModules);
-
-                ?CMD_HELP ->
-                    process_help(Arg1),
-                    prompt(LoadedModules);
-
-                _ -> 
-                    invalid_input(),
-                    prompt(LoadedModules)
-            end;
-
-        [Command, Arg1, Arg2] -> 
-
-            case Command of
-
-                ?CMD_DEL -> 
-
-                    process_del(Arg1, Arg2, LoadedModules),
-                    prompt(LoadedModules);
-
-                ?CMD_READ -> 
-
-                    process_read(Arg1, Arg2, LoadedModules),
-                    prompt(LoadedModules);
-
-                _ ->
-                    invalid_input(),
-                    prompt(LoadedModules)
-            end;
-
-        [Command, Arg1, Arg2, Arg3, Arg4] ->
-
-            case Command of 
-                
-                ?CMD_QUERY -> 
-                    process_q(Arg1, Arg2, Arg3, Arg4, LoadedModules),
-                    prompt(LoadedModules);
-
-                _ -> 
-                    invalid_input(),
-                    prompt(LoadedModules)
-
-            end;
-
-        [Command, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6] ->
-
-            case Command of 
-                
-                ?CMD_QOR ->
-                    process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules),
-                    prompt(LoadedModules);
-
-                ?CMD_QAND ->
-                    process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules),
-                    prompt(LoadedModules);
-
-                 _ -> 
-                    invalid_input(),
-                    prompt(LoadedModules)
-
-            end;
-        
-        _ -> 
-            invalid_input(),
-            prompt(LoadedModules)
+            end
     end.
 
 
@@ -1140,3 +1164,58 @@ display_list_of_tuples_of_pairs([]) -> io:format("~n");
 display_list_of_tuples_of_pairs([{A, B} | T]) -> 
     io:format("~w ~w~n", [A, B]),
     display_list_of_tuples_of_pairs(T).
+
+
+
+%-------------------------------------------------------------
+% Function: convert_input_into_record_tuple
+%
+% Purpose:  Converts the user input into an interim AVP list 
+%           of the format:
+%
+%           [{schema, SchemaName}, {FieldName, FieldValue}, {FieldName, FieldValue}, ...]
+%
+%           This format is used for validating that we have all
+%           the right fields with the right value types. Then
+%           it is converted to the final format:
+%
+%           {SchemaName, FieldValue1, FieldValue2, ...}
+%  
+% Returns: 
+%-------------------------------------------------------------
+convert_input_into_record_tuple(Input, SchemaModule) when is_list(Input) -> 
+
+    case length(Input) < 3 of 
+        true -> {error, {invalid_field_count, Input}};
+        false -> 
+
+            [SchemaName | RemainingInput] = Input,
+
+            % The input past the schema name must be in
+            % form of <FieldName> <FieldValue> which means
+            % a set of pairs (even count).
+            case length(RemainingInput) rem 2 =:= 0 of 
+                % If we have the right count, we build an AVP list
+                % including the schema name. This list will
+                % be used to validate the data and build the record tuple
+                % in the form {SchemaName, FieldValue1, FieldValue2, ...}.
+                true -> 
+                    AvpList = convert_input_into_schema_data_avp_list(RemainingInput, [{schema, SchemaName}]),
+                    SchemaModule:convert_schema_data_avp_list_into_record_tuple(AvpList);
+
+                false -> {error, {invalid_field_count, Input}}
+            end 
+    end.
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:
+% Returns: 
+%-------------------------------------------------------------
+convert_input_into_schema_data_avp_list([], FinalAvpList) -> FinalAvpList;
+
+convert_input_into_schema_data_avp_list(Input, InterimAvpList) ->
+
+    [FieldName | RemainingInput1] = Input,
+    [FieldValue| RemainingInput2] = RemainingInput1,
+    convert_input_into_schema_data_avp_list(RemainingInput2, [{FieldName, FieldValue} | InterimAvpList]).

@@ -2,7 +2,8 @@
 
 -export([find_list_pos/2, create_timestamped_file/1, 
          is_printable_string/1, identify_type_in_string/1, 
-        string_to_float/1, string_to_integer/1, string_to_integer/2, string_to_tuple/1, is_comparison/1, is_unquoted_atom/1]).
+         string_to_float/1, string_to_integer/1, string_to_integer/2, 
+         string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -183,4 +184,25 @@ is_valid_unquoted_char(Char) ->
 %-------------------------------------------------------------
 is_lowercase_start([First | _]) -> First >= $a andalso First =< $z;
 is_lowercase_start([]) -> false.
+
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+parse_input_erlang_terms(Input) ->
+    case erl_scan:string(Input) of
+        {ok, Tokens, _} ->
+            case erl_parse:parse_exprs(Tokens) of
+                {ok, Exprs} ->
+                    {ok, lists:map(fun (Expr) ->
+                        case erl_eval:expr(Expr, []) of
+                            {value, Term, _} -> Term
+                        end
+                    end, Exprs)};
+                {error, Reason} -> {error, Reason}
+            end;
+        {error, Reason, _} -> {error, Reason}
+    end.
 

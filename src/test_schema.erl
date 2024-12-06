@@ -3,10 +3,10 @@
 -export([schema_specifications/0]).
 -export([install/0, install/1, start/0, stop/0, table_size/1, table_sizes/0]).
 -export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).
--export([fields/1, field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).
+-export([fields/1, field_count/1, mandatory_field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).
 -export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).
 -export([add/3, delete/2, clear_all_tables/0]).
--export([build_record_from_specifications/1, validate_record/1]).
+-export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).
 
 schema_specifications() ->
     #{version => "0.2",
@@ -88,6 +88,8 @@ fields(SchemaName) -> schemas:fields(SchemaName, schema_specifications()).
 
 field_count(SchemaName) -> schemas:field_count(SchemaName, schema_specifications()).
 
+mandatory_field_count(SchemaName) -> schemas:mandatory_field_count(SchemaName, schema_specifications()).
+
 field_names(SchemaName) -> schemas:field_names(SchemaName, schema_specifications()).
 
 key_name(SchemaName) -> schemas:key_name(SchemaName, schema_specifications()).
@@ -129,6 +131,6 @@ clear_all_tables() -> modify_db:clear_all_tables().
 %                     Utility Functions
 %-------------------------------------------------------
 
-build_record_from_specifications(SchemaName) -> schemas:build_record_from_specifications(SchemaName, schema_specifications()).
+build_schema_record_from_specifications(SchemaName) -> schemas:build_schema_record_from_specifications(SchemaName, schema_specifications()).
 
-validate_record(Record) -> schemas:validate_record(Record, schema_specifications()).
+convert_schema_data_avp_list_into_record_tuple(AvpList) -> schemas:convert_schema_data_avp_list_into_record_tuple(AvpList, schema_specifications()).

@@ -45,6 +45,7 @@
          is_field/3, 
          fields/2, 
          field_count/2,
+         mandatory_field_count/2,
          field_names/2,
          key_name/2, 
          key_type/2,
@@ -57,11 +58,10 @@
 % Utility APIs
 -export([convert_from_string/2, 
          safe_convert_from_string/2, 
-         get_type/1,
-         build_record/3, 
-         build_record_from_specifications/2, 
-         validate_record/2, 
-         compare_fields_from_specs/2]).
+         get_type/1, 
+         compare_fields_from_specs/2,
+         build_schema_record_from_specifications/2,
+         convert_schema_data_avp_list_into_record_tuple/2]).
 
 
 
@@ -260,7 +260,7 @@ set_schema_attribute(Attribute, Value, SchemaName, SS) when (is_atom(Attribute) 
 % Returns:  
 %------------------------------------------------------------- 
 get_schema_attribute(Attribute, SchemaName, SS) when (is_atom(Attribute) and is_atom(SchemaName) and is_map(SS)) -> 
-    io:format("~nattribute: ~p~n", [Attribute]),
+    % io:format("~nattribute: ~p~n", [Attribute]),
 
     case get_schema(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
@@ -479,11 +479,36 @@ field_count(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
+mandatory_field_count(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+
+    case fields(SchemaName, SS) of 
+        {error, Reason} -> {error, Reason};
+        Fields -> mandatory_field_count_next(Fields, 0)
+    end.
+
+mandatory_field_count_next([], FinalMandatoryCount) -> FinalMandatoryCount;
+mandatory_field_count_next([{_, FieldSpec} | T], MandatoryCount) ->
+    
+    case maps:get(priority, FieldSpec) of 
+        mandatory -> mandatory_field_count_next(T, MandatoryCount+1);
+        optional -> mandatory_field_count_next(T, MandatoryCount) 
+    end.
+
+%-------------------------------------------------------------
+% Function:
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
 field_names(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
         Fields -> field_names_next(Fields, [])
     end. 
+
+field_names_next([], FinalList) -> lists:reverse(FinalList);
+field_names_next([{FieldName, _} | T], CompiledList) -> field_names_next(T, [FieldName | CompiledList]).
+
+
 %-------------------------------------------------------------
 % Function:
 % Purpose:  
@@ -555,10 +580,10 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
 
                             io:format(SrcIoDevice, "-export([install/0, install/1, start/0, stop/0, table_size/1, table_sizes/0]).~n", []),
                             io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
-                            io:format(SrcIoDevice, "-export([fields/1, field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
+                            io:format(SrcIoDevice, "-export([fields/1, field_count/1, mandatory_field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
                             io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
                             io:format(SrcIoDevice, "-export([add/3, delete/2, clear_all_tables/0]).~n", []),
-                            io:format(SrcIoDevice, "-export([build_record_from_specifications/1, validate_record/1]).~n", []),
+                            io:format(SrcIoDevice, "-export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).~n", []),
                             io:format(SrcIoDevice, "~n", []),
                             io:format(SrcIoDevice, "schema_specifications() ->~n", []),
                             io:format(SrcIoDevice, "    ~p.~n", [SS]),    
@@ -588,6 +613,7 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             generate_spec_function(get_schema_attribute, "Attribute", "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(fields, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(field_count, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(mandatory_field_count, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(field_names, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(key_name, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(key_type, "SchemaName", ?MODULE, SrcIoDevice),
@@ -620,9 +646,9 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             io:format(SrcIoDevice, "%                     Utility Functions~n",[]),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
-                            generate_spec_function(build_record_from_specifications, "SchemaName", ?MODULE, SrcIoDevice),
-                            generate_spec_function(validate_record, "Record", ?MODULE, SrcIoDevice),
-                           
+                            generate_spec_function(build_schema_record_from_specifications, "SchemaName", ?MODULE, SrcIoDevice),
+                            generate_spec_function(convert_schema_data_avp_list_into_record_tuple, "AvpList", ?MODULE, SrcIoDevice),
+                            
                             file:close(SrcIoDevice);
 
                         {error, Reason} -> {error, Reason}
@@ -697,58 +723,84 @@ convert_from_string(Value, Type) when (is_list(Value) and is_atom(Type)) ->
     term -> Value
   end.
 
+
 %-------------------------------------------------------------
 % Function: 
-% Purpose:  
-% Returns:  
+% Purpose: Validates [{schema, SchemaName}, {<FieldName, FieldValue}, {<FieldName, FieldValue}, ...]
+%          and converts it to a record tuple {SchemaName, FieldValu1, FieldValue2, ...}.
+%          Fields need not be in the order listed in the schema specifications.
+%          The mandatory fields must be listed for validation to pass.
+%          Missing optional fields are augmented with default values.
+%
+% Returns: {SchemaName, FieldValue1, FieldValue2, ...} or {error, Reason}
 %-------------------------------------------------------------
-build_record(SchemaName, Key, Data) when is_atom(SchemaName) -> list_to_tuple([SchemaName | [Key | tuple_to_list(Data)]]).
+convert_schema_data_avp_list_into_record_tuple(AvpList, SS) when (is_list(AvpList) and is_map(SS)) -> 
+    
+    % io:format("~nAvp list: ~p~n", [AvpList]),
+    
+    case lists:keyfind(schema, 1, AvpList) of
+        {schema, SchemaName} -> 
+            % Get the ordered list of fields, [{FieldName, FieldSpecMap}]
+            case fields(SchemaName, SS) of 
+                {error, Reason} -> {error, Reason};
+                Fields ->
+                    case validate_schema_data_avp_list_next(Fields, lists:keydelete(schema, 1, AvpList), [{schema, SchemaName}]) of
+                        {error, Reason} -> {error, Reason};
+                        ValidatedList -> schema_data_avp_list_to_record_tuple(ValidatedList) 
+                    end
+            end;
+
+        false -> {error, schema_name_not_in_avp}
+    end.
+
+validate_schema_data_avp_list_next([], [], FinalList) -> FinalList;
+validate_schema_data_avp_list_next([],_, _) -> {error, invalid_fields};
+validate_schema_data_avp_list_next([{FieldName, FieldSpecMap} | F], AvpList, InterimList) ->
+
+    case lists:keyfind(FieldName, 1, AvpList) of 
+
+        {FieldName, FieldValue} -> 
+            % Found it, the field is in the supplied list. Validate that
+            % the supplied value has the right type.
+            ExpectedType = maps:get(type, FieldSpecMap),
+            ActualType = get_type(FieldValue),
+
+            case ExpectedType == ActualType of
+                true -> validate_schema_data_avp_list_next(F, lists:keydelete(FieldName, 1, AvpList), [{FieldName, FieldValue} | InterimList]);
+                false -> {error, {invalid_type, {FieldName, FieldValue, ActualType}}}
+            end;
+
+        false ->
+            % If mandatory, then validation fails, otherwise
+            % we will select the default value.
+
+            Priority = maps:get(priority, FieldSpecMap),
+
+            case Priority of 
+                mandatory -> {error, {missing_mandatory_field, FieldName}};
+                optional -> validate_schema_data_avp_list_next(F, lists:keydelete(FieldName, 1, AvpList), [{FieldName, maps:get(default_value, FieldSpecMap)} | InterimList])
+            end 
+    end.
 
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-build_record_from_specifications(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
+schema_data_avp_list_to_record_tuple(SchemaDataAvpList) when is_list(SchemaDataAvpList) -> 
+    %io:format("~nconverting to tuple: ~p~n", [SchemaDataAvpList]),
+    schema_data_avp_list_to_record_tuple_next(SchemaDataAvpList, []).
+
+schema_data_avp_list_to_record_tuple_next([], FinalList) -> list_to_tuple(FinalList);
+schema_data_avp_list_to_record_tuple_next([{_, Value} | T], InterimList) -> schema_data_avp_list_to_record_tuple_next(T, [Value | InterimList]).
+
+%-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns:  
+%-------------------------------------------------------------
+build_schema_record_from_specifications(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
     tuple_to_list([SchemaName, field_names(SchemaName, SS)]).
-
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-validate_record(Record, SS) when (is_tuple(Record) and is_map(SS)) -> 
-
-    % 1. Convert record tuple to list and take out the head, that is the schema name.
-    % 2. Extract the corresponding schema field specifications.
-    % 3. Cycle through each field and validate name and position.
-
-    RecordList = tuple_to_list(Record),
-    [SchemaName | RecordFields] = RecordList,
-
-    case is_schema(SchemaName, SS) of 
-        true ->
-            SchemaFields = field_names(SchemaName, SS),
-            compare_field_name_order(RecordFields, SchemaFields);
-        false -> false
-    end.
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-compare_field_name_order([], []) -> true;
-compare_field_name_order(_, []) -> false;
-compare_field_name_order([], _) -> false;
-compare_field_name_order([Next1 | T1], [Next2 | T2]) ->
-
-    case (Next1 == Next2) of 
-        true -> compare_field_name_order(T1, T2);
-
-        false -> false 
-    end.
 
 %-------------------------------------------------------------
 % Function: 
@@ -857,13 +909,6 @@ update_field(Attribute, Value, FieldName, FieldList) when (is_atom(Attribute) an
     end.
 
       
-%-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-field_names_next([], FinalList) -> lists:reverse(FinalList);
-field_names_next([{FieldName, _} | T], CompiledList) -> field_names_next(T, [FieldName | CompiledList]).
 
 %-------------------------------------------------------------
 % Function:
@@ -1125,6 +1170,7 @@ get_type(Value) ->
 %    integer -> is_integer(Value);
 %    float -> is_float(Value);
 %    string -> is_list(Value);
+%    list -> is_list();
 %    atom -> is_atom(Value);
 %    tuple -> is_tuple(Value);
 %    term -> true

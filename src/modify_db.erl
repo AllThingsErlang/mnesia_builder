@@ -9,9 +9,9 @@
 % Purpose:  Adds a record to the specified table
 % Returns: ok | {error, Reason}
 %-------------------------------------------------------------
-add(Table, Key, Data) ->
+add(Table, Key, Data, SS) ->
 
-    Record = schemas:build_record(Table, Key, Data),
+    Record = schemas:build_data_record(Table, Key, Data),
     
     case mnesia:transaction(fun() -> mnesia:write(Record) end) of
         {atomic, ok} -> ok;
