@@ -1,7 +1,7 @@
 -module(test).
--export([run/0]).
+-export([schema/0]).
 
-run() ->
+schema() ->
 
     SS0 = schemas:new(),
     SS1 = schemas:add_schema(employees, SS0),
@@ -37,3 +37,6 @@ run() ->
     schemas:generate(test_schema, SS14).
 
 
+db_connect(Node) ->
+
+    
