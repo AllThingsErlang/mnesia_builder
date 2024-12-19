@@ -42,7 +42,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
     UpdatedSessionsList = [SessionId | SessionsList],
 
     UpdatedState = maps:update(sessions, UpdatedSessionsList, State),
-    Message = db_access_ipc:build_response_connect(SessionId),
+    Message = db_access_ipc:build_connect_response(SessionId),
     
     {reply, Message, UpdatedState};
 
@@ -55,7 +55,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_COMMAND, ?COMMAN
 
 
     SessionsList = maps:get(sessions, State),
-    Message = db_access_ipc:build_command_response_get_sessions(SessionsList),
+    Message = db_access_ipc:build_command_response(?COMMAND_GET_SESSIONS, SessionsList),
     
     {reply, Message, State};
 

@@ -1,23 +1,26 @@
 -module(db_access_ipc).
 -include("../include/db_access_ipc.hrl").
 -export([call/2,
+         worker_call/2,
          build_header/2, build_header/3,
          get_session_id/1,
          build_error/1, build_error/2,
-         build_request_connect/0, build_response_connect/1,
-         build_request_start_session/1, build_response_start_session/1, build_response_start_session/2,
-         build_response_end_session/2,
+         build_connect_request/0, build_connect_response/1,
+         build_start_session_request/1, build_start_session_response/1, build_start_session_response/2,
+         build_end_session_response/2,
          
-         build_command_get_sessions/0,
-         build_command_response_get_sessions/1,
+         build_command/1,
+         build_command_response/2,
          
-         check_process_alive/1]).
+         check_process_alive/1,
+         
+         build_request/2,
+         build_request/3,
+         build_request_response/3]).
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
 call(Pid, Message) -> 
 
@@ -27,9 +30,15 @@ call(Pid, Message) ->
     end.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
+%-------------------------------------------------------------
+worker_call(SessionId, Message) when is_tuple(Message) -> 
+
+    {WorkerPid, _ClientPid, _Token} = SessionId,
+    call(WorkerPid, Message).
+
+%-------------------------------------------------------------
+% 
 %-------------------------------------------------------------
 build_header(MessageType, MessageId) -> build_header({0, 0, 0}, MessageType, MessageId).
 
@@ -66,9 +75,7 @@ build_header(SessionId, MessageType, MessageId) when is_tuple(SessionId) ->
     end.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
 get_session_id(Message) -> 
     case Message of 
@@ -82,11 +89,9 @@ get_session_id(Message) ->
     end.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-build_request_connect() ->
+build_connect_request() ->
 
     Header = build_header(request, ?REQUEST_CONNECT),
     Payload = {},
@@ -94,11 +99,9 @@ build_request_connect() ->
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-build_response_connect(SessionId) ->
+build_connect_response(SessionId) ->
 
     Header = build_header(?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_CONNECT),
     {WorkerPid, _, _} = SessionId,
@@ -107,23 +110,19 @@ build_response_connect(SessionId) ->
     {?PROT_VERSION, {Header, Payload}}.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-build_request_start_session(SessionId) ->
+build_start_session_request(SessionId) ->
 
-    Header = build_header(SessionId, request, ?REQUEST_START_SESSION),
+    Header = build_header(SessionId, ?MSG_TYPE_REQUEST, ?REQUEST_START_SESSION),
     Payload = {},
 
     {?PROT_VERSION, {Header, Payload}}.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-build_response_start_session(SessionId) ->
+build_start_session_response(SessionId) ->
 
     Header = build_header(SessionId, ?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_START_SESSION),
     Result = {result, ok},
@@ -132,11 +131,9 @@ build_response_start_session(SessionId) ->
     {?PROT_VERSION, {Header, Payload}}.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-build_response_start_session(SessionId, Error) ->
+build_start_session_response(SessionId, Error) ->
 
     Header = build_header(SessionId, ?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_START_SESSION),
     Result = {result, {error, Error}},
@@ -145,11 +142,9 @@ build_response_start_session(SessionId, Error) ->
     {?PROT_VERSION, {Header, Payload}}.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-build_response_end_session(SessionId, Error) ->
+build_end_session_response(SessionId, Error) ->
 
     Header = build_header(SessionId, ?MSG_TYPE_REQUEST_RESPONSE, end_session),
     Result = {result, {?MSG_TYPE_ERROR, Error}},
@@ -157,17 +152,64 @@ build_response_end_session(SessionId, Error) ->
 
     {?PROT_VERSION, {Header, Payload}}.
 
+
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
+%-------------------------------------------------------------
+build_request(SessionId, RequestId) -> build_request(SessionId, RequestId, {}).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+build_request(SessionId, RequestId, Payload) ->
+
+    Header = build_header(SessionId, ?MSG_TYPE_REQUEST, RequestId),
+    {?PROT_VERSION, {Header, Payload}}.
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+build_request_response(SessionId, RequestId, Result) ->
+
+    Header = build_header(SessionId, ?MSG_TYPE_REQUEST_RESPONSE, RequestId),
+    Payload = {result, Result},
+    {?PROT_VERSION, {Header, Payload}}.
+
+
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+build_command(CommandId) ->
+
+    Header = build_header(?MSG_TYPE_COMMAND, CommandId),
+    Payload = {},
+
+    {?PROT_VERSION, {Header, Payload}}.
+
+%-------------------------------------------------------------
+% 
+%--------------------------------------------------------------
+build_command_response(CommandId, SessionsList) ->
+
+    Header = build_header(?MSG_TYPE_COMMAND_RESPONSE, CommandId),
+    Result = {result, ok},
+    Payload = {Result, {sessions, SessionsList}},
+
+    {?PROT_VERSION, {Header, Payload}}.
+
+
+
+
+%-------------------------------------------------------------
+% 
 %-------------------------------------------------------------
 build_error(Error) -> build_error({0, 0, 0}, Error).
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
 build_error(SessionId, Error) ->
 
@@ -176,37 +218,11 @@ build_error(SessionId, Error) ->
     {?PROT_VERSION, {Header, Payload}}.
 
 
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
-%-------------------------------------------------------------
-build_command_get_sessions() ->
-
-    Header = build_header(?MSG_TYPE_COMMAND, ?COMMAND_GET_SESSIONS),
-    Payload = {},
-
-    {?PROT_VERSION, {Header, Payload}}.
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
-%-------------------------------------------------------------
-build_command_response_get_sessions(SessionsList) ->
-
-    Header = build_header(?MSG_TYPE_COMMAND_RESPONSE, ?COMMAND_GET_SESSIONS),
-    Result = {result, ok},
-    Payload = {Result, {sessions, SessionsList}},
-
-    {?PROT_VERSION, {Header, Payload}}.
 
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
 check_process_alive(Pid) ->
     Nodes = [node() | nodes()],  % Include current node and all connected nodes

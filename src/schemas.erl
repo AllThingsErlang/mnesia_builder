@@ -215,21 +215,22 @@ set_schema_attributes([], _, SS) when is_map(SS) -> SS;
 set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
     
     case (is_schema_attribute(Attribute, Value) and Attribute /= fields) of 
-        true -> ok
-    end,
+        true -> 
+            case Attribute of 
+                fields -> update_fields(Value, SchemaName, SS);
+                _ ->
 
-    case Attribute of 
-        fields -> update_fields(Value, SchemaName, SS);
-        _ ->
+                    Schema = get_schema(SchemaName, SS),
+                    UpdatedSchema = maps:update(Attribute, Value, Schema),
 
-            Schema = get_schema(SchemaName, SS),
-            UpdatedSchema = maps:update(Attribute, Value, Schema),
+                    SchemasList = schemas(SS),
+                    UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, UpdatedSchema),
+                    UpdatedSS = maps:update(?SCHEMAS, UpdatedSchemasList, SS),
 
-            SchemasList = schemas(SS),
-            UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, UpdatedSchema),
-            UpdatedSS = maps:update(?SCHEMAS, UpdatedSchemasList, SS),
+                    set_schema_attributes(T, SchemaName, UpdatedSS)
+            end;
 
-            set_schema_attributes(T, SchemaName, UpdatedSS)
+        false -> false
     end.
 
 %-------------------------------------------------------------
