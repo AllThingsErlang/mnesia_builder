@@ -39,11 +39,9 @@ init({ServerPid, ClientPid, Token}) ->
 handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_START_SESSION}}, {}}}, From, State) ->
 
     ReceivedPid = db_access_ipc:remove_pid_alias(From),
-
     io:format("[db_access::worker::~p]: start_session from ~p~n", [self(), ReceivedPid]),
 
     {SessionWorkerPid, SessionClientPid, SessionToken} = maps:get(?STATE_SESSION_ID, State),
-
 
     case SessionId of 
 
@@ -80,7 +78,6 @@ handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST
 handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, end_session}}, {}}}, From, State) ->
 
     ReceivedPid = db_access_ipc:remove_pid_alias(From),
-
     io:format("[db_access::worker::~p]: end_session from ~p~n", [self(), ReceivedPid]),
 
     {SessionWorkerPid, SessionClientPid, SessionToken} = maps:get(?STATE_SESSION_ID, State),
@@ -104,23 +101,75 @@ handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST
 handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SPECIFICATIONS}}, {}}}, From, State) ->
 
     ReceivedPid = db_access_ipc:remove_pid_alias(From),
-
     io:format("[db_access::worker::~p]: ~p from ~p~n", [self(), ?REQUEST_NEW_SPECIFICATIONS, ReceivedPid]),
 
     {SessionWorkerPid, SessionClientPid, SessionToken} = maps:get(?STATE_SESSION_ID, State),
-
 
     case SessionId of 
         {SessionWorkerPid, SessionClientPid, SessionToken} when (ReceivedPid == SessionClientPid) -> 
             io:format("[db_access::worker::~p]: ~p accepted~n", [self(), ?REQUEST_NEW_SPECIFICATIONS]),
 
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, maps:new(), State),
+            UpdatedState = maps:update(?STATE_SPECIFICATIONS, schemas:new(), State),
             ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_NEW_SPECIFICATIONS, ok),
             {reply, ReplyMessage, UpdatedState};
 
          _ -> 
             io:format("[db_access::worker::~p]: ~p rejected: ~p~n", [self(), ?REQUEST_NEW_SPECIFICATIONS, invalid_session_credentials]),
-            ReplyMessage = db_access_ipc:build_request_response(SessionId, invalid_session_credentials),
+            ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_NEW_SPECIFICATIONS, {error, invalid_session_credentials}),
+            {reply, ReplyMessage, State}
+    end;
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_SPECIFICATIONS}}, {}}}, From, State) ->
+
+    ReceivedPid = db_access_ipc:remove_pid_alias(From),
+    io:format("[db_access::worker::~p]: ~p from ~p~n", [self(), ?REQUEST_GET_SPECIFICATIONS, ReceivedPid]),
+
+    {SessionWorkerPid, SessionClientPid, SessionToken} = maps:get(?STATE_SESSION_ID, State),
+
+    case SessionId of 
+        {SessionWorkerPid, SessionClientPid, SessionToken} when (ReceivedPid == SessionClientPid) -> 
+            ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SPECIFICATIONS, {ok, maps:get(?STATE_SPECIFICATIONS, State)}),
+            {reply, ReplyMessage, State};
+
+         _ -> 
+            io:format("[db_access::worker::~p]: ~p rejected: ~p~n", [self(), ?REQUEST_GET_SPECIFICATIONS, invalid_session_credentials]),
+            ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SPECIFICATIONS, {error, invalid_session_credentials}),
+            {reply, ReplyMessage, State}
+    end;
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_SCHEMA}}, {{schema_name, SchemaName}}}}, From, State) ->
+
+    ReceivedPid = db_access_ipc:remove_pid_alias(From),
+    io:format("[db_access::worker::~p]: ~p from ~p~n", [self(), ?REQUEST_ADD_SCHEMA, ReceivedPid]),
+
+    {SessionWorkerPid, SessionClientPid, SessionToken} = maps:get(?STATE_SESSION_ID, State),
+
+    case SessionId of 
+        {SessionWorkerPid, SessionClientPid, SessionToken} when (ReceivedPid == SessionClientPid) -> 
+
+            SS = maps:get(?STATE_SPECIFICATIONS, State),
+            case schemas:add_schema(SchemaName, SS) of 
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason};
+
+                UpdatedSS ->
+                    UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+                    Result = ok 
+            end,
+
+            ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_ADD_SCHEMA, Result),
+            {reply, ReplyMessage, UpdatedState};
+
+         _ -> 
+            io:format("[db_access::worker::~p]: ~p rejected: ~p~n", [self(), ?REQUEST_ADD_SCHEMA, invalid_session_credentials]),
+            ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_ADD_SCHEMA, {error, invalid_session_credentials}),
             {reply, ReplyMessage, State}
     end;
 
