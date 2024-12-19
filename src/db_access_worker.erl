@@ -27,7 +27,7 @@ start(ServerPid, ClientPid, Token) ->
 init({ServerPid, ClientPid, Token}) ->
     io:format("[db_access::worker::~p]: serving client ~p with token ~p~n", [self(), ClientPid, Token]),
     process_flag(trap_exit, true),
-    TimerRef = erlang:start_timer(3000, self(), session_start_timer),
+    TimerRef = erlang:start_timer(30000, self(), session_start_timer),
     {ok, #{?STATE_SERVER=>ServerPid, ?STATE_SESSION_ID=>{self(),ClientPid,Token}, ?STATE_SESSION_ACTIVE=>false, ?STATE_TIMER=>TimerRef, ?STATE_SPECIFICATIONS=>#{}}}.
 
 
@@ -38,13 +38,16 @@ init({ServerPid, ClientPid, Token}) ->
 %-------------------------------------------------------------
 handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_START_SESSION}}, {}}}, From, State) ->
 
-    io:format("[db_access::worker::~p]: start_session from ~p~n", [self(), From]),
+    ReceivedPid = db_access_ipc:remove_pid_alias(From),
+
+    io:format("[db_access::worker::~p]: start_session from ~p~n", [self(), ReceivedPid]),
 
     {SessionWorkerPid, SessionClientPid, SessionToken} = maps:get(?STATE_SESSION_ID, State),
 
+
     case SessionId of 
 
-        {SessionWorkerPid, SessionClientPid, SessionToken} when (element(1, From) == element(1, SessionClientPid)) ->
+        {SessionWorkerPid, SessionClientPid, SessionToken} when (ReceivedPid == SessionClientPid) ->
 
                 io:format("[db_access::worker::~p]: start_session accepted, cancelling timer~n", [self()]),
 
@@ -62,8 +65,7 @@ handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST
                 
         Other -> 
             
-            io:format("[db_access::worker::~p]: start_session rejected: ~p~n", [self(), Other]),
-            io:format("[db_access::worker::~p]: From: ~p~n", [self(), From]),
+            io:format("[db_access::worker::~p]: start_session from ~p rejected: ~p~n", [self(), ReceivedPid, Other]),
             io:format("[db_access::worker::~p]: SessionClientPid: ~p~n", [self(), SessionClientPid]),
 
 
@@ -77,12 +79,14 @@ handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST
 %-------------------------------------------------------------
 handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, end_session}}, {}}}, From, State) ->
 
-    io:format("[db_access::worker::~p]: end_session from ~p~n", [self(), From]),
+    ReceivedPid = db_access_ipc:remove_pid_alias(From),
+
+    io:format("[db_access::worker::~p]: end_session from ~p~n", [self(), ReceivedPid]),
 
     {SessionWorkerPid, SessionClientPid, SessionToken} = maps:get(?STATE_SESSION_ID, State),
 
     case SessionId of 
-        {SessionWorkerPid, SessionClientPid, SessionToken} when (From == SessionClientPid) -> 
+        {SessionWorkerPid, SessionClientPid, SessionToken} when (ReceivedPid == SessionClientPid) -> 
             io:format("[db_access::worker::~p]: end_session accepted~n", [self()]),
 
             UpdatedState = maps:update(?STATE_SESSION_ACTIVE, false, State),
@@ -99,12 +103,15 @@ handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST
 %-------------------------------------------------------------
 handle_call({?PROT_VERSION, {{{?STATE_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SPECIFICATIONS}}, {}}}, From, State) ->
 
-    io:format("[db_access::worker::~p]: ~p from ~p~n", [self(), ?REQUEST_NEW_SPECIFICATIONS, From]),
+    ReceivedPid = db_access_ipc:remove_pid_alias(From),
+
+    io:format("[db_access::worker::~p]: ~p from ~p~n", [self(), ?REQUEST_NEW_SPECIFICATIONS, ReceivedPid]),
 
     {SessionWorkerPid, SessionClientPid, SessionToken} = maps:get(?STATE_SESSION_ID, State),
 
+
     case SessionId of 
-        {SessionWorkerPid, SessionClientPid, SessionToken} when (From == SessionClientPid) -> 
+        {SessionWorkerPid, SessionClientPid, SessionToken} when (ReceivedPid == SessionClientPid) -> 
             io:format("[db_access::worker::~p]: ~p accepted~n", [self(), ?REQUEST_NEW_SPECIFICATIONS]),
 
             UpdatedState = maps:update(?STATE_SPECIFICATIONS, maps:new(), State),

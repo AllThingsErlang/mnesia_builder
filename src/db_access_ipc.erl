@@ -12,11 +12,12 @@
          build_command/1,
          build_command_response/2,
          
-         check_process_alive/1,
-         
          build_request/2,
          build_request/3,
-         build_request_response/3]).
+         build_request_response/3,
+         
+         remove_pid_alias/1,
+         check_process_alive/1]).
 
 
 %-------------------------------------------------------------
@@ -48,24 +49,31 @@ build_header(SessionId, MessageType, MessageId) when is_tuple(SessionId) ->
     Header = {{session_id, SessionId}, {MessageType, MessageId}},
 
     case MessageType of 
-        ?MSG_TYPE_REQUEST -> 
+        MT when MT == ?MSG_TYPE_REQUEST orelse MT == ?MSG_TYPE_REQUEST_RESPONSE -> 
             case MessageId of 
                 ?REQUEST_CONNECT -> Header;
-                ?REQUEST_START_SESSION -> Header
+                ?REQUEST_START_SESSION -> Header;
+                ?REQUEST_END_SESSION -> Header;
+                ?REQUEST_NEW_SPECIFICATIONS -> Header;
+                ?REQUEST_GENERATE -> Header;
+                ?REQUEST_GET_SPECIFICATIONS -> Header;
+                ?REQUEST_ADD_SCHEMA -> Header;
+                ?REQUEST_DELETE_SCHEMA -> Header;
+                ?REQUEST_GET_SCHEMA -> Header;
+                ?REQUEST_SET_SCHEMA_ATTRIBUTES -> Header;
+                ?REQUEST_GET_SCHEMA_ATTRIBUTES -> Header;
+                ?REQUEST_GET_SCHEMA_NAMES -> Header;
+                ?REQUEST_ADD_FIELD -> Header;
+                ?REQUEST_SET_FIELD_ATTRIBUTES -> Header;
+                ?REQUEST_GET_FIELD_ATTRIBUTES -> Header;
+                ?REQUEST_GET_FIELDS -> Header;
+                ?REQUEST_GET_FIELD_COUNT -> Header;
+                ?REQUEST_GET_MANDATORY_FIELD_COUNT -> Header;
+                ?REQUEST_GET_FIELD_NAMES -> Header;
+                ?REQUEST_GET_FIELD_POSITION -> Header
             end;
 
-        ?MSG_TYPE_REQUEST_RESPONSE -> 
-            case MessageId of 
-                ?REQUEST_CONNECT -> Header;
-                ?REQUEST_START_SESSION -> Header
-            end;
-
-        ?MSG_TYPE_COMMAND ->
-            case MessageId of
-                ?COMMAND_GET_SESSIONS -> Header
-            end;
-
-        ?MSG_TYPE_COMMAND_RESPONSE ->
+        MT when MT == ?MSG_TYPE_COMMAND orelse MT == ?MSG_TYPE_COMMAND_RESPONSE ->
             case MessageId of
                 ?COMMAND_GET_SESSIONS -> Header
             end;
@@ -217,7 +225,11 @@ build_error(SessionId, Error) ->
     Payload = {},
     {?PROT_VERSION, {Header, Payload}}.
 
-
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+remove_pid_alias({Pid, [alias|_]}) -> Pid;
+remove_pid_alias(Pid) -> Pid.
 
 
 

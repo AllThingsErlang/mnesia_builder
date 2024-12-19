@@ -28,7 +28,12 @@ init([]) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUEST_CONNECT}}, {}}}, ClientPid, State) ->
+handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUEST_CONNECT}}, {}}}, ReceivedClientPid, State) ->
+
+    % Strip out the alias if it is there
+    ClientPid = db_access_ipc:remove_pid_alias(ReceivedClientPid),
+
+    io:format("[db_access::server::~p]: connect request from: ~p~n", [self(), ClientPid]),
 
     % Generate a random token to allow client and the worker
     % validate one another (not encrypted, very basic security)
@@ -38,6 +43,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
     {ok, WorkerPid} = db_access_worker:start(self(), ClientPid, Token),
 
     SessionId = {WorkerPid, ClientPid, Token},
+
     SessionsList = maps:get(sessions, State),
     UpdatedSessionsList = [SessionId | SessionsList],
 
@@ -53,7 +59,6 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
 %-------------------------------------------------------------
 handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_COMMAND, ?COMMAND_GET_SESSIONS}}, {}}}, _ClientPid, State) ->
 
-
     SessionsList = maps:get(sessions, State),
     Message = db_access_ipc:build_command_response(?COMMAND_GET_SESSIONS, SessionsList),
     
@@ -62,9 +67,12 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_COMMAND, ?COMMAN
 %-------------------------------------------------------------
 %
 %-------------------------------------------------------------
-handle_call(Request, _From, State) ->
+handle_call(Request, From, State) ->
 
-    io:format("[db_access::server::~p]: unsupported ?MSG_TYPE_REQUEST: ~p~n", [self(), Request]),
+    % Strip out the alias if it is there
+    ClientPid = db_access_ipc:remove_pid_alias(From),
+
+    io:format("[db_access::server::~p]: unsupported ~p: ~p from ~p~n", [self(), ?MSG_TYPE_REQUEST, Request, ClientPid]),
 
     case db_access_ipc:get_session_id(Request) of 
         {error, _Error} ->
