@@ -38,6 +38,7 @@
 -define(SERVER_DB, db_access_server).
 -define(SERVER_MODELLER, schema_modeller_server).
 
+-define(MSG_SESSION_ID, session_id).
 
 % Message Types
 -define(MSG_TYPE_REQUEST, request).

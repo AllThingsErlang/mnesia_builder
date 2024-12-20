@@ -42,45 +42,7 @@ worker_call(SessionId, Message) when is_tuple(Message) ->
 % 
 %-------------------------------------------------------------
 build_header(MessageType, MessageId) -> build_header({0, 0, 0}, MessageType, MessageId).
-
-build_header(SessionId, MessageType, MessageId) when is_tuple(SessionId) -> 
-
-    % Build it and then validate it. If valid, return it.
-    Header = {{session_id, SessionId}, {MessageType, MessageId}},
-
-    case MessageType of 
-        MT when MT == ?MSG_TYPE_REQUEST orelse MT == ?MSG_TYPE_REQUEST_RESPONSE -> 
-            case MessageId of 
-                ?REQUEST_CONNECT -> Header;
-                ?REQUEST_START_SESSION -> Header;
-                ?REQUEST_END_SESSION -> Header;
-                ?REQUEST_NEW_SPECIFICATIONS -> Header;
-                ?REQUEST_GENERATE -> Header;
-                ?REQUEST_GET_SPECIFICATIONS -> Header;
-                ?REQUEST_ADD_SCHEMA -> Header;
-                ?REQUEST_DELETE_SCHEMA -> Header;
-                ?REQUEST_GET_SCHEMA -> Header;
-                ?REQUEST_SET_SCHEMA_ATTRIBUTES -> Header;
-                ?REQUEST_GET_SCHEMA_ATTRIBUTES -> Header;
-                ?REQUEST_GET_SCHEMA_NAMES -> Header;
-                ?REQUEST_ADD_FIELD -> Header;
-                ?REQUEST_SET_FIELD_ATTRIBUTES -> Header;
-                ?REQUEST_GET_FIELD_ATTRIBUTES -> Header;
-                ?REQUEST_GET_FIELDS -> Header;
-                ?REQUEST_GET_FIELD_COUNT -> Header;
-                ?REQUEST_GET_MANDATORY_FIELD_COUNT -> Header;
-                ?REQUEST_GET_FIELD_NAMES -> Header;
-                ?REQUEST_GET_FIELD_POSITION -> Header
-            end;
-
-        MT when MT == ?MSG_TYPE_COMMAND orelse MT == ?MSG_TYPE_COMMAND_RESPONSE ->
-            case MessageId of
-                ?COMMAND_GET_SESSIONS -> Header
-            end;
-
-        error -> Header;
-        _ -> {error, {invalid_message_type, MessageType}}
-    end.
+build_header(SessionId, MessageType, MessageId) when is_tuple(SessionId) -> {{session_id, SessionId}, {MessageType, MessageId}}.
 
 %-------------------------------------------------------------
 % 

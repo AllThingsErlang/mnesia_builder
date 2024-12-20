@@ -27,6 +27,7 @@
 % Schema management APIs
 -export([new/0, 
          add_schema/2, 
+         delete_schema/2,
          is_schema_attribute/1,
          is_schema_attribute/2,
          is_schema/2, 
@@ -109,6 +110,17 @@ add_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
 
         true -> {error, schema_exists}
     end.
+
+%-------------------------------------------------------------
+% Function:
+% Purpose:  Add a new get_schema to the specifications.
+% Returns:  
+%-------------------------------------------------------------
+delete_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+
+    SchemasList = schemas(SS),
+    UpdatedSchemasList = lists:keydelete(SchemaName, 1, SchemasList),
+    maps:update(?SCHEMAS, UpdatedSchemasList, SS).
 
 %-------------------------------------------------------------
 % Function:
