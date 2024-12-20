@@ -183,7 +183,7 @@ is_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-is_schema_attribute(Attribute) when is_atom(Attribute) -> 
+is_schema_attribute(Attribute) -> 
 
    case Attribute of 
         type -> true;
@@ -199,7 +199,7 @@ is_schema_attribute(Attribute) when is_atom(Attribute) ->
 % Purpose:  
 % Returns:  boolean()
 %-------------------------------------------------------------
-is_schema_attribute(Attribute, Value) when is_atom(Attribute) -> 
+is_schema_attribute(Attribute, Value) -> 
 
    case Attribute of 
         type -> 
@@ -220,29 +220,29 @@ is_schema_attribute(Attribute, Value) when is_atom(Attribute) ->
 %-------------------------------------------------------------
 % Function:
 % Purpose:  Sets the schema attributes in batch but not fields.
-% Returns:  boolean()
+% Returns:  
 %-------------------------------------------------------------
 set_schema_attributes([], _, SS) when is_map(SS) -> SS;
 
 set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
-    
-    case (is_schema_attribute(Attribute, Value) and Attribute /= fields) of 
+
+    case (is_schema_attribute(Attribute, Value) and (Attribute /= fields)) of 
         true -> 
             case Attribute of 
                 fields -> update_fields(Value, SchemaName, SS);
                 _ ->
 
                     Schema = get_schema(SchemaName, SS),
-                    UpdatedSchema = maps:update(Attribute, Value, Schema),
+                    UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
 
                     SchemasList = schemas(SS),
-                    UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, UpdatedSchema),
+                    UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
                     UpdatedSS = maps:update(?SCHEMAS, UpdatedSchemasList, SS),
 
                     set_schema_attributes(T, SchemaName, UpdatedSS)
             end;
 
-        false -> false
+        false -> {error, {invalid_attribute, Attribute}}
     end.
 
 %-------------------------------------------------------------
@@ -253,18 +253,21 @@ set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) when (is_atom(Sc
 set_schema_attribute(Attribute, Value, SchemaName, SS) when (is_atom(Attribute) and is_atom(SchemaName) and is_map(SS)) ->
 
     case is_schema_attribute(Attribute, Value) of 
-        true -> ok
-    end,
+        true ->
 
-    case Attribute of 
-        fields -> update_fields(Value, SchemaName, SS);
-        _ ->
-            Schema = get_schema(SchemaName, SS),
-            UpdatedSchema = maps:update(Attribute, Value, Schema),
+            case Attribute of 
+                %% TODO: revisit why we are doing update_fields here.
+                fields -> update_fields(Value, SchemaName, SS);
+                _ ->
+                    Schema = get_schema(SchemaName, SS),
+                    UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
 
-            SchemasList = schemas(SS),
-            UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, UpdatedSchema),
-            maps:update(?SCHEMAS, UpdatedSchemasList, SS)
+                    SchemasList = schemas(SS),
+                    UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
+                    maps:update(?SCHEMAS, UpdatedSchemasList, SS)
+            end;
+
+        false -> {error, {invalid_attribute, Attribute}}
     end.
 
 %-------------------------------------------------------------

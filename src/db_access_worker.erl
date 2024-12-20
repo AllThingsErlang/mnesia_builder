@@ -2,6 +2,7 @@
 -behaviour(gen_server).
 
 -include("../include/db_access_ipc.hrl").
+-include("../include/db_access_api.hrl").
 
 -export([start/3, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
@@ -28,7 +29,7 @@ init({ServerPid, ClientPid, Token}) ->
     io:format("[db_access::worker::~p]: serving client ~p with token ~p~n", [self(), ClientPid, Token]),
     process_flag(trap_exit, true),
     TimerRef = erlang:start_timer(30000, self(), session_start_timer),
-    {ok, #{?STATE_SERVER=>ServerPid, ?STATE_SESSION_ID=>{self(),ClientPid,Token}, ?STATE_SESSION_ACTIVE=>false, ?STATE_TIMER=>TimerRef, ?STATE_SPECIFICATIONS=>#{}}}.
+    {ok, #{?STATE_SERVER=>ServerPid, ?STATE_SESSION_ID=>{self(),ClientPid,Token}, ?STATE_SESSION_ACTIVE=>false, ?STATE_TIMER=>TimerRef, ?STATE_SPECIFICATIONS=>schemas:new()}}.
 
 
 %-------------------------------------------------------------
@@ -165,6 +166,22 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     SS = maps:get(?STATE_SPECIFICATIONS, State),
     
     case schemas:get_schema(SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        Schema -> Result = {ok, Schema}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA, Result),
+    {reply, ReplyMessage, State};
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_ATTRIBUTES}}, {{schema_name, SchemaName}, {schema_attributes, SchemaAvpList}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:set_schema_attributes(SchemaAvpList, SchemaName, SS) of 
         {error, Reason} -> Result = {error, Reason};
         Schema -> Result = {ok, Schema}
     end,

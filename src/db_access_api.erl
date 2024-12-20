@@ -1,5 +1,6 @@
 -module(db_access_api).
 -include("../include/db_access_ipc.hrl").
+-include("../include/db_access_api.hrl").
 
 -export([connect/0,
          disconnect/1,
