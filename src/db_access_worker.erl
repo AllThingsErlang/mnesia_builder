@@ -124,7 +124,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_SPECIFICATIONS}}, {}}}, State) ->
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SPECIFICATIONS, {ok, maps:get(?STATE_SPECIFICATIONS, State)}),
+    Result = {ok, maps:get(?STATE_SPECIFICATIONS, State)},
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SPECIFICATIONS, Result),
     {reply, ReplyMessage, State};
 
 %-------------------------------------------------------------
@@ -177,19 +178,197 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_ATTRIBUTES}}, {{schema_name, SchemaName}, {schema_attributes, SchemaAvpList}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_ATTRIBUTES}}, {{schema_name, SchemaName}, {schema_avp_list, SchemaAvpList}}}}, State) ->
 
     SS = maps:get(?STATE_SPECIFICATIONS, State),
     
     case schemas:set_schema_attributes(SchemaAvpList, SchemaName, SS) of 
-        {error, Reason} -> Result = {error, Reason};
-        Schema -> Result = {ok, Schema}
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSS -> 
+            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+            Result = ok
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA, Result),
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_SCHEMA_ATTRIBUTE}}, {{schema_name, SchemaName}, {schema_attribute, Attribute}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:get_schema_attribute(Attribute, SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        Value -> Result = {ok, Value}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA_ATTRIBUTE, Result),
+    {reply, ReplyMessage, State};
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_SCHEMA_NAMES}}, {}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    Result = {ok, schemas:schema_names(SS)}, 
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA_NAMES, Result),
+    {reply, ReplyMessage, State};
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_FIELD}}, {{schema_name, SchemaName}, {field_name, FieldName}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:add_field(FieldName, SchemaName, SS) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSS -> 
+            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+            Result = ok 
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_ADD_FIELD, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_FIELD_ATTRIBUTES}}, {{schema_name, SchemaName}, {field_name, FieldName}, {field_avp_list, FieldAvpList}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:set_field_attributes(FieldAvpList, FieldName, SchemaName, SS) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSS -> 
+            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+            Result = ok
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_FIELD_ATTRIBUTE}}, {{schema_name, SchemaName}, {field_name, FieldName}, {field_attribute, Attribute}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:get_field_attribute(Attribute, FieldName, SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        Value -> Result = {ok, Value}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_ATTRIBUTE, Result),
+    {reply, ReplyMessage, State};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_FIELDS}}, {{schema_name, SchemaName}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:fields(SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        Fields -> Result = {ok, Fields}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELDS, Result),
+    {reply, ReplyMessage, State};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_FIELD}}, {{schema_name, SchemaName}, {field_name, FieldName}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:get_field(FieldName, SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        FieldSpec -> Result = {ok, FieldSpec}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD, Result),
+    {reply, ReplyMessage, State};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_FIELD_COUNT}}, {{schema_name, SchemaName}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:field_count(SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        Count -> Result = {ok, Count}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_COUNT, Result),
+    {reply, ReplyMessage, State};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_MANDATORY_FIELD_COUNT}}, {{schema_name, SchemaName}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:mandatory_field_count(SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        Count -> Result = {ok, Count}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_MANDATORY_FIELD_COUNT, Result),
+    {reply, ReplyMessage, State};
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_FIELD_NAMES}}, {{schema_name, SchemaName}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:field_names(SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        FieldNames -> Result = {ok, FieldNames}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_NAMES, Result),
+    {reply, ReplyMessage, State};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_FIELD_POSITION}}, {{schema_name, SchemaName}, {field_name, FieldName}}}}, State) ->
+
+    SS = maps:get(?STATE_SPECIFICATIONS, State),
+    
+    case schemas:field_position(FieldName, SchemaName, SS) of 
+        {error, Reason} -> Result = {error, Reason};
+        Position -> Result = {ok, Position}
+    end,
+
+    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_POSITION, Result),
     {reply, ReplyMessage, State}.
-
-
 
 %-------------------------------------------------------------
 % Function: 

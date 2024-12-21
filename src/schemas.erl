@@ -44,6 +44,7 @@
 % Field Management APIs
 -export([add_field/3, 
          is_field/3, 
+         get_field/3,
          fields/2, 
          field_count/2,
          mandatory_field_count/2,
@@ -135,7 +136,7 @@ get_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
         Schemas ->
             case lists:keyfind(SchemaName, 1, Schemas) of 
                 {SchemaName, Specifications} -> Specifications;
-                false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+                false -> {error, {schema_name_not_found, SchemaName}}
             end
     end.
 
@@ -149,7 +150,7 @@ schemas(SS) when is_map(SS) ->
 
     case maps:find(?SCHEMAS, SS) of 
         {ok, Schemas} -> Schemas; 
-        error -> {error, {invalid_specifications, SS}}
+        error -> {error, invalid_specifications}
     end.
 
 %-------------------------------------------------------------
@@ -311,7 +312,26 @@ add_field(FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(Schema
                     maps:update(?SCHEMAS, UpdatedSchemas, SS)
             end;
 
-        false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+        false -> {error, {schema_name_not_found, SchemaName}}
+    end.
+
+
+%-------------------------------------------------------------
+% Function:
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+get_field(FieldName, SchemaName, SS) ->
+    
+    case fields(SchemaName, SS) of 
+        {error, Reason} -> {error, Reason};
+
+        FieldsList ->
+            
+            case lists:keyfind(FieldName, 1, FieldsList) of
+                false -> {error, {not_found, FieldName}};
+                FieldSpec -> FieldSpec 
+            end
     end.
 
 %-------------------------------------------------------------
@@ -326,12 +346,10 @@ fields(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
     case lists:keyfind(SchemaName, 1, Schemas) of 
         {SchemaName, SchemaSpecifications} ->
   
-            case maps:find(?FIELDS, SchemaSpecifications) of 
-                {ok, Fields} -> Fields;
-                error -> {error, {fields_not_found, {SchemaName, SS}}} 
-            end;
+            {ok, Fields} = maps:find(?FIELDS, SchemaSpecifications),
+            Fields;
 
-        false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+        false -> {error, {schema_name_not_found, SchemaName}}
     end.
 
 
@@ -378,7 +396,7 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) when (is_atom(A
             UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
             maps:update(?SCHEMAS, UpdatedSchemas, SS);
 
-        false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+        false -> {error, {schema_name_not_found, SchemaName}}
 
     end.
 
@@ -416,10 +434,10 @@ set_field_attributes(AvpList, FieldName, SchemaName, SS) when (is_list(AvpList) 
                     UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
                     maps:update(?SCHEMAS, UpdatedSchemas, SS);
                 
-                false -> {error, {field_name_not_found, {FieldName, SS}}}
+                false -> {error, {field_name_not_found, FieldName}}
             end;
 
-        false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+        false -> {error, {schema_name_not_found, SchemaName}}
     end.
 
 
@@ -436,7 +454,7 @@ get_field_attribute(Attribute, FieldName, SchemaName, SS) when (is_atom(Attribut
         Fields ->
             case lists:keyfind(FieldName, 1, Fields) of 
                 {FieldName, FieldSpecifications} -> maps:get(Attribute, FieldSpecifications);
-                false -> {error, {field_name_not_found, {FieldName, SS}}}
+                false -> {error, {field_name_not_found, FieldName}}
             end
     end.
 
@@ -472,7 +490,7 @@ update_fields(FieldList, SchemaName, SS) when (is_list(FieldList) and is_atom(Sc
                     UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
                     maps:update(?SCHEMAS, UpdatedSchemasList, SS);
 
-                false -> {error, {schema_name_not_found, {SchemaName, SS}}}
+                false -> {error, {schema_name_not_found, SchemaName}}
             end;
 
         false -> {error, {bad_field_list, FieldList}}
@@ -486,7 +504,7 @@ update_fields(FieldList, SchemaName, SS) when (is_list(FieldList) and is_atom(Sc
 field_count(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
 
     case fields(SchemaName, SS) of 
-        {error, _} -> 0;
+        {error, Reason} -> {error, Reason};
         Fields -> length(Fields) 
     end. 
 
@@ -868,7 +886,7 @@ create_field(FieldName) when is_atom(FieldName) ->
   F1 = maps:put(?NAME, FieldName, maps:new()),
   F2 = maps:put(?LABEL, "", F1),
   F3 = maps:put(?ROLE, field, F2),
-  F4 = maps:put(?TYPE, not_defined, F3),
+  F4 = maps:put(?TYPE, term, F3),
   F5 = maps:put(?POSITION, 0, F4),
   F6 = maps:put(?PRIORITY, mandatory, F5),
   F7 = maps:put(?DEFAULT_VALUE, not_defined, F6),

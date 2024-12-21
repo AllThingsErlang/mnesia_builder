@@ -11,16 +11,15 @@
          delete_schema/2,
          get_schema/2,
          set_schema_attributes/3,
-         get_schema_attributes/3,
-         get_schema_attributes/2,
+         get_schema_attribute/3,
          get_specifications/1,
          get_schema_names/1,
          generate/1,
          add_field/3,
          set_field_attributes/4,
-         get_field_attributes/3,
-         get_field_attributes/4,
+         get_field_attribute/4,
          get_fields/2,
+         get_field/3,
          get_field_count/2,
          get_mandatory_field_count/2,
          get_field_names/2,
@@ -179,23 +178,15 @@ get_schema(SessionId, SchemaName) ->
 % 
 %-------------------------------------------------------------
 set_schema_attributes(SessionId, SchemaName, SchemaAvpList) -> 
-    Message = db_access_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, {{schema_name, SchemaName}, {schema_attributes, SchemaAvpList}}),
+    Message = db_access_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, {{schema_name, SchemaName}, {schema_avp_list, SchemaAvpList}}),
     Reply = db_access_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-get_schema_attributes(SessionId, SchemaName) ->
-    Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_ATTRIBUTES, {{schema_name, SchemaName}}),
-    Reply = db_access_ipc:worker_call(SessionId, Message),
-    request_response_result(Reply).
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
-get_schema_attributes(SessionId, SchemaName, Attribute) ->
-    Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_ATTRIBUTES, {{schema_name, SchemaName}, {schema_attribute, Attribute}}),
+get_schema_attribute(SessionId, SchemaName, Attribute) ->
+    Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_ATTRIBUTE, {{schema_name, SchemaName}, {schema_attribute, Attribute}}),
     Reply = db_access_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
@@ -224,23 +215,16 @@ add_field(SessionId, SchemaName, FieldName) ->
 % 
 %-------------------------------------------------------------
 set_field_attributes(SessionId, SchemaName, FieldName, FieldAvpList) ->  
-    Message = db_access_ipc:build_request(SessionId, ?REQUEST_SET_FIELD_ATTRIBUTES, {{schema_name, SchemaName}, {field_name, FieldName}, {field_attributes, FieldAvpList}}),
+    Message = db_access_ipc:build_request(SessionId, ?REQUEST_SET_FIELD_ATTRIBUTES, {{schema_name, SchemaName}, {field_name, FieldName}, {field_avp_list, FieldAvpList}}),
     Reply = db_access_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
+
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-get_field_attributes(SessionId, SchemaName, FieldName) -> 
-    Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_ATTRIBUTES, {{schema_name, SchemaName}, {field_name, FieldName}}),
-    Reply = db_access_ipc:worker_call(SessionId, Message),
-    request_response_result(Reply).
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
-get_field_attributes(SessionId, SchemaName, FieldName, Attribute) -> 
-    Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_ATTRIBUTES, {{schema_name, SchemaName}, {field_name, FieldName}, {field_attribute, Attribute}}),
+get_field_attribute(SessionId, SchemaName, FieldName, Attribute) -> 
+    Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_ATTRIBUTE, {{schema_name, SchemaName}, {field_name, FieldName}, {field_attribute, Attribute}}),
     Reply = db_access_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
@@ -249,6 +233,14 @@ get_field_attributes(SessionId, SchemaName, FieldName, Attribute) ->
 %-------------------------------------------------------------
 get_fields(SessionId, SchemaName) -> 
     Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_FIELDS, {{schema_name, SchemaName}}),
+    Reply = db_access_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+get_field(FieldName, SessionId, SchemaName) -> 
+    Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_FIELD, {{schema_name, SchemaName}, {field_name, FieldName}}),
     Reply = db_access_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
