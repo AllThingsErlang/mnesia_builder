@@ -239,7 +239,7 @@ get_fields(SessionId, SchemaName) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-get_field(FieldName, SessionId, SchemaName) -> 
+get_field(SessionId, SchemaName, FieldName) -> 
     Message = db_access_ipc:build_request(SessionId, ?REQUEST_GET_FIELD, {{schema_name, SchemaName}, {field_name, FieldName}}),
     Reply = db_access_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).

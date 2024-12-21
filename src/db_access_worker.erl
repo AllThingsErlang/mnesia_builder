@@ -9,6 +9,7 @@
 -define(STATE_SERVER, server).
 -define(STATE_SESSION_ID, session_id).
 -define(STATE_SESSION_ACTIVE, session_active).
+-define(STATE_CLIENT_PROCESS_REF, client_process_ref).
 -define(STATE_TIMER, timer).
 -define(STATE_SPECIFICATIONS, specifications).
 
@@ -29,7 +30,13 @@ init({ServerPid, ClientPid, Token}) ->
     io:format("[db_access::worker::~p]: serving client ~p with token ~p~n", [self(), ClientPid, Token]),
     process_flag(trap_exit, true),
     TimerRef = erlang:start_timer(30000, self(), session_start_timer),
-    {ok, #{?STATE_SERVER=>ServerPid, ?STATE_SESSION_ID=>{self(),ClientPid,Token}, ?STATE_SESSION_ACTIVE=>false, ?STATE_TIMER=>TimerRef, ?STATE_SPECIFICATIONS=>schemas:new()}}.
+
+    {ok, #{?STATE_SERVER=>ServerPid, 
+           ?STATE_SESSION_ID=>{self(),ClientPid,Token}, 
+           ?STATE_SESSION_ACTIVE=>false, 
+           ?STATE_CLIENT_PROCESS_REF=>[],
+           ?STATE_TIMER=>TimerRef, 
+           ?STATE_SPECIFICATIONS=>schemas:new()}}.
 
 
 %-------------------------------------------------------------
@@ -47,6 +54,7 @@ handle_call({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, 
     % Two levels of validation
     %    (1) Session ID 
     %    (2) Source (client PID)
+    %    (3) Session is "active" if message is anything other than start_session, false if start_session
 
     case SessionId of 
 
@@ -56,7 +64,22 @@ handle_call({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, 
 
             case ReceivedPid == ClientPid of
 
-                true  -> handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, MessageId}}, Payload}}, State);
+                true  -> 
+                    
+                    ExpectedMessage = (((MessageId == ?REQUEST_START_SESSION) and 
+                                       not(maps:get(?STATE_SESSION_ACTIVE, State))) 
+                                    or
+                                      ((MessageId /= ?REQUEST_START_SESSION) and 
+                                       maps:get(?STATE_SESSION_ACTIVE, State))),
+
+                    case ExpectedMessage of 
+                        true -> handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, MessageId}}, Payload}}, State);
+                        false -> 
+                            io:format("[db_access::worker::~p]: message rejected, unexpected_message ~n", [self()]),
+                            ReplyMessage = db_access_ipc:build_end_session_response(SessionId, {unexpected_message, {MessageId, {?STATE_SESSION_ACTIVE, maps:get(?STATE_SESSION_ACTIVE, State)}}}),
+                            {reply, ReplyMessage, State}
+                    end;
+
                 false ->
                     io:format("[db_access::worker::~p]: message rejected, invalid_session_credentials, unrecognized_sender ~n", [self()]),
                     ReplyMessage = db_access_ipc:build_end_session_response(SessionId, {invalid_session_credentials, unrecognized_sender}),
@@ -95,7 +118,13 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         _ -> erlang:cancel_timer(TimerRef)
     end,
 
-    UpdatedState = maps:update(?STATE_TIMER, [], maps:update(?STATE_SESSION_ACTIVE, true, State)),
+    {_, ClientPid, _} = SessionId,
+    ClientRef = erlang:monitor(process, ClientPid),
+
+    UpdatedState = maps:update(?STATE_CLIENT_PROCESS_REF, ClientRef, 
+                        maps:update(?STATE_TIMER, [], 
+                            maps:update(?STATE_SESSION_ACTIVE, true, State))),
+
     ReplyMessage = db_access_ipc:build_start_session_response(SessionId),
     {reply, ReplyMessage, UpdatedState};
                 
