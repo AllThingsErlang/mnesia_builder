@@ -1,4 +1,4 @@
--module(generic_mnesia).
+-module(mnesia_builder).
 -behaviour(application).
 
 -export([start/2, stop/1]).
