@@ -1,8 +1,8 @@
--module(db_access_worker).
+-module(db_worker).
 -behaviour(gen_server).
 
--include("../include/db_access_ipc.hrl").
--include("../include/db_access_api.hrl").
+-include("../include/db_ipc.hrl").
+-include("../include/db_api.hrl").
 
 -export([start/3, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
@@ -46,7 +46,7 @@ init({ServerPid, ClientPid, Token}) ->
 %-------------------------------------------------------------
 handle_call({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, MessageId}}, Payload}}, From, State) ->
 
-    ReceivedPid = db_access_ipc:remove_pid_alias(From),
+    ReceivedPid = db_ipc:remove_pid_alias(From),
     io:format("[db_access::worker::~p]: received ~p from ~p~n", [self(), {?MSG_TYPE_REQUEST, MessageId}, ReceivedPid]),
 
     MySessionId = maps:get(?STATE_SESSION_ID, State),
@@ -76,19 +76,19 @@ handle_call({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, 
                         true -> handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, MessageId}}, Payload}}, State);
                         false -> 
                             io:format("[db_access::worker::~p]: message rejected, unexpected_message ~n", [self()]),
-                            ReplyMessage = db_access_ipc:build_end_session_response(SessionId, {unexpected_message, {MessageId, {?STATE_SESSION_ACTIVE, maps:get(?STATE_SESSION_ACTIVE, State)}}}),
+                            ReplyMessage = db_ipc:build_end_session_response(SessionId, {unexpected_message, {MessageId, {?STATE_SESSION_ACTIVE, maps:get(?STATE_SESSION_ACTIVE, State)}}}),
                             {reply, ReplyMessage, State}
                     end;
 
                 false ->
                     io:format("[db_access::worker::~p]: message rejected, invalid_session_credentials, unrecognized_sender ~n", [self()]),
-                    ReplyMessage = db_access_ipc:build_end_session_response(SessionId, {invalid_session_credentials, unrecognized_sender}),
+                    ReplyMessage = db_ipc:build_end_session_response(SessionId, {invalid_session_credentials, unrecognized_sender}),
                     {reply, ReplyMessage, State}
             end;
 
         _ -> 
             io:format("[db_access::worker::~p]: message rejected, invalid_session_credentials, unrecognized_session_id ~n", [self()]),
-            ReplyMessage = db_access_ipc:build_end_session_response(SessionId, {invalid_session_credentials, unrecognized_session_id}),
+            ReplyMessage = db_ipc:build_end_session_response(SessionId, {invalid_session_credentials, unrecognized_session_id}),
             {reply, ReplyMessage, State}
     end;
 
@@ -100,7 +100,7 @@ handle_call({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, 
 handle_call(Request, _From, State) ->
     io:format("[db_access::worker::~p]: unsupported_request: ~p~n", [self(), Request]),
 
-    ReplyMessage = db_access_ipc:build_error(unsupported_request),
+    ReplyMessage = db_ipc:build_error(unsupported_request),
     {reply, ReplyMessage, State}.
 
 %-------------------------------------------------------------
@@ -125,7 +125,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
                         maps:update(?STATE_TIMER, [], 
                             maps:update(?STATE_SESSION_ACTIVE, true, State))),
 
-    ReplyMessage = db_access_ipc:build_start_session_response(SessionId),
+    ReplyMessage = db_ipc:build_start_session_response(SessionId),
     {reply, ReplyMessage, UpdatedState};
                 
 
@@ -144,7 +144,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, _SessionId}, {?MSG_TYPE_REQUE
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SPECIFICATIONS}}, {}}}, State) ->
 
     UpdatedState = maps:update(?STATE_SPECIFICATIONS, schemas:new(), State),
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_NEW_SPECIFICATIONS, ok),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_NEW_SPECIFICATIONS, ok),
     {reply, ReplyMessage, UpdatedState};
 
 
@@ -154,7 +154,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_SPECIFICATIONS}}, {}}}, State) ->
 
     Result = {ok, maps:get(?STATE_SPECIFICATIONS, State)},
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SPECIFICATIONS, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_SPECIFICATIONS, Result),
     {reply, ReplyMessage, State};
 
 %-------------------------------------------------------------
@@ -173,7 +173,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok 
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_ADD_SCHEMA, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_ADD_SCHEMA, Result),
     {reply, ReplyMessage, UpdatedState};
 
 
@@ -185,7 +185,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     SS = maps:get(?STATE_SPECIFICATIONS, State),
     UpdatedSS = schemas:delete_schema(SchemaName, SS),
     UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SCHEMA, ok),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SCHEMA, ok),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
@@ -200,7 +200,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         Schema -> Result = {ok, Schema}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA, Result),
     {reply, ReplyMessage, State};
 
 
@@ -221,7 +221,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
@@ -236,7 +236,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         Value -> Result = {ok, Value}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA_ATTRIBUTE, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA_ATTRIBUTE, Result),
     {reply, ReplyMessage, State};
 
 
@@ -248,7 +248,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     SS = maps:get(?STATE_SPECIFICATIONS, State),
     
     Result = {ok, schemas:schema_names(SS)}, 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA_NAMES, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA_NAMES, Result),
     {reply, ReplyMessage, State};
 
 
@@ -269,7 +269,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok 
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_ADD_FIELD, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_ADD_FIELD, Result),
     {reply, ReplyMessage, UpdatedState};
 
 
@@ -290,7 +290,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
@@ -305,7 +305,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         Value -> Result = {ok, Value}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_ATTRIBUTE, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_ATTRIBUTE, Result),
     {reply, ReplyMessage, State};
 
 %-------------------------------------------------------------
@@ -320,7 +320,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         Fields -> Result = {ok, Fields}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELDS, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELDS, Result),
     {reply, ReplyMessage, State};
 
 %-------------------------------------------------------------
@@ -335,7 +335,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         FieldSpec -> Result = {ok, FieldSpec}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD, Result),
     {reply, ReplyMessage, State};
 
 %-------------------------------------------------------------
@@ -350,7 +350,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         Count -> Result = {ok, Count}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_COUNT, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_COUNT, Result),
     {reply, ReplyMessage, State};
 
 %-------------------------------------------------------------
@@ -365,7 +365,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         Count -> Result = {ok, Count}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_MANDATORY_FIELD_COUNT, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_MANDATORY_FIELD_COUNT, Result),
     {reply, ReplyMessage, State};
 
 
@@ -381,7 +381,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         FieldNames -> Result = {ok, FieldNames}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_NAMES, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_NAMES, Result),
     {reply, ReplyMessage, State};
 
 %-------------------------------------------------------------
@@ -396,7 +396,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         Position -> Result = {ok, Position}
     end,
 
-    ReplyMessage = db_access_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_POSITION, Result),
+    ReplyMessage = db_ipc:build_request_response(SessionId, ?REQUEST_GET_FIELD_POSITION, Result),
     {reply, ReplyMessage, State}.
 
 %-------------------------------------------------------------

@@ -1,5 +1,5 @@
--module(db_access_ipc).
--include("../include/db_access_ipc.hrl").
+-module(db_ipc).
+-include("../include/db_ipc.hrl").
 -export([call/2,
          worker_call/2,
          build_header/2, build_header/3,
@@ -25,7 +25,7 @@
 %-------------------------------------------------------------
 call(Pid, Message) -> 
 
-    case db_access_ipc:check_process_alive(Pid) of 
+    case db_ipc:check_process_alive(Pid) of 
         true -> gen_server:call(Pid, Message);
         false -> {error, {pid_not_alive, Pid}}
     end.
