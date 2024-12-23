@@ -33,7 +33,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
     % Strip out the alias if it is there
     ClientPid = db_ipc:remove_pid_alias(ReceivedClientPid),
 
-    io:format("[db_access::server::~p]: connect request from: ~p~n", [self(), ClientPid]),
+    io:format("[db::server::~p]: connect request from: ~p~n", [self(), ClientPid]),
 
     % Generate a random token to allow client and the worker
     % validate one another (not encrypted, very basic security)
@@ -72,7 +72,7 @@ handle_call(Request, From, State) ->
     % Strip out the alias if it is there
     ClientPid = db_ipc:remove_pid_alias(From),
 
-    io:format("[db_access::server::~p]: unsupported ~p: ~p from ~p~n", [self(), ?MSG_TYPE_REQUEST, Request, ClientPid]),
+    io:format("[db::server::~p]: unsupported ~p: ~p from ~p~n", [self(), ?MSG_TYPE_REQUEST, Request, ClientPid]),
 
     case db_ipc:get_session_id(Request) of 
         {error, _Error} ->
@@ -94,7 +94,7 @@ handle_call(Request, From, State) ->
 % Returns: 
 %-------------------------------------------------------------
 handle_cast(Message, State) ->
-    io:format("[db_access::server::~p]: unsupported message: ~p~n", [self(), Message]),
+    io:format("[db::server::~p]: unsupported message: ~p~n", [self(), Message]),
     {noreply, State}.
 
 
@@ -104,7 +104,7 @@ handle_cast(Message, State) ->
 % Returns: 
 %-------------------------------------------------------------
 handle_info({'EXIT', WorkerPid, Reason}, State) ->
-    io:format("[db_access::server::~p]: worker ~p exited, reason: ~p~n", [self(), WorkerPid, Reason]),
+    io:format("[db::server::~p]: worker ~p exited, reason: ~p~n", [self(), WorkerPid, Reason]),
 
     SessionList = maps:get(sessions, State),
     UpdatedSessionList = lists:keydelete(WorkerPid, 1, SessionList),
@@ -116,7 +116,7 @@ handle_info({'EXIT', WorkerPid, Reason}, State) ->
 % 
 %-------------------------------------------------------------
 handle_info(Info, State) ->
-    io:format("[db_access::server::~p]: unsupported info notification: ~p~n", [self(), Info]),
+    io:format("[db::server::~p]: unsupported info notification: ~p~n", [self(), Info]),
     {noreply, State}.
 
 %-------------------------------------------------------------
@@ -125,7 +125,7 @@ handle_info(Info, State) ->
 % Returns: 
 %-------------------------------------------------------------
 terminate(Reason, _State) ->
-    io:format("[db_access::server::~p]: terminate: ~p~n", [self(), Reason]),
+    io:format("[db::server::~p]: terminate: ~p~n", [self(), Reason]),
     ok.
 
 %-------------------------------------------------------------

@@ -32,7 +32,7 @@
 %-------------------------------------------------------------
 connect() ->
 
-    io:format("[db_access::api::~p]: connect ...~n", [self()]),
+    io:format("[db::api::~p]: connect ...~n", [self()]),
 
     ConnectMessage = db_ipc:build_connect_request(),
     ServerPid = global:whereis_name(?SERVER_DB),
@@ -40,7 +40,7 @@ connect() ->
     case ServerPid of 
 
         undefined -> 
-            io:format("[db_access::api::~p]: server  ~p is not running~n", [self(), ?SERVER_DB]),
+            io:format("[db::api::~p]: server  ~p is not running~n", [self(), ?SERVER_DB]),
             {error, server_not_running};
 
         _ ->
@@ -49,7 +49,7 @@ connect() ->
 
                 {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_CONNECT}}, {{result, ok}, {worker_pid, WorkerPid}, {session_id, NewSessionId}}}} ->
 
-                    io:format("[db_access::api::~p]: session id ~p assigned, requesting session start from worker ~p~n", [self(), NewSessionId, WorkerPid]),
+                    io:format("[db::api::~p]: session id ~p assigned, requesting session start from worker ~p~n", [self(), NewSessionId, WorkerPid]),
 
                     %timer:sleep(10000),
                     
@@ -58,24 +58,24 @@ connect() ->
                     case db_ipc:call(WorkerPid, StartMessage) of
 
                         {?PROT_VERSION, {{{session_id, NewSessionId}, {?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_START_SESSION}}, {{result, ok}}}} -> 
-                            io:format("[db_access::api::~p]: session started~n", [self()]),
+                            io:format("[db::api::~p]: session started~n", [self()]),
                             {ok, NewSessionId};
 
                         {?PROT_VERSION, {{{session_id, NewSessionId}, {?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_START_SESSION}}, {{result, {error, Reason}}}}} ->
-                            io:format("[db_access::api::~p]: session start failed: ~p~n", [self(), Reason]),
+                            io:format("[db::api::~p]: session start failed: ~p~n", [self(), Reason]),
                             {error, Reason};
 
                         Error -> 
-                            io:format("[db_access::api::~p]: session start aborted: ~p~n", [self(), Error]),
+                            io:format("[db::api::~p]: session start aborted: ~p~n", [self(), Error]),
                             {error, Error}
                     end;
 
                 {?PROT_VERSION, {{{session_id, _SessionId}, {?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_CONNECT}}, {{result, {error, Reason}}}}} ->
-                            io:format("[db_access::api::~p]: session connect failed: ~p~n", [self(), Reason]),
+                            io:format("[db::api::~p]: session connect failed: ~p~n", [self(), Reason]),
                             {error, Reason};
 
                 Error ->
-                    io:format("[db_access::api::~p]: connect aborted: ~p~n", [self(), Error]),
+                    io:format("[db::api::~p]: connect aborted: ~p~n", [self(), Error]),
                     {error, Error}
             end
     end.
@@ -94,7 +94,7 @@ disconnect(SessionId) ->
 %-------------------------------------------------------------
 get_sessions() -> 
 
-    io:format("[db_access::api::~p]: get_sessions ...~n", [self()]),
+    io:format("[db::api::~p]: get_sessions ...~n", [self()]),
 
     GetSessionsMessage = db_ipc:build_command(?COMMAND_GET_SESSIONS),
     ServerPid = global:whereis_name(?SERVER_DB),
@@ -102,7 +102,7 @@ get_sessions() ->
     case ServerPid of 
 
         undefined -> 
-            io:format("[db_access::api::~p]: server  ~p is not running~n", [self(), ?SERVER_DB]),
+            io:format("[db::api::~p]: server  ~p is not running~n", [self(), ?SERVER_DB]),
             {error, server_not_running};
 
         _ ->
@@ -110,14 +110,14 @@ get_sessions() ->
             case db_ipc:call(ServerPid, GetSessionsMessage) of
 
                 {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_COMMAND_RESPONSE, ?COMMAND_GET_SESSIONS}}, {{result, ok}, {sessions, SessionsList}}}} ->
-                    io:format("[db_access::api::~p]: received sessions: ~n", [self()]),
+                    io:format("[db::api::~p]: received sessions: ~n", [self()]),
                     {ok, SessionsList};
 
                 {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_COMMAND_RESPONSE, ?COMMAND_GET_SESSIONS}}, {{result, {error, Reason}}}}} ->
-                    io:format("[db_access::api::~p]: get_sessions failed: ~p~n", [self(), Reason]);
+                    io:format("[db::api::~p]: get_sessions failed: ~p~n", [self(), Reason]);
 
                 Error -> 
-                        io:format("[db_access::api::~p]: get_sessions aborted: ~p~n", [self(), Error]),
+                        io:format("[db::api::~p]: get_sessions aborted: ~p~n", [self(), Error]),
                         {error, Error}
             end
     end.
