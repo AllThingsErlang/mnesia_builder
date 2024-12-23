@@ -14,7 +14,7 @@ install(NodeList, SS) ->
 
     mnesia:start(),
     
-    SchemaNames = schemas:schema_names(SS),
+    SchemaNames = db_schemas:schema_names(SS),
 
     install_next(SchemaNames, SS).
 
@@ -22,11 +22,11 @@ install(NodeList, SS) ->
 install_next([], _) -> ok;
 install_next([NextSchemaName | T], SS) ->
 
-    case mnesia:create_table(NextSchemaName, [{attributes, schemas:field_names(NextSchemaName, SS)},
-                             {type, schemas:get_schema_attribute(type, NextSchemaName,SS)},
-                             {disc_copies, schemas:get_schema_attribute(disc_copies, NextSchemaName,SS)},
-                             {disc_only_copies, schemas:get_schema_attribute(disc_only_copies, NextSchemaName, SS)},
-                             {ram_copies, schemas:get_schema_attribute(ram_copies, NextSchemaName, SS)}]) of
+    case mnesia:create_table(NextSchemaName, [{attributes, db_schemas:field_names(NextSchemaName, SS)},
+                             {type, db_schemas:get_schema_attribute(type, NextSchemaName,SS)},
+                             {disc_copies, db_schemas:get_schema_attribute(disc_copies, NextSchemaName,SS)},
+                             {disc_only_copies, db_schemas:get_schema_attribute(disc_only_copies, NextSchemaName, SS)},
+                             {ram_copies, db_schemas:get_schema_attribute(ram_copies, NextSchemaName, SS)}]) of
 
         {atomic, _} -> install_next(T, SS);
         {aborted, Reason2} -> io:format("failed to create table ~p~n", [Reason2])
@@ -35,7 +35,7 @@ install_next([NextSchemaName | T], SS) ->
 
 start(SS) ->
     mnesia:start(),
-    mnesia:wait_for_tables(schemas:schema_names(SS), 10000).
+    mnesia:wait_for_tables(db_schemas:schema_names(SS), 10000).
  
 stop() -> mnesia:stop().
 
@@ -48,7 +48,7 @@ stop() -> mnesia:stop().
 %-------------------------------------------------------------
 table_size(Table) -> mnesia:table_info(Table, size).
 
-table_sizes(SS) -> table_sizes_next(schemas:schema_names(SS)).
+table_sizes(SS) -> table_sizes_next(db_schemas:schema_names(SS)).
 
 table_sizes_next([]) -> [];
 table_sizes_next(Tables) -> table_sizes_next(Tables, []).

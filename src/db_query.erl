@@ -33,7 +33,7 @@ select(Table, FieldName, Operator, Value, SS) ->
 
     Fun = fun() -> 
 
-        FieldPos = schemas:field_position(FieldName, Table, SS),
+        FieldPos = db_schemas:field_position(FieldName, Table, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -58,7 +58,7 @@ select_or(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
     MatchHead = build_matchhead(Table, SS),
 
     Fun = fun() -> 
-        FieldPos = schemas:field_position(FieldName, Table, SS),
+        FieldPos = db_schemas:field_position(FieldName, Table, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -86,7 +86,7 @@ select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
     MatchHead = build_matchhead(Table, SS),
 
     Fun = fun() -> 
-        FieldPos = schemas:field_position(FieldName, Table, SS),
+        FieldPos = db_schemas:field_position(FieldName, Table, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -115,7 +115,7 @@ build_matchhead(Table, SS) -> list_to_tuple([Table | build_matchhead_list(Table,
 
 build_matchhead_list(Table, SS) ->
 
-    FieldCount = schemas:field_count(Table, SS),
+    FieldCount = db_schemas:field_count(Table, SS),
     build_matchhead_list_next(FieldCount, []).
 
 build_matchhead_list_next(0, MatchHeadList) -> MatchHeadList;

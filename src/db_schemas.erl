@@ -1,4 +1,4 @@
--module(schemas).
+-module(db_schemas).
 
 -define(CURRENT_VERSION, "0.2").
 

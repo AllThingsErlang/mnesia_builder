@@ -39,7 +39,7 @@ delete(Table, Key) ->
 %-------------------------------------------------------------
 clear_all_tables(SS) ->
 
-    Tables = schemas:schema_names(SS),
+    Tables = db_schemas:schema_names(SS),
     clear_all_tables_next(Tables).
 
 clear_all_tables_next(Tables) -> clear_all_tables_next(Tables, 0, 0).
