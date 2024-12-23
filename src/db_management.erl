@@ -1,7 +1,7 @@
 -module(db_management).
 -include("../include/db_mnesia_builder.hrl").
 
--export([install/1, install/2, start/1, stop/0, table_sizes/1, table_size/1]).
+-export([install/1, install/2, start/1, stop/0, table_sizes/1, table_size/2]).
 
 
 %-------------------------------------------------------------
@@ -70,9 +70,14 @@ stop() -> mnesia:stop().
 %-------------------------------------------------------------
 % Returns the number of records in the specified table. 
 %-------------------------------------------------------------
--spec table_size(atom()) -> integer().
+-spec table_size(atom(), map()) -> integer().
 %-------------------------------------------------------------
-table_size(Table) -> mnesia:table_info(Table, size).
+table_size(TableName, SS) -> 
+    
+    case db_schemas:is_schema(TableName, SS) of 
+        true -> mnesia:table_info(TableName, size);
+        false -> {error, {invalid_schema_name, TableName}}
+    end.
 
 
 %-------------------------------------------------------------
@@ -86,6 +91,6 @@ table_sizes_next([]) -> [];
 table_sizes_next(Tables) -> table_sizes_next(Tables, []).
 
 table_sizes_next([], Sizes) -> lists:reverse(Sizes);
-table_sizes_next([H|T], Sizes) -> table_sizes_next(T, [{H, table_size(H)} | Sizes]).
+table_sizes_next([H|T], Sizes) -> table_sizes_next(T, [{H, mnesia:table_info(H, size)} | Sizes]).
 
 

@@ -616,7 +616,7 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
                             io:format(SrcIoDevice, "-export([fields/1, field_count/1, mandatory_field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
                             io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
-                            io:format(SrcIoDevice, "-export([add/1, delete/2, clear_all_tables/0]).~n", []),
+                            io:format(SrcIoDevice, "-export([add/1, add/2, add/3, delete/1, delete/2, clear_all_tables/0]).~n", []),
                             io:format(SrcIoDevice, "-export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).~n", []),
                             io:format(SrcIoDevice, "~n", []),
                             io:format(SrcIoDevice, "schema_specifications() ->~n", []),
@@ -631,7 +631,8 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             generate_spec_function(install, "NodeList", ?MANAGE_DB_MODULE, SrcIoDevice),
                             generate_spec_function(start, ?MANAGE_DB_MODULE, SrcIoDevice),
                             generate_function(stop, ?MANAGE_DB_MODULE, SrcIoDevice),
-                            generate_function(table_size, "SchemaName", ?MANAGE_DB_MODULE, SrcIoDevice),
+
+                            generate_spec_function(table_size, "SchemaName", ?MANAGE_DB_MODULE, SrcIoDevice),
                             generate_spec_function(table_sizes, ?MANAGE_DB_MODULE, SrcIoDevice),
 
                             io:format(SrcIoDevice, "~n~n", []),
@@ -659,21 +660,26 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             io:format(SrcIoDevice, "%                     Query Functions~n",[]),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
-                            generate_function(read, "Table", "Key", ?QUERY_MODULE, SrcIoDevice),
+                            generate_function(read, "SchemaName", "Key", ?QUERY_MODULE, SrcIoDevice),
 
-                            generate_spec_function(select, "Table", "Field", "Oper", "Value", ?QUERY_MODULE, SrcIoDevice),
-                            generate_spec_function(select_or, "Table", "Field", "Oper1", "Value1", "Oper2", "Value2", ?QUERY_MODULE, SrcIoDevice),
-                            generate_spec_function(select_and, "Table", "Field", "Oper1", "Value1", "Oper2", "Value2", ?QUERY_MODULE, SrcIoDevice),
-                            generate_spec_function(build_matchhead, "Table", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(select, "SchemaName", "Field", "Oper", "Value", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(select_or, "SchemaName", "Field", "Oper1", "Value1", "Oper2", "Value2", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(select_and, "SchemaName", "Field", "Oper1", "Value1", "Oper2", "Value2", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(build_matchhead, "SchemaName", ?QUERY_MODULE, SrcIoDevice),
 
                             io:format(SrcIoDevice, "~n~n", []),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
                             io:format(SrcIoDevice, "%                     Modify Functions~n",[]),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
-                            generate_function(add, "Record", ?MODIFY_MODULE, SrcIoDevice),
-                            generate_function(delete, "Table", "Key", ?MODIFY_MODULE, SrcIoDevice),
-                            generate_function(clear_all_tables, ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(add, "Record", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(add, "SchemaName", "Record", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(add, "SchemaName", "Key", "Data", ?MODIFY_MODULE, SrcIoDevice),
+
+                            generate_spec_function(delete, "TableKey", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(delete, "SchemaName", "Key", ?MODIFY_MODULE, SrcIoDevice),
+
+                            generate_spec_function(clear_all_tables, ?MODIFY_MODULE, SrcIoDevice),
 
                             io:format(SrcIoDevice, "~n~n", []),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
@@ -1009,9 +1015,9 @@ generate_function(FunctionName, BaseModule, IoDevice) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_function(FunctionName, Arg1, BaseModule, IoDevice) ->
-    io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s).~n", 
-        [FunctionName, Arg1, BaseModule, FunctionName, Arg1]).
+%generate_function(FunctionName, Arg1, BaseModule, IoDevice) ->
+%    io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s).~n", 
+%        [FunctionName, Arg1, BaseModule, FunctionName, Arg1]).
 
 %-------------------------------------------------------------
 % Function: 
