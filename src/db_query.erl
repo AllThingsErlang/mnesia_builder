@@ -7,26 +7,33 @@
 
 
 %-------------------------------------------------------------
-% Function: read
-% Purpose:  Reads a record from the the specified table
-% Returns:  {ok | Record} | {error, Reason}
+% Reads from the table Table with key = Key. The table must
+% have been created.
+%-------------------------------------------------------------
+-spec read(atom(), term()) -> list() | {error, term()}.
 %-------------------------------------------------------------
 read(Table, Key) ->
 
     Fun = fun() -> mnesia:read({Table, Key}) end,
 
     case mnesia:transaction(Fun) of
-        {atomic, []} -> {error, not_found};
-        {atomic, [Record]} -> {ok, Record};
+        {atomic, Result} -> Result;
         {aborted, Reason} -> {error, Reason}
     end.
 
-
-
 %-------------------------------------------------------------
-% Function: select
-% Purpose:  Selects all the tuples that satisfy the specifications
-% Returns:  {ok, List} | {error, Reason}
+% Selects all tuples that satisfy the criteria: 
+%        <FieldName> <Operator> <Value> 
+%
+% For example,
+%       age '>' 30
+%       employee_id '==' "N300442"
+%
+% TODO: 
+%    - Validate Operator before using it.
+%
+%-------------------------------------------------------------
+-spec select(atom(), atom(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
 select(Table, FieldName, Operator, Value, SS) -> 
     MatchHead = build_matchhead(Table, SS),
@@ -43,15 +50,21 @@ select(Table, FieldName, Operator, Value, SS) ->
     end,
 
     case mnesia:transaction(Fun) of
-        {atomic, []} -> {error, not_found};
-        {atomic, List} -> {ok, List};
+        {atomic, Result} -> Result;
         {aborted, Reason} -> {error, Reason}
     end.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% Selects all tuples that satisfy the criteria: 
+%        
+%  (<FieldName> <Operator1> <Value1>) or (<FieldName> <Operator2> <Value2>)
+%
+% For example:
+%
+%      (age '<' 18) or (age '>' 45)
+%
+%-------------------------------------------------------------
+-spec select_or(atom(), atom(), atom(), term(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
 select_or(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
     
@@ -78,9 +91,16 @@ select_or(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% Selects all tuples that satisfy the criteria: 
+%        
+%  (<FieldName> <Operator1> <Value1>) and (<FieldName> <Operator2> <Value2>)
+%
+% For example:
+%
+%      (age '>' 18) and (age '<' 45)
+%
+%-------------------------------------------------------------
+-spec select_and(atom(), atom(), atom(), term(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
 select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
     MatchHead = build_matchhead(Table, SS),
@@ -98,8 +118,7 @@ select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
     end,
 
     case mnesia:transaction(Fun) of
-        {atomic, []} -> {error, not_found};
-        {atomic, List} -> {ok, List};
+        {atomic, Result} -> {ok, Result};
         {aborted, Reason} -> {error, Reason}
     end.
 

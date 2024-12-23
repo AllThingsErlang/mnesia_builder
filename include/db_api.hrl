@@ -1,3 +1,7 @@
+
+-ifndef(DB_API_HRL).
+-define(DB_API_HRL, true).
+
 % Specification management
 -define(REQUEST_NEW_SPECIFICATIONS, new_specifications).
 -define(REQUEST_GENERATE, generate).
@@ -21,3 +25,5 @@
 -define(REQUEST_GET_MANDATORY_FIELD_COUNT, get_mandatory_field_count).
 -define(REQUEST_GET_FIELD_NAMES, get_field_names).
 -define(REQUEST_GET_FIELD_POSITION, get_field_position).
+
+-endif.

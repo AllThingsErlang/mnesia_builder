@@ -1,5 +1,6 @@
 -module(db_ipc).
 -include("../include/db_ipc.hrl").
+
 -export([call/2,
          worker_call/2,
          build_header/2, build_header/3,

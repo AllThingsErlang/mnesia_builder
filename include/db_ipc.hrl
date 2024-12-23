@@ -1,3 +1,6 @@
+-ifndef(DB_IPC_HRL).
+-define(DB_IPC_HRL, true).
+
 -define(PROT_VERSION, "0.1").
 
 
@@ -59,3 +62,6 @@
 % Command message IDs
 % ---------------------------
 -define(COMMAND_GET_SESSIONS, get_sessions).
+
+
+-endif.
