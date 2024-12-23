@@ -634,7 +634,7 @@ process_del(Arg1, Arg2, LoadedModules) ->
                         {ok, Key} ->
 
                             % Supplied key value is valid
-                            Result = modify_db:delete(Table, Key),
+                            Result = db_edit:delete(Table, Key),
                     
                             case Result of
                                 ok -> io:format("ok~n");

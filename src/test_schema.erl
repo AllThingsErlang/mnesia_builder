@@ -55,17 +55,17 @@ schema_specifications() ->
 %                DB Management Functions
 %-------------------------------------------------------
 
-install() -> manage_db:install(schema_specifications()).
+install() -> db_management:install(schema_specifications()).
 
-install(NodeList) -> manage_db:install(NodeList, schema_specifications()).
+install(NodeList) -> db_management:install(NodeList, schema_specifications()).
 
-start() -> manage_db:start(schema_specifications()).
+start() -> db_management:start(schema_specifications()).
 
-stop() -> manage_db:stop().
+stop() -> db_management:stop().
 
-table_size(SchemaName) -> manage_db:table_size(SchemaName).
+table_size(SchemaName) -> db_management:table_size(SchemaName).
 
-table_sizes() -> manage_db:table_sizes(schema_specifications()).
+table_sizes() -> db_management:table_sizes(schema_specifications()).
 
 
 %-------------------------------------------------------
@@ -105,26 +105,26 @@ get_field_attribute(Attribute, FieldName, SchemaName) -> schemas:get_field_attri
 %                     Query Functions
 %-------------------------------------------------------
 
-read(Table, Key) -> query_db:read(Table, Key).
+read(Table, Key) -> db_query:read(Table, Key).
 
-select(Table, Field, Oper, Value) -> query_db:select(Table, Field, Oper, Value, schema_specifications()).
+select(Table, Field, Oper, Value) -> db_query:select(Table, Field, Oper, Value, schema_specifications()).
 
-select_or(Table, Field, Oper1, Value1, Oper2, Value2) -> query_db:select_or(Table, Field, Oper1, Value1, Oper2, Value2, schema_specifications()).
+select_or(Table, Field, Oper1, Value1, Oper2, Value2) -> db_query:select_or(Table, Field, Oper1, Value1, Oper2, Value2, schema_specifications()).
 
-select_and(Table, Field, Oper1, Value1, Oper2, Value2) -> query_db:select_and(Table, Field, Oper1, Value1, Oper2, Value2, schema_specifications()).
+select_and(Table, Field, Oper1, Value1, Oper2, Value2) -> db_query:select_and(Table, Field, Oper1, Value1, Oper2, Value2, schema_specifications()).
 
-build_matchhead(Table) -> query_db:build_matchhead(Table, schema_specifications()).
+build_matchhead(Table) -> db_query:build_matchhead(Table, schema_specifications()).
 
 
 %-------------------------------------------------------
 %                     Modify Functions
 %-------------------------------------------------------
 
-add(Record) -> modify_db:add(Record).
+add(Record) -> db_edit:add(Record).
 
-delete(Table, Key) -> modify_db:delete(Table, Key).
+delete(Table, Key) -> db_edit:delete(Table, Key).
 
-clear_all_tables() -> modify_db:clear_all_tables().
+clear_all_tables() -> db_edit:clear_all_tables().
 
 
 %-------------------------------------------------------

@@ -1,4 +1,4 @@
--module(modify_db).
+-module(db_edit).
 -import(mnesia, [transaction/1]).
 
 -export([add/1, delete/2, clear_all_tables/1]).

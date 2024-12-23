@@ -1,4 +1,4 @@
--module(query_db).
+-module(db_query).
 -import(mnesia, [transaction/1]).
 -import(utilities, [find_list_pos/2]).
 

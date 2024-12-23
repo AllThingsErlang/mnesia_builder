@@ -20,9 +20,9 @@
 -define(DEFAULT_VALUE, default_value).
 
 -define(GEN_H_FILE_NAME, "test.hrl").
--define(QUERY_MODULE, query_db).
--define(MODIFY_MODULE, modify_db).
--define(MANAGE_DB_MODULE, manage_db).
+-define(QUERY_MODULE, db_query).
+-define(MODIFY_MODULE, db_edit).
+-define(MANAGE_DB_MODULE, db_management).
 
 % Schema management APIs
 -export([new/0, 
