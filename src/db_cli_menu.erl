@@ -631,7 +631,8 @@ process_del(Arg1, Arg2, LoadedModules) ->
                     % Table name is valid
                     case db_schemas:safe_convert_from_string(Arg2, SchemaModule:key_type(Table)) of
                         
-                        {ok, Key} ->
+                        {error, Reason} -> io:format("delete failed, ~w~n", [Reason]);
+                        Key ->
 
                             % Supplied key value is valid
                             Result = db_edit:delete(Table, Key),
@@ -639,8 +640,7 @@ process_del(Arg1, Arg2, LoadedModules) ->
                             case Result of
                                 ok -> io:format("ok~n");
                                 {_, Other} -> io:format("~w~n", [Other])
-                            end;
-                        {error, Reason} -> io:format("delete failed, ~w~n", [Reason])
+                            end
                     end;
                 false -> 
                     unknown_table(Table)
@@ -671,14 +671,15 @@ process_read(Arg1, Arg2, LoadedModules) ->
                 true -> 
                     case db_schemas:safe_convert_from_string(Arg2, SchemaModule:key_type(Table)) of
                         
-                        {ok, Key} ->
+                        {error, Reason} -> io:format("read failed, ~w~n", [Reason]);
+                        
+                        Key ->
                             Result = SchemaModule:read(Table, Key),
 
                             case Result of
                                 {ok, Record} -> print_record(Record);
                                 {_, Other} -> io:format("~w~n", [Other])
-                            end;
-                        {error, Reason} -> io:format("read failed, ~w~n", [Reason])
+                            end
                     end;
                 false -> unknown_table(Table)
             end
@@ -712,11 +713,10 @@ process_q(Arg1, Arg2, Arg3, Arg4, LoadedModules) ->
                             case utilities:is_comparison(Oper) of 
                                 true ->
                                     case db_schemas:safe_convert_from_string(Arg4, FieldType) of
-                                        {ok, Value} -> 
+                                        {error, _Reaosn} -> io:format("invalid data type~n");
+                                        Value -> 
                                             QueryOutput = SchemaModule:select(Table, Field, Oper, Value), 
-                                            process_query_output(QueryOutput);
-
-                                        _ -> io:format("invalid data type~n")
+                                            process_query_output(QueryOutput)
                                     end;
                                 false -> io:format("not a comparison operator~n")
                             end;
@@ -757,16 +757,14 @@ process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
                                     FieldType = SchemaModule:get_field_attribute(type, Field, Table),
 
                                     case db_schemas:safe_convert_from_string(Arg4,  FieldType) of
-                                        {ok, Value1} -> 
-
+                                        {error, _Reaosn} -> io:format("invalid data type~n");
+                                        Value1 -> 
                                             case db_schemas:safe_convert_from_string(Arg6, FieldType) of
-                                                {ok, Value2} -> 
+                                                {error, _Reason} -> io:format("invalid data type~n");
+                                                Value2 -> 
                                                     QueryOutput = SchemaModule:select_or(Table, Field, Oper1, Value1, Oper2, Value2), 
-                                                    process_query_output(QueryOutput);
-
-                                                _ -> io:format("invalid data type~n")
-                                            end;
-                                        _ -> io:format("invalid data type~n")
+                                                    process_query_output(QueryOutput)
+                                            end
                                     end;
                                 false -> io:format("not a comparison operator~n")
                             end;
@@ -807,14 +805,14 @@ process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
                                     FieldType = SchemaModule:get_field_attribute(type, Field, Table),
 
                                     case db_schemas:safe_convert_from_string(Arg4, FieldType) of
-                                        {ok, Value1} -> 
+                                        {error, _Reason} -> io:format("invalid data type~n");
+                                        Value1 -> 
 
                                             case db_schemas:safe_convert_from_string(Arg6, FieldType) of
-                                                {ok, Value2} -> 
+                                                {error, _Reason} -> io:format("invalid data type~n");
+                                                Value2 -> 
                                                     QueryOutput = SchemaModule:select_and(Table, Field, Oper1, Value1, Oper2, Value2), 
-                                                    process_query_output(QueryOutput);
-
-                                                _ -> io:format("invalid data type~n")
+                                                    process_query_output(QueryOutput)
                                             end;
                                         _ -> io:format("invalid data type~n")
                                     end;
@@ -849,8 +847,8 @@ process_qdl(LoadedModules) ->
             QueryNumberString = get_user_input(),
 
             case db_schemas:safe_convert_from_string(QueryNumberString, integer) of
-                {ok, QueryNumber} ->
-
+                {error, _Reason} -> invalid_input();
+                QueryNumber ->
                     if 
                         QueryNumber == 0 ->
                             ok;
@@ -862,9 +860,7 @@ process_qdl(LoadedModules) ->
                             SelectedModule = lists:nth(QueryNumber, QueryModules),
                             QueryOutput = SelectedModule:select(),
                             process_query_output(QueryOutput)
-                    end;
-
-                _ -> invalid_input()
+                    end
             end
     end.
 %-------------------------------------------------------------

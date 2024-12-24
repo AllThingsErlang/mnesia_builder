@@ -36,7 +36,7 @@ add(Record, SS) when (is_tuple(Record) and is_map(SS)) ->
         false -> {error, {invalid_record, Record}}
     end;
 
-add(Record, SS) -> {error, {invalid_arguments, {Record, SS}}}.
+add(Record, SS) -> {error, {invalid_argument, {Record, SS}}}.
 
 
 %-------------------------------------------------------------
@@ -54,7 +54,7 @@ add(TableName, Record, SS) when (is_atom(TableName) and is_tuple(Record) and is_
         false -> {error, {invalid_record, Record}}
     end;
 
-add(TableName, Record, SS) -> {error, {invalid_arguments, {TableName, Record, SS}}}.
+add(TableName, Record, SS) -> {error, {invalid_argument, {TableName, Record, SS}}}.
 
 %-------------------------------------------------------------
 -spec add(atom(), term(), term(), map()) -> db_result().
@@ -79,7 +79,7 @@ add(TableName, Key, Data, SS) when (is_atom(TableName) and
         false -> {error, {invalid_schema_name, TableName}}
     end;
 
-add(TableName, Key, Data, SS) -> {error, {invalid_arguments, {TableName, Key, Data, SS}}}.
+add(TableName, Key, Data, SS) -> {error, {invalid_argument, {TableName, Key, Data, SS}}}.
 
 
 %-------------------------------------------------------------
@@ -92,7 +92,7 @@ add(TableName, Key, Data, SS) -> {error, {invalid_arguments, {TableName, Key, Da
 -spec delete(tuple(), map()) -> db_result().
 %-------------------------------------------------------------
 delete({TableName, Key}, SS) when is_map(SS) -> delete(TableName, Key, SS);
-delete(TableKey, SS) -> {error, {invalid_arguments, {TableKey, SS}}}.
+delete(TableKey, SS) -> {error, {invalid_argument, {TableKey, SS}}}.
 
 %-------------------------------------------------------------
 -spec delete(atom(), term(), map()) -> db_result().
@@ -112,7 +112,7 @@ delete(TableName, Key, SS) when (is_atom(TableName) and is_map(SS)) ->
         false -> {error, {invalid_schema_name, TableName}}
     end;
 
-delete(TableName, Key, SS) -> {error, {invalid_arguments, {TableName, Key, SS}}}.
+delete(TableName, Key, SS) -> {error, {invalid_argument, {TableName, Key, SS}}}.
 
 
 
