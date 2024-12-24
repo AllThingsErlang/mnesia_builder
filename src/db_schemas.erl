@@ -60,8 +60,7 @@
          update_fields/3]).
 
 % Utility APIs
--export([convert_from_string/2, 
-         safe_convert_from_string/2, 
+-export([convert_from_stirng/2, 
          get_type/1, 
          compare_fields_from_specs/2,
          build_schema_record_from_specifications/2,
@@ -775,52 +774,27 @@ generate(Module, SrcPath, HrlPath, SS) -> {error, {invalid_argument, {Module, Sr
 % Purpose:  
 % Returns: converts the value or crashes
 %-------------------------------------------------------------
-safe_convert_from_string(Value, Type) when is_atom(Type) ->
+convert_from_stirng(Value, Type) ->
 
   case is_list(Value) of
     true ->
       case Type of
-        integer -> utilities:string_to_integer(Value);
-        float -> utilities:string_to_float(Value);
-        string -> Value;
-        list -> Value;
-        atom -> list_to_atom(Value);
+        integer -> {integer, utilities:string_to_integer(Value)};
+        float -> {float, utilities:string_to_float(Value)};
+        string -> {string, Value};
+        list -> {list, Value};
+        atom -> {atom, list_to_atom(Value)};
         tuple -> 
             case utilities:string_to_tuple(Value) of 
-                {ok, Tuple} -> Tuple;
+                {ok, Tuple} -> {tuple, Tuple};
                 {error, Reason} -> {error, Reason}
             end;
 
-        term -> Value;
+        term -> {term, Value};
         _ -> {error, {unknown_type, Type}}
       end;
 
     false -> {error, {bad_input, Value}}
-  end.
-
-
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: converts the value or crashes
-%-------------------------------------------------------------
-convert_from_string(Value, Type) when (is_list(Value) and is_atom(Type)) ->
-
-  case Type of
-
-    integer -> utilities:string_to_integer(Value);
-    float -> utilities:string_to_float(Value);
-    string -> Value;
-    list -> Value;
-    atom -> list_to_atom(Value);
-    
-    tuple -> 
-      case utilities:string_to_tuple(Value) of
-        {ok, Converted} -> Converted;
-        {error, Reason} -> {error, Reason}
-      end;
-
-    term -> Value
   end.
 
 
@@ -917,7 +891,6 @@ compare_fields_from_specs([Next1 | T1], [Next2 | T2]) ->
 
     case ((FieldName1 == FieldName2) and (FieldSpec1 == FieldSpec2)) of 
         true -> compare_fields_from_specs(T1, T2);
-
         false -> false 
     end.
 
@@ -951,14 +924,14 @@ create_schema(SchemaName) -> {error, {invalid_argument, SchemaName}}.
 %-------------------------------------------------------------
 create_field(FieldName) when is_atom(FieldName) ->
 
-  F1 = maps:put(?NAME, FieldName, maps:new()),
-  F2 = maps:put(?LABEL, "", F1),
-  F3 = maps:put(?ROLE, field, F2),
-  F4 = maps:put(?TYPE, term, F3),
-  F5 = maps:put(?POSITION, 0, F4),
-  F6 = maps:put(?PRIORITY, mandatory, F5),
-  F7 = maps:put(?DEFAULT_VALUE, not_defined, F6),
-  maps:put(?DESCRIPTION, "", F7);
+  maps:put(?DESCRIPTION, "", 
+    maps:put(?DEFAULT_VALUE, not_defined, 
+        maps:put(?PRIORITY, mandatory, 
+            maps:put(?POSITION, 0, 
+                maps:put(?TYPE, term, 
+                    maps:put(?ROLE, field, 
+                        maps:put(?LABEL, "", 
+                            maps:put(?NAME, FieldName, maps:new()))))))));
 
 create_field(SchemaName) -> {error, {invalid_argument, SchemaName}}.
 
@@ -999,21 +972,28 @@ add_field(FieldName, FieldList) -> {error, {invalid_argument, {FieldName, FieldL
 %           they are unchangeable.
 % Returns:  
 %-------------------------------------------------------------
-update_field(Attribute, Value, FieldName, FieldList) when (is_atom(Attribute) and is_atom(FieldName) and is_list(FieldList)) ->
+update_field(Attribute, Value, FieldName, FieldList) when (is_atom(FieldName) and is_list(FieldList)) ->
 
-    case Attribute of 
-        ?POSITION -> {error, {attribute_already_set, Attribute}};
-        ?ROLE -> {error, {attribute_already_set, Attribute}};
-        _ ->
-            case lists:keyfind(FieldName, 1, FieldList) of 
-                
-                {FieldName, FieldSpecifications} ->
-                    UpdatedFieldSpecifications = maps:update(Attribute, Value, FieldSpecifications),
-                    lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications});
+    case is_field_attribute(Attribute, Value) of 
+        true -> 
+            case Attribute of 
+                ?POSITION -> {error, {attribute_already_set, Attribute}};
+                ?ROLE -> {error, {attribute_already_set, Attribute}};
+                _ ->
+                    case lists:keyfind(FieldName, 1, FieldList) of 
+                        
+                        {FieldName, FieldSpecifications} ->
+                            UpdatedFieldSpecifications = maps:update(Attribute, Value, FieldSpecifications),
+                            lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications});
 
-                false -> {error, {field_name_not_found, {FieldName, FieldList}}}
-            end
-    end.
+                        false -> {error, {field_name_not_found, {FieldName, FieldList}}}
+                    end
+            end;
+
+        false -> {error, {invalid_attribute, {Attribute, Value}}}
+    end;
+
+update_field(_Attribute, _Value, FieldName, FieldList) -> {error, {invalid_argument, {FieldName, FieldList}}}.
 
       
 %-------------------------------------------------------------
