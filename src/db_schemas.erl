@@ -94,7 +94,7 @@ new() -> #{?VERSION=>?CURRENT_VERSION,
 % Purpose:  Add a new get_schema to the specifications.
 % Returns:  
 %-------------------------------------------------------------
-add_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+add_schema(SchemaName, SS) when is_map(SS) ->
 
     % Get the list of schemas and their specification maps.
     SchemasList = schemas(SS),
@@ -113,27 +113,27 @@ add_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
         true -> {error, {schema_exists, SchemaName}}
     end;
 
-add_schema(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+add_schema(_, SS) -> {error, {invalid_argument, SS}}.
 
 %-------------------------------------------------------------
 % Function:
 % Purpose:  Add a new get_schema to the specifications.
 % Returns:  
 %-------------------------------------------------------------
-delete_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+delete_schema(SchemaName, SS) when is_map(SS) ->
 
     SchemasList = schemas(SS),
     UpdatedSchemasList = lists:keydelete(SchemaName, 1, SchemasList),
     maps:update(?SCHEMAS, UpdatedSchemasList, SS);
 
-delete_schema(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+delete_schema(_, SS) -> {error, {invalid_argument, SS}}.
 
 %-------------------------------------------------------------
 % Function:
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-get_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+get_schema(SchemaName, SS) when is_map(SS) ->
 
     case schemas(SS) of 
         {error, Reason} -> {error, Reason};
@@ -145,7 +145,7 @@ get_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
             end
     end;
 
-get_schema(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+get_schema(_, SS) -> {error, {invalid_argument, SS}}.
 
 
 
@@ -185,14 +185,14 @@ schema_names(NameList, [{Name, _} |T]) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-is_schema(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+is_schema(SchemaName, SS) when is_map(SS) ->
 
     case maps:find(?SCHEMAS, SS) of 
         {ok, Schemas} -> lists:keymember(SchemaName, 1, Schemas);
         error -> {error, {invalid_schema_name, SchemaName}} 
     end;
 
-is_schema(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+is_schema(_, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
@@ -239,22 +239,22 @@ is_schema_attribute(Attribute, Value) ->
 %-------------------------------------------------------------
 set_schema_attributes([], _, SS) when is_map(SS) -> SS;
 
-set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) when is_map(SS) ->
 
     case (is_schema_attribute(Attribute, Value) and (Attribute /= fields)) of 
         true -> 
             case Attribute of 
                 fields -> update_fields(Value, SchemaName, SS);
                 _ ->
-
-                    Schema = get_schema(SchemaName, SS),
-                    UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
-
-                    SchemasList = schemas(SS),
-                    UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
-                    UpdatedSS = maps:update(?SCHEMAS, UpdatedSchemasList, SS),
-
-                    set_schema_attributes(T, SchemaName, UpdatedSS)
+                    case get_schema(SchemaName, SS) of
+                        {error, Reason} -> {error, Reason};
+                        Schema -> 
+                            UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
+                            SchemasList = schemas(SS),
+                            UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
+                            UpdatedSS = maps:update(?SCHEMAS, UpdatedSchemasList, SS),
+                            set_schema_attributes(T, SchemaName, UpdatedSS)
+                    end
             end;
 
         false -> {error, {invalid_attribute, Attribute}}
@@ -267,7 +267,7 @@ set_schema_attributes(AvpList, SchemaName, SS) -> {error, {invalid_argument, {Av
 % Purpose: 
 % Returns:  
 %-------------------------------------------------------------
-set_schema_attribute(Attribute, Value, SchemaName, SS) when (is_atom(Attribute) and is_atom(SchemaName) and is_map(SS)) ->
+set_schema_attribute(Attribute, Value, SchemaName, SS) when is_map(SS) ->
 
     case is_schema_attribute(Attribute, Value) of 
         true ->
@@ -275,18 +275,20 @@ set_schema_attribute(Attribute, Value, SchemaName, SS) when (is_atom(Attribute) 
                 %% TODO: revisit why we are doing update_fields here.
                 fields -> update_fields(Value, SchemaName, SS);
                 _ ->
-                    Schema = get_schema(SchemaName, SS),
-                    UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
-
-                    SchemasList = schemas(SS),
-                    UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
-                    maps:update(?SCHEMAS, UpdatedSchemasList, SS)
+                    case get_schema(SchemaName, SS) of
+                        {error, Reason} -> {error, Reason};
+                        Schema ->
+                            UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
+                            SchemasList = schemas(SS),
+                            UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
+                            maps:update(?SCHEMAS, UpdatedSchemasList, SS)
+                    end
             end;
 
         false -> {error, {invalid_attribute, Attribute}}
     end;
 
-set_schema_attribute(Attribute, _Value, SchemaName, SS) -> {error, {invalid_argument, {Attribute, SchemaName, SS}}}.
+set_schema_attribute(_, _, _, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
@@ -294,7 +296,7 @@ set_schema_attribute(Attribute, _Value, SchemaName, SS) -> {error, {invalid_argu
 % Purpose:  
 % Returns:  
 %------------------------------------------------------------- 
-get_schema_attribute(Attribute, SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
+get_schema_attribute(Attribute, SchemaName, SS) when is_map(SS) -> 
     % io:format("~nattribute: ~p~n", [Attribute]),
 
     case is_schema_attribute(Attribute) of
@@ -306,7 +308,7 @@ get_schema_attribute(Attribute, SchemaName, SS) when (is_atom(SchemaName) and is
         false -> {error, {invalid_attribute, Attribute}}
     end;
 
-get_schema_attribute(_Attribute, SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+get_schema_attribute(_, _, SS) -> {error, {invalid_argument, SS}}.
 
 
 
@@ -319,7 +321,7 @@ get_schema_attribute(_Attribute, SchemaName, SS) -> {error, {invalid_argument, {
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-add_field(FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) ->
+add_field(FieldName, SchemaName, SS) when is_map(SS) ->
 
     Schemas = schemas(SS),
 
@@ -331,7 +333,6 @@ add_field(FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(Schema
                 {error, Reason} -> {error, Reason};
 
                 UpdatedFieldList ->
-
                     UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
                     UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
                     maps:update(?SCHEMAS, UpdatedSchemas, SS)
@@ -348,40 +349,36 @@ add_field(FieldName, SchemaName, SS) -> {error, {invalid_argument, {FieldName, S
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-get_field(FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) ->
+get_field(FieldName, SchemaName, SS) when is_map(SS) ->
     
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
-
         FieldsList ->
-            
             case lists:keyfind(FieldName, 1, FieldsList) of
                 false -> {error, {not_found, FieldName}};
                 FieldSpec -> FieldSpec 
             end
     end;
 
-get_field(FieldName, SchemaName, SS) -> {error, {invalid_argument, {FieldName, SchemaName, SS}}}.
+get_field(_, _, SS) -> {error, {invalid_argument, SS}}.
 
 %-------------------------------------------------------------
 % Function:
 % Purpose:  
 % Returns:  [{FieldName, FieldSpecifications}]
 %-------------------------------------------------------------
-fields(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+fields(SchemaName, SS) when is_map(SS) ->
 
     Schemas = schemas(SS),
     
     case lists:keyfind(SchemaName, 1, Schemas) of 
         {SchemaName, SchemaSpecifications} ->
-  
             {ok, Fields} = maps:find(?FIELDS, SchemaSpecifications),
             Fields;
-
         false -> {error, {schema_name_not_found, SchemaName}}
     end;
 
-fields(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+fields(_, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
@@ -429,7 +426,7 @@ is_field_attribute(Attribute, Value) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) ->
+set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) when is_map(SS) ->
 
     % Screen the attribute/value pair.
     case is_field_attribute(Attribute, Value) of
@@ -453,7 +450,7 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) when (is_atom(F
         false -> {error, {invalid_field_attribute, Attribute}}
     end;
 
-set_field_attribute(_Attribute, _Value, FieldName, SchemaName, SS) -> {error, {invalid_argument, {FieldName, SchemaName, SS}}}.
+set_field_attribute(_, _, _, _, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
@@ -461,7 +458,7 @@ set_field_attribute(_Attribute, _Value, FieldName, SchemaName, SS) -> {error, {i
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-set_field_attributes(AvpList, FieldName, SchemaName, SS) when (is_list(AvpList) and is_atom(SchemaName) and is_map(SS)) ->
+set_field_attributes(AvpList, FieldName, SchemaName, SS) when is_map(SS) ->
 
     % 1. Get the schemas list
     % 2. Extract the specifications for SchemaName
@@ -496,7 +493,9 @@ set_field_attributes(AvpList, FieldName, SchemaName, SS) when (is_list(AvpList) 
             end;
 
         false -> {error, {schema_name_not_found, SchemaName}}
-    end.
+    end;
+
+set_field_attributes(_, _, _, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
@@ -504,7 +503,7 @@ set_field_attributes(AvpList, FieldName, SchemaName, SS) when (is_list(AvpList) 
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-get_field_attribute(Attribute, FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) -> 
+get_field_attribute(Attribute, FieldName, SchemaName, SS) when is_map(SS) -> 
 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
@@ -519,18 +518,20 @@ get_field_attribute(Attribute, FieldName, SchemaName, SS) when (is_atom(FieldNam
 
                 false -> {error, {field_name_not_found, FieldName}}
             end
-    end.
+    end;
+
+get_field_attribute(_, _, _, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-is_field(FieldName, SchemaName, SS) when (is_atom(FieldName) and is_atom(SchemaName) and is_map(SS)) ->
+is_field(FieldName, SchemaName, SS) when is_map(SS) ->
 
     Fields = fields(SchemaName, SS),
     lists:keymember(FieldName, 1, Fields);
 
-is_field(FieldName, SchemaName, SS) -> {error, {invalid_argument, {FieldName, SchemaName, SS}}}.
+is_field(_, _, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
@@ -538,7 +539,7 @@ is_field(FieldName, SchemaName, SS) -> {error, {invalid_argument, {FieldName, Sc
 % Purpose:  
 % Returns:  
 %------------------------------------------------------------- 
-update_fields(FieldList, SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
+update_fields(FieldList, SchemaName, SS) when is_map(SS) -> 
 
     %% First, validate the field list
     case is_field_list(FieldList) of 
@@ -559,32 +560,32 @@ update_fields(FieldList, SchemaName, SS) when (is_atom(SchemaName) and is_map(SS
         false -> {error, {bad_field_list, FieldList}}
     end;
 
-update_fields(FieldList, SchemaName, SS) -> {error, {invalid_argument, {FieldList, SchemaName, SS}}}.
+update_fields(_, _, SS) -> {error, {invalid_argument, SS}}.
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-field_count(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+field_count(SchemaName, SS) when is_map(SS) ->
 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
         Fields -> length(Fields) 
     end;
 
-field_count(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+field_count(_, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-mandatory_field_count(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) ->
+mandatory_field_count(SchemaName, SS) when is_map(SS) ->
 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
         Fields -> mandatory_field_count_next(Fields, 0)
     end;
 
-mandatory_field_count(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+mandatory_field_count(_, SS) -> {error, {invalid_argument, SS}}.
 
 
 mandatory_field_count_next([], FinalMandatoryCount) -> FinalMandatoryCount;
@@ -598,13 +599,13 @@ mandatory_field_count_next([{_, FieldSpec} | T], MandatoryCount) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-field_names(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
+field_names(SchemaName, SS) when is_map(SS) -> 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
         Fields -> field_names_next(Fields, [])
     end;
 
-field_names(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+field_names(_, SS) -> {error, {invalid_argument, SS}}.
 
 
 field_names_next([], FinalList) -> lists:reverse(FinalList);
@@ -614,27 +615,27 @@ field_names_next([{FieldName, _} | T], CompiledList) -> field_names_next(T, [Fie
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-key_name(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
+key_name(SchemaName, SS) when is_map(SS) -> 
 
     case fields(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
          [Key|_] -> Key
     end;
 
-key_name(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+key_name(_, SS) -> {error, {invalid_argument, SS}}.
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-key_type(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
+key_type(SchemaName, SS) when is_map(SS) -> 
 
     case field_names(SchemaName, SS) of 
         {error, Reason} -> {error, Reason};
          [Key|_] -> get_field_attribute(type, Key, SchemaName, SS)
     end;
 
-key_type(SchemaName, SS) -> {error, {invalid_argument, {SchemaName, SS}}}.
+key_type(_, SS) -> {error, {invalid_argument, SS}}.
 
 %-------------------------------------------------------------
 % 
@@ -762,7 +763,9 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
         false -> {error, {invalid_module_name, Module}}
     end;
 
-generate(Module, SrcPath, HrlPath, SS) -> {error, {invalid_argument, {Module, SrcPath, HrlPath, SS}}}.
+generate(Module, SrcPath, HrlPath, SS) -> 
+    io:format("db_schemas::error, match guard failed~n"),
+    {error, {invalid_argument, {Module, SrcPath, HrlPath, SS}}}.
 
 
 %============================================================
@@ -825,7 +828,10 @@ convert_schema_data_avp_list_into_record_tuple(AvpList, SS) when (is_list(AvpLis
             end;
 
         false -> {error, schema_name_not_in_avp}
-    end.
+    end;
+
+convert_schema_data_avp_list_into_record_tuple(AvpList, SS) -> {error, {invalid_argument, {AvpList, SS}}}.
+
 
 validate_schema_data_avp_list_next([], [], FinalList) -> FinalList;
 validate_schema_data_avp_list_next([],_, _) -> {error, invalid_fields};
@@ -861,20 +867,22 @@ validate_schema_data_avp_list_next([{FieldName, FieldSpecMap} | F], AvpList, Int
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-schema_data_avp_list_to_record_tuple(SchemaDataAvpList) when is_list(SchemaDataAvpList) -> 
+schema_data_avp_list_to_record_tuple(SchemaDataAvpList) -> 
     %io:format("~nconverting to tuple: ~p~n", [SchemaDataAvpList]),
     schema_data_avp_list_to_record_tuple_next(SchemaDataAvpList, []).
 
 schema_data_avp_list_to_record_tuple_next([], FinalList) -> list_to_tuple(FinalList);
-schema_data_avp_list_to_record_tuple_next([{_, Value} | T], InterimList) -> schema_data_avp_list_to_record_tuple_next(T, [Value | InterimList]).
-
+schema_data_avp_list_to_record_tuple_next([{_, Value} | T], InterimList) -> schema_data_avp_list_to_record_tuple_next(T, [Value | InterimList]);
+schema_data_avp_list_to_record_tuple_next(InvalidList, _) -> {error, {invalid_argument, InvalidList}}.
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-build_schema_record_from_specifications(SchemaName, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
-    tuple_to_list([SchemaName, field_names(SchemaName, SS)]).
+build_schema_record_from_specifications(SchemaName, SS) when is_map(SS) -> 
+    tuple_to_list([SchemaName, field_names(SchemaName, SS)]);
+
+build_schema_record_from_specifications(_, SS) -> {error, {invalid_argument, SS}}.
 
 %-------------------------------------------------------------
 % Function: 
@@ -907,13 +915,12 @@ compare_fields_from_specs([Next1 | T1], [Next2 | T2]) ->
 %-------------------------------------------------------------
 create_schema(SchemaName) when is_atom(SchemaName) -> 
 
-  S1 = maps:put(?NAME, SchemaName, maps:new()),
-  S2 = maps:put(type, set, S1),
-  S3 = maps:put(disc_copies, [], S2),
-  S4 = maps:put(disc_only_copies, [], S3),
-  S5 = maps:put(ram_copies, [], S4),
-  
-  maps:put(?FIELDS, [], S5);
+    maps:put(?FIELDS, [], 
+        maps:put(ram_copies, [], 
+            maps:put(disc_only_copies, [], 
+                maps:put(disc_copies, [], 
+                    maps:put(type, set, 
+                        maps:put(?NAME, SchemaName, maps:new()))))));
 
 create_schema(SchemaName) -> {error, {invalid_argument, SchemaName}}.
 
@@ -972,7 +979,7 @@ add_field(FieldName, FieldList) -> {error, {invalid_argument, {FieldName, FieldL
 %           they are unchangeable.
 % Returns:  
 %-------------------------------------------------------------
-update_field(Attribute, Value, FieldName, FieldList) when (is_atom(FieldName) and is_list(FieldList)) ->
+update_field(Attribute, Value, FieldName, FieldList) when is_list(FieldList) ->
 
     case is_field_attribute(Attribute, Value) of 
         true -> 
@@ -993,7 +1000,7 @@ update_field(Attribute, Value, FieldName, FieldList) when (is_atom(FieldName) an
         false -> {error, {invalid_attribute, {Attribute, Value}}}
     end;
 
-update_field(_Attribute, _Value, FieldName, FieldList) -> {error, {invalid_argument, {FieldName, FieldList}}}.
+update_field(_, _, _, FieldList) -> {error, {invalid_argument, FieldList}}.
 
       
 %-------------------------------------------------------------
