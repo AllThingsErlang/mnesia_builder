@@ -400,13 +400,13 @@ is_field_attribute(Attribute) ->
 is_field_attribute(Attribute, Value) ->
 
     case Attribute of
-        ?LABEL when is_list(Value);
+        ?LABEL -> is_list(Value);
         ?ROLE -> 
-        case Value of
-            field -> true;
-            key -> true;
-            _ -> false
-        end;
+            case Value of
+                field -> true;
+                key -> true;
+                _ -> false
+            end;
 
         ?TYPE -> is_type(Value);
 
@@ -658,15 +658,25 @@ generate(Module, SS) -> generate(Module, ".", ".", SS).
 %-------------------------------------------------------------
 generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath) and is_list(HrlPath) and is_map(SS)) ->
 
+    io:format("generate::started~n"),
+
     case utilities:is_unquoted_atom(Module) of 
+
+        
         true ->
+            io:format("generate::is_unquoted_atom: true~n"),
+            
             case file:open(HrlPath ++ "/" ++ atom_to_list(Module) ++ ".hrl", [write]) of 
                 {ok, HrlIoDevice} ->
 
+                    io:format("generate::header file opened for writing~n"),
+                    
                     generate_records(SS, HrlIoDevice),
 
                     case file:open(SrcPath ++ "/" ++ atom_to_list(Module) ++ ".erl", [write]) of
                         {ok, SrcIoDevice}  -> 
+                            
+                            io:format("generate::source file opened for writing~n"),
                             
                             io:format(SrcIoDevice, "-module(~p).~n", [Module]),
 
