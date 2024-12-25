@@ -1,6 +1,7 @@
--module(db_api).
--include("../include/db_ipc.hrl").
--include("../include/db_api.hrl").
+-module(mb_api).
+-include("../include/mb_ipc.hrl").
+-include("../include/mb_api.hrl").
+
 
 -export([connect/0,
          disconnect/1,
@@ -29,12 +30,15 @@
 
 %-------------------------------------------------------------
 % Session Management APIs
+% Connects to the server within the cluster and returns a SessionId.
+%-------------------------------------------------------------
+-spec connect() -> {ok, tuple()} | {error, term()}.
 %-------------------------------------------------------------
 connect() ->
 
     io:format("[db::api::~p]: connect ...~n", [self()]),
 
-    ConnectMessage = db_ipc:build_connect_request(),
+    ConnectMessage = mb_ipc:build_connect_request(),
     ServerPid = global:whereis_name(?SERVER_DB),
 
     case ServerPid of 
@@ -45,7 +49,7 @@ connect() ->
 
         _ ->
 
-            case db_ipc:call(ServerPid, ConnectMessage) of
+            case mb_ipc:call(ServerPid, ConnectMessage) of
 
                 {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_CONNECT}}, {{result, ok}, {worker_pid, WorkerPid}, {session_id, NewSessionId}}}} ->
 
@@ -53,9 +57,9 @@ connect() ->
 
                     %timer:sleep(10000),
                     
-                    StartMessage = db_ipc:build_start_session_request(NewSessionId),
+                    StartMessage = mb_ipc:build_start_session_request(NewSessionId),
                 
-                    case db_ipc:call(WorkerPid, StartMessage) of
+                    case mb_ipc:call(WorkerPid, StartMessage) of
 
                         {?PROT_VERSION, {{{session_id, NewSessionId}, {?MSG_TYPE_REQUEST_RESPONSE, ?REQUEST_START_SESSION}}, {{result, ok}}}} -> 
                             io:format("[db::api::~p]: session started~n", [self()]),
@@ -82,21 +86,25 @@ connect() ->
 
 
 %-------------------------------------------------------------
-% 
+% Disconnects from the server and terminates the session.
+%-------------------------------------------------------------
+-spec disconnect(tuple()) -> {ok, term()} | {error, term()}.
 %-------------------------------------------------------------
 disconnect(SessionId) ->
-    Message = db_ipc:build_request(SessionId, ?REQUEST_END_SESSION),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_END_SESSION),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
+-spec get_sessions() -> {ok, list()} | {error, term()}.
+%-------------------------------------------------------------
 get_sessions() -> 
 
     io:format("[db::api::~p]: get_sessions ...~n", [self()]),
 
-    GetSessionsMessage = db_ipc:build_command(?COMMAND_GET_SESSIONS),
+    GetSessionsMessage = mb_ipc:build_command(?COMMAND_GET_SESSIONS),
     ServerPid = global:whereis_name(?SERVER_DB),
 
     case ServerPid of 
@@ -107,7 +115,7 @@ get_sessions() ->
 
         _ ->
 
-            case db_ipc:call(ServerPid, GetSessionsMessage) of
+            case mb_ipc:call(ServerPid, GetSessionsMessage) of
 
                 {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_COMMAND_RESPONSE, ?COMMAND_GET_SESSIONS}}, {{result, ok}, {sessions, SessionsList}}}} ->
                     io:format("[db::api::~p]: received sessions: ~n", [self()]),
@@ -125,25 +133,27 @@ get_sessions() ->
 %-------------------------------------------------------------
 % Specificiations Management APIs
 %-------------------------------------------------------------
+-spec new_specifications(tuple()) -> {ok, term()} | {error, term()}.
+%-------------------------------------------------------------
 new_specifications(SessionId) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_NEW_SPECIFICATIONS),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_NEW_SPECIFICATIONS),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_specifications(SessionId) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_SPECIFICATIONS),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SPECIFICATIONS),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 generate(SessionId) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GENERATE),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GENERATE),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
@@ -154,40 +164,40 @@ generate(SessionId) ->
 % 
 %-------------------------------------------------------------
 add_schema(SessionId, SchemaName) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_ADD_SCHEMA, {{schema_name, SchemaName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_SCHEMA, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 delete_schema(SessionId, SchemaName) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_DELETE_SCHEMA, {{schema_name, SchemaName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_DELETE_SCHEMA, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_schema(SessionId, SchemaName) ->  
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA, {{schema_name, SchemaName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 set_schema_attributes(SessionId, SchemaName, SchemaAvpList) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, {{schema_name, SchemaName}, {schema_avp_list, SchemaAvpList}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, {{schema_name, SchemaName}, {schema_avp_list, SchemaAvpList}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_schema_attribute(SessionId, SchemaName, Attribute) ->
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_ATTRIBUTE, {{schema_name, SchemaName}, {schema_attribute, Attribute}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_ATTRIBUTE, {{schema_name, SchemaName}, {schema_attribute, Attribute}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 
@@ -195,8 +205,8 @@ get_schema_attribute(SessionId, SchemaName, Attribute) ->
 % 
 %-------------------------------------------------------------
 get_schema_names(SessionId) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_NAMES),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_NAMES),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
@@ -207,16 +217,16 @@ get_schema_names(SessionId) ->
 % 
 %-------------------------------------------------------------
 add_field(SessionId, SchemaName, FieldName) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_ADD_FIELD, {{schema_name, SchemaName}, {field_name, FieldName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_FIELD, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 set_field_attributes(SessionId, SchemaName, FieldName, FieldAvpList) ->  
-    Message = db_ipc:build_request(SessionId, ?REQUEST_SET_FIELD_ATTRIBUTES, {{schema_name, SchemaName}, {field_name, FieldName}, {field_avp_list, FieldAvpList}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_FIELD_ATTRIBUTES, {{schema_name, SchemaName}, {field_name, FieldName}, {field_avp_list, FieldAvpList}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 
@@ -224,56 +234,56 @@ set_field_attributes(SessionId, SchemaName, FieldName, FieldAvpList) ->
 % 
 %-------------------------------------------------------------
 get_field_attribute(SessionId, SchemaName, FieldName, Attribute) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_ATTRIBUTE, {{schema_name, SchemaName}, {field_name, FieldName}, {field_attribute, Attribute}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_ATTRIBUTE, {{schema_name, SchemaName}, {field_name, FieldName}, {field_attribute, Attribute}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_fields(SessionId, SchemaName) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_FIELDS, {{schema_name, SchemaName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELDS, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_field(SessionId, SchemaName, FieldName) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_FIELD, {{schema_name, SchemaName}, {field_name, FieldName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_field_count(SessionId, SchemaName) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_COUNT, {{schema_name, SchemaName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_COUNT, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_mandatory_field_count(SessionId, SchemaName) ->
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_MANDATORY_FIELD_COUNT, {{schema_name, SchemaName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_MANDATORY_FIELD_COUNT, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_field_names(SessionId, SchemaName) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_NAMES, {{schema_name, SchemaName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_NAMES, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 get_field_position(SessionId, SchemaName, FieldName) -> 
-    Message = db_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_POSITION, {{schema_name, SchemaName}, {field_name, FieldName}}),
-    Reply = db_ipc:worker_call(SessionId, Message),
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_POSITION, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 
@@ -281,6 +291,14 @@ get_field_position(SessionId, SchemaName, FieldName) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-request_response_result({?PROT_VERSION, {{_SessionId, {?MSG_TYPE_REQUEST_RESPONSE, _}}, {result, Result}}}) -> Result;
+request_response_result({?PROT_VERSION, {{_SessionId, {?MSG_TYPE_REQUEST_RESPONSE, _}}, {result, Result}}}) -> return_result(Result);
 request_response_result(Other) -> {error, {unrecognized_reply, Other}}.
 
+
+%-------------------------------------------------------------
+% Ensures the returned value is compliant to the API return
+% code specifications.
+%-------------------------------------------------------------
+return_result({ok, Result}) -> {ok, Result};
+return_result({error, Reason}) -> {error, Reason};
+return_result(Result) -> {ok, Result}.

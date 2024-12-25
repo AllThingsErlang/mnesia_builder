@@ -55,88 +55,88 @@ schema_specifications() ->
 %                DB Management Functions
 %-------------------------------------------------------
 
-install() -> db_management:install(schema_specifications()).
+install() -> mb_db_management:install(schema_specifications()).
 
-install(NodeList) -> db_management:install(NodeList, schema_specifications()).
+install(NodeList) -> mb_db_management:install(NodeList, schema_specifications()).
 
-start() -> db_management:start(schema_specifications()).
+start() -> mb_db_management:start(schema_specifications()).
 
-stop() -> db_management:stop().
+stop() -> mb_db_management:stop().
 
-table_size(SchemaName) -> db_management:table_size(SchemaName, schema_specifications()).
+table_size(SchemaName) -> mb_db_management:table_size(SchemaName, schema_specifications()).
 
-table_sizes() -> db_management:table_sizes(schema_specifications()).
+table_sizes() -> mb_db_management:table_sizes(schema_specifications()).
 
 
 %-------------------------------------------------------
 %                     Schema Functions
 %-------------------------------------------------------
 
-schema_names() -> db_schemas:schema_names(schema_specifications()).
+schema_names() -> mb_schemas:schema_names(schema_specifications()).
 
-is_schema(SchemaName) -> db_schemas:is_schema(SchemaName, schema_specifications()).
+is_schema(SchemaName) -> mb_schemas:is_schema(SchemaName, schema_specifications()).
 
-is_field(FieldName, SchemaName) -> db_schemas:is_field(FieldName, SchemaName, schema_specifications()).
+is_field(FieldName, SchemaName) -> mb_schemas:is_field(FieldName, SchemaName, schema_specifications()).
 
-schemas() -> db_schemas:schemas(schema_specifications()).
+schemas() -> mb_schemas:schemas(schema_specifications()).
 
-get_schema(SchemaName) -> db_schemas:get_schema(SchemaName, schema_specifications()).
+get_schema(SchemaName) -> mb_schemas:get_schema(SchemaName, schema_specifications()).
 
-get_schema_attribute(Attribute, SchemaName) -> db_schemas:get_schema_attribute(Attribute, SchemaName, schema_specifications()).
+get_schema_attribute(Attribute, SchemaName) -> mb_schemas:get_schema_attribute(Attribute, SchemaName, schema_specifications()).
 
-fields(SchemaName) -> db_schemas:fields(SchemaName, schema_specifications()).
+fields(SchemaName) -> mb_schemas:fields(SchemaName, schema_specifications()).
 
-field_count(SchemaName) -> db_schemas:field_count(SchemaName, schema_specifications()).
+field_count(SchemaName) -> mb_schemas:field_count(SchemaName, schema_specifications()).
 
-mandatory_field_count(SchemaName) -> db_schemas:mandatory_field_count(SchemaName, schema_specifications()).
+mandatory_field_count(SchemaName) -> mb_schemas:mandatory_field_count(SchemaName, schema_specifications()).
 
-field_names(SchemaName) -> db_schemas:field_names(SchemaName, schema_specifications()).
+field_names(SchemaName) -> mb_schemas:field_names(SchemaName, schema_specifications()).
 
-key_name(SchemaName) -> db_schemas:key_name(SchemaName, schema_specifications()).
+key_name(SchemaName) -> mb_schemas:key_name(SchemaName, schema_specifications()).
 
-key_type(SchemaName) -> db_schemas:key_type(SchemaName, schema_specifications()).
+key_type(SchemaName) -> mb_schemas:key_type(SchemaName, schema_specifications()).
 
-field_position(FieldName, SchemaName) -> db_schemas:field_position(FieldName, SchemaName, schema_specifications()).
+field_position(FieldName, SchemaName) -> mb_schemas:field_position(FieldName, SchemaName, schema_specifications()).
 
-get_field_attribute(Attribute, FieldName, SchemaName) -> db_schemas:get_field_attribute(Attribute, FieldName, SchemaName, schema_specifications()).
+get_field_attribute(Attribute, FieldName, SchemaName) -> mb_schemas:get_field_attribute(Attribute, FieldName, SchemaName, schema_specifications()).
 
 
 %-------------------------------------------------------
 %                     Query Functions
 %-------------------------------------------------------
 
-read(SchemaName, Key) -> db_query:read(SchemaName, Key).
+read(SchemaName, Key) -> mb_db_query:read(SchemaName, Key).
 
-select(SchemaName, Field, Oper, Value) -> db_query:select(SchemaName, Field, Oper, Value, schema_specifications()).
+select(SchemaName, Field, Oper, Value) -> mb_db_query:select(SchemaName, Field, Oper, Value, schema_specifications()).
 
-select_or(SchemaName, Field, Oper1, Value1, Oper2, Value2) -> db_query:select_or(SchemaName, Field, Oper1, Value1, Oper2, Value2, schema_specifications()).
+select_or(SchemaName, Field, Oper1, Value1, Oper2, Value2) -> mb_db_query:select_or(SchemaName, Field, Oper1, Value1, Oper2, Value2, schema_specifications()).
 
-select_and(SchemaName, Field, Oper1, Value1, Oper2, Value2) -> db_query:select_and(SchemaName, Field, Oper1, Value1, Oper2, Value2, schema_specifications()).
+select_and(SchemaName, Field, Oper1, Value1, Oper2, Value2) -> mb_db_query:select_and(SchemaName, Field, Oper1, Value1, Oper2, Value2, schema_specifications()).
 
-build_matchhead(SchemaName) -> db_query:build_matchhead(SchemaName, schema_specifications()).
+build_matchhead(SchemaName) -> mb_db_query:build_matchhead(SchemaName, schema_specifications()).
 
 
 %-------------------------------------------------------
 %                     Modify Functions
 %-------------------------------------------------------
 
-add(Record) -> db_edit:add(Record, schema_specifications()).
+add(Record) -> mb_db_edit:add(Record, schema_specifications()).
 
-add(SchemaName, Record) -> db_edit:add(SchemaName, Record, schema_specifications()).
+add(SchemaName, Record) -> mb_db_edit:add(SchemaName, Record, schema_specifications()).
 
-add(SchemaName, Key, Data) -> db_edit:add(SchemaName, Key, Data, schema_specifications()).
+add(SchemaName, Key, Data) -> mb_db_edit:add(SchemaName, Key, Data, schema_specifications()).
 
-delete(TableKey) -> db_edit:delete(TableKey, schema_specifications()).
+delete(TableKey) -> mb_db_edit:delete(TableKey, schema_specifications()).
 
-delete(SchemaName, Key) -> db_edit:delete(SchemaName, Key, schema_specifications()).
+delete(SchemaName, Key) -> mb_db_edit:delete(SchemaName, Key, schema_specifications()).
 
-clear_all_tables() -> db_edit:clear_all_tables(schema_specifications()).
+clear_all_tables() -> mb_db_edit:clear_all_tables(schema_specifications()).
 
 
 %-------------------------------------------------------
 %                     Utility Functions
 %-------------------------------------------------------
 
-build_schema_record_from_specifications(SchemaName) -> db_schemas:build_schema_record_from_specifications(SchemaName, schema_specifications()).
+build_schema_record_from_specifications(SchemaName) -> mb_schemas:build_schema_record_from_specifications(SchemaName, schema_specifications()).
 
-convert_schema_data_avp_list_into_record_tuple(AvpList) -> db_schemas:convert_schema_data_avp_list_into_record_tuple(AvpList, schema_specifications()).
+convert_schema_data_avp_list_into_record_tuple(AvpList) -> mb_schemas:convert_schema_data_avp_list_into_record_tuple(AvpList, schema_specifications()).

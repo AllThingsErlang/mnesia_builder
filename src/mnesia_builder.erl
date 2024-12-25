@@ -13,7 +13,7 @@ start(_StartType, _StartArgs) ->
         {ok, _} ->
             io:format("dependent application started successfully.~n"),
             % Start the supervisor
-            mnesia_builder_sup:start_link();
+            mb_supervisor:start_link();
 
         {error, Reason} ->
             io:format("dependent application(s) not started: ~p~n", [Reason]),

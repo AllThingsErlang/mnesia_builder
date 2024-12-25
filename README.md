@@ -14,7 +14,11 @@ Features
 
 Why Use It?
 
-- No good reason! This project is purely experimental and created for the joy of building and exploring. It’s an opportunity to learn, test ideas, and see what’s possible with Mnesia in a dynamic way.
+- This project is purely experimental and created for the joy of building and exploring. It’s an opportunity to learn, test ideas, and see what’s possible with Mnesia in a dynamic way.
+- There are few possible use cases other than academic experimentation:
+     (1) Easily model and test various table schema configurations before deciding on final specifications for coding and deployment
+     (2) Dynamic table definition, creation, usage, and optionally destruction allowing applications to manage their data when data models are unpredictable during runtime
+     (3) Integrating Mnesia into your application if you do not know Erlang (requires serialization libraries for other programming languages, on the TODO list)
 
 Getting Started
 

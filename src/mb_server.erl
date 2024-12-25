@@ -1,7 +1,7 @@
--module(db_server).
+-module(mb_server).
 -behaviour(gen_server).
 
--include("../include/db_ipc.hrl").
+-include("../include/mb_ipc.hrl").
 
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
@@ -31,7 +31,7 @@ init([]) ->
 handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUEST_CONNECT}}, {}}}, ReceivedClientPid, State) ->
 
     % Strip out the alias if it is there
-    ClientPid = db_ipc:remove_pid_alias(ReceivedClientPid),
+    ClientPid = mb_ipc:remove_pid_alias(ReceivedClientPid),
 
     io:format("[db::server::~p]: connect request from: ~p~n", [self(), ClientPid]),
 
@@ -40,7 +40,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
     Token = random_10_digit_number(),
 
     % Launch a worker to handle the new session
-    {ok, WorkerPid} = db_worker:start(self(), ClientPid, Token),
+    {ok, WorkerPid} = mb_worker:start(self(), ClientPid, Token),
 
     SessionId = {WorkerPid, ClientPid, Token},
 
@@ -48,7 +48,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
     UpdatedSessionsList = [SessionId | SessionsList],
 
     UpdatedState = maps:update(sessions, UpdatedSessionsList, State),
-    Message = db_ipc:build_connect_response(SessionId),
+    Message = mb_ipc:build_connect_response(SessionId),
     
     {reply, Message, UpdatedState};
 
@@ -60,7 +60,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
 handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_COMMAND, ?COMMAND_GET_SESSIONS}}, {}}}, _ClientPid, State) ->
 
     SessionsList = maps:get(sessions, State),
-    Message = db_ipc:build_command_response(?COMMAND_GET_SESSIONS, SessionsList),
+    Message = mb_ipc:build_command_response(?COMMAND_GET_SESSIONS, SessionsList),
     
     {reply, Message, State};
 
@@ -70,19 +70,19 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_COMMAND, ?COMMAN
 handle_call(Request, From, State) ->
 
     % Strip out the alias if it is there
-    ClientPid = db_ipc:remove_pid_alias(From),
+    ClientPid = mb_ipc:remove_pid_alias(From),
 
     io:format("[db::server::~p]: unsupported ~p: ~p from ~p~n", [self(), ?MSG_TYPE_REQUEST, Request, ClientPid]),
 
-    case db_ipc:get_session_id(Request) of 
+    case mb_ipc:get_session_id(Request) of 
         {error, _Error} ->
-            Message = db_ipc:build_error(invalid_message_format);
+            Message = mb_ipc:build_error(invalid_message_format);
         
         SessionId -> 
 
             % We send back an error for message type since we do not recognize
             % the incoming message and cannot send back a ?MSG_TYPE_REQUEST_RESPONSE to it.
-            Message = db_ipc:build_error(SessionId, not_supported)
+            Message = mb_ipc:build_error(SessionId, not_supported)
     end,
             
 

@@ -1,4 +1,4 @@
--module(db_cli_menu).
+-module(mb_cli_menu).
 -export([start/1]).
 
 -define(N, 10).
@@ -629,12 +629,12 @@ process_del(Arg1, Arg2, LoadedModules) ->
                 true -> 
 
                     % Table name is valid
-                    case db_schemas:convert_from_stirng(Arg2, SchemaModule:key_type(Table)) of
+                    case mb_schemas:convert_from_stirng(Arg2, SchemaModule:key_type(Table)) of
                         
                         {error, Reason} -> io:format("delete failed, ~w~n", [Reason]);
                         {_, Key} ->
                             % Supplied key value is valid
-                            Result = db_edit:delete(Table, Key),
+                            Result = mb_db_edit:delete(Table, Key),
                     
                             case Result of
                                 ok -> io:format("ok~n");
@@ -668,7 +668,7 @@ process_read(Arg1, Arg2, LoadedModules) ->
 
             case lists:member(Table, SchemaModule:schema_names()) of
                 true -> 
-                    case db_schemas:convert_from_stirng(Arg2, SchemaModule:key_type(Table)) of
+                    case mb_schemas:convert_from_stirng(Arg2, SchemaModule:key_type(Table)) of
                         
                         {error, Reason} -> io:format("read failed, ~w~n", [Reason]);
                         {_, Key} ->
@@ -709,7 +709,7 @@ process_q(Arg1, Arg2, Arg3, Arg4, LoadedModules) ->
                         true ->
                             case utilities:is_comparison(Oper) of 
                                 true ->
-                                    case db_schemas:convert_from_stirng(Arg4, FieldType) of
+                                    case mb_schemas:convert_from_stirng(Arg4, FieldType) of
                                         {error, _Reaosn} -> io:format("invalid data type~n");
                                         {_, Value} -> 
                                             QueryOutput = SchemaModule:select(Table, Field, Oper, Value), 
@@ -753,10 +753,10 @@ process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
                                 true ->
                                     FieldType = SchemaModule:get_field_attribute(type, Field, Table),
 
-                                    case db_schemas:convert_from_stirng(Arg4,  FieldType) of
+                                    case mb_schemas:convert_from_stirng(Arg4,  FieldType) of
                                         {error, _Reaosn} -> io:format("invalid data type~n");
                                         {_, Value1} -> 
-                                            case db_schemas:convert_from_stirng(Arg6, FieldType) of
+                                            case mb_schemas:convert_from_stirng(Arg6, FieldType) of
                                                 {error, _Reason} -> io:format("invalid data type~n");
                                                 {_, Value2} -> 
                                                     QueryOutput = SchemaModule:select_or(Table, Field, Oper1, Value1, Oper2, Value2), 
@@ -801,11 +801,11 @@ process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
                                 true ->
                                     FieldType = SchemaModule:get_field_attribute(type, Field, Table),
 
-                                    case db_schemas:convert_from_stirng(Arg4, FieldType) of
+                                    case mb_schemas:convert_from_stirng(Arg4, FieldType) of
                                         {error, _Reason} -> io:format("invalid data type~n");
                                         {_, Value1} -> 
 
-                                            case db_schemas:convert_from_stirng(Arg6, FieldType) of
+                                            case mb_schemas:convert_from_stirng(Arg6, FieldType) of
                                                 {error, _Reason} -> io:format("invalid data type~n");
                                                 {_, Value2} -> 
                                                     QueryOutput = SchemaModule:select_and(Table, Field, Oper1, Value1, Oper2, Value2), 
@@ -843,7 +843,7 @@ process_qdl(LoadedModules) ->
             io:format("~nselect query number or 0 to return: "),
             QueryNumberString = get_user_input(),
 
-            case db_schemas:convert_from_stirng(QueryNumberString, integer) of
+            case mb_schemas:convert_from_stirng(QueryNumberString, integer) of
                 {error, _Reason} -> invalid_input();
                 {integer, QueryNumber} ->
                     if 

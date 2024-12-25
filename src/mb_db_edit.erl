@@ -1,5 +1,5 @@
--module(db_edit).
--include("../include/db_mnesia_builder.hrl").
+-module(mb_db_edit).
+-include("../include/mb.hrl").
 
 -import(mnesia, [transaction/1]).
 -export([add/2, add/3, add/4, delete/2, delete/3, clear_all_tables/1]).
@@ -14,12 +14,12 @@
 %
 % Three formats for the add ....
 %
-%    (1) add({TableName, Key, ...}, SS)
-%    (2) add(TableName, {Key, ...}, SS)
-%    (3) add(TableName, Key, Data, SS) 
+%    (1) add({SchemaName, Key, ...}, SS)
+%    (2) add(SchemaName, {Key, ...}, SS)
+%    (3) add(SchemaName, Key, Data, SS) 
 %
 %-------------------------------------------------------------
--spec add(tuple(), map()) -> db_result().
+-spec add(tuple(), map()) -> mb_result().
 %-------------------------------------------------------------
 add(Record, SS) when (is_tuple(Record) and is_map(SS)) ->
 
@@ -28,10 +28,10 @@ add(Record, SS) when (is_tuple(Record) and is_map(SS)) ->
     case length(List) > 2 of
         % There has to be at least 3 elements: table name, key, and one data
         true ->
-            [TableName | RestOfRecord] = Record,
+            [SchemaName | RestOfRecord] = Record,
             [Key | Data] = RestOfRecord,
 
-            add(TableName, Key, Data, SS);
+            add(SchemaName, Key, Data, SS);
 
         false -> {error, {invalid_record, Record}}
     end;
@@ -40,79 +40,79 @@ add(Record, SS) -> {error, {invalid_argument, {Record, SS}}}.
 
 
 %-------------------------------------------------------------
--spec add(atom(), tuple(), map()) -> db_result().
+-spec add(atom(), tuple(), map()) -> mb_result().
 %-------------------------------------------------------------
-add(TableName, Record, SS) when (is_atom(TableName) and is_tuple(Record) and is_map(SS)) ->
+add(SchemaName, Record, SS) when (is_atom(SchemaName) and is_tuple(Record) and is_map(SS)) ->
 
     List = tuple_to_list(Record),
     
     case length(List) > 1 of
         true ->
             [Key | Data] = Record,
-            add(TableName, Key, Data, SS);
+            add(SchemaName, Key, Data, SS);
 
         false -> {error, {invalid_record, Record}}
     end;
 
-add(TableName, Record, SS) -> {error, {invalid_argument, {TableName, Record, SS}}}.
+add(SchemaName, Record, SS) -> {error, {invalid_argument, {SchemaName, Record, SS}}}.
 
 %-------------------------------------------------------------
--spec add(atom(), term(), term(), map()) -> db_result().
+-spec add(atom(), term(), term(), map()) -> mb_result().
 %-------------------------------------------------------------
-add(TableName, Key, Data, SS) when (is_atom(TableName) and 
+add(SchemaName, Key, Data, SS) when (is_atom(SchemaName) and 
                                     is_tuple(Data) and 
                                     is_map (SS)) ->
 
-    % 1. Validate that TableName is in SS
-    case db_schemas:is_schema(TableName, SS) of 
+    % 1. Validate that SchemaName is in SS
+    case mb_schemas:is_schema(SchemaName, SS) of 
         true -> 
             % 2. Execute type checks (TODO)
 
             % 3. Complete the operation
-            Record = list_to_tuple([TableName | [Key | tuple_to_list(Data)]]),
+            Record = list_to_tuple([SchemaName | [Key | tuple_to_list(Data)]]),
 
             case mnesia:transaction(fun() -> mnesia:write(Record) end) of
                 {atomic, ok} -> ok;
                 {aborted, Reason} -> {error, Reason}
             end;
 
-        false -> {error, {invalid_schema_name, TableName}}
+        false -> {error, {invalid_schema_name, SchemaName}}
     end;
 
-add(TableName, Key, Data, SS) -> {error, {invalid_argument, {TableName, Key, Data, SS}}}.
+add(SchemaName, Key, Data, SS) -> {error, {invalid_argument, {SchemaName, Key, Data, SS}}}.
 
 
 %-------------------------------------------------------------
-% Deletes a record from the table Table whose key is Key. The
+% Deletes a record from the table SchemaName whose key is Key. The
 % table should have been already created using the schema
 % specifications. Validation against the schema specifications
 % are applied to ensure that the delete operation remains
 % within the domain of the specifications.
 %-------------------------------------------------------------
--spec delete(tuple(), map()) -> db_result().
+-spec delete(tuple(), map()) -> mb_result().
 %-------------------------------------------------------------
-delete({TableName, Key}, SS) when is_map(SS) -> delete(TableName, Key, SS);
+delete({SchemaName, Key}, SS) when is_map(SS) -> delete(SchemaName, Key, SS);
 delete(TableKey, SS) -> {error, {invalid_argument, {TableKey, SS}}}.
 
 %-------------------------------------------------------------
--spec delete(atom(), term(), map()) -> db_result().
+-spec delete(atom(), term(), map()) -> mb_result().
 %-------------------------------------------------------------
-delete(TableName, Key, SS) when (is_atom(TableName) and is_map(SS)) -> 
+delete(SchemaName, Key, SS) when (is_atom(SchemaName) and is_map(SS)) -> 
     
-   case db_schemas:is_schema(TableName, SS) of 
+   case mb_schemas:is_schema(SchemaName, SS) of 
         true -> 
             
-            Fun = fun() -> mnesia:delete({TableName, Key}) end,
+            Fun = fun() -> mnesia:delete({SchemaName, Key}) end,
 
             case mnesia:transaction(Fun) of
                 {atomic, ok} -> ok;
                 {aborted, Reason} -> {error, Reason}
             end;
 
-        false -> {error, {invalid_schema_name, TableName}}
+        false -> {error, {invalid_schema_name, SchemaName}}
     end;
 
-delete(TableName, Key, SS) -> {error, {invalid_argument, {TableName, Key, SS}}}.
+delete(SchemaName, Key, SS) -> {error, {invalid_argument, {SchemaName, Key, SS}}}.
 
 
 
@@ -125,7 +125,7 @@ delete(TableName, Key, SS) -> {error, {invalid_argument, {TableName, Key, SS}}}.
 %-------------------------------------------------------------
 clear_all_tables(SS) ->
 
-    Tables = db_schemas:schema_names(SS),
+    Tables = mb_schemas:schema_names(SS),
     clear_all_tables_next(Tables).
 
 clear_all_tables_next(Tables) -> clear_all_tables_next(Tables, 0, 0).

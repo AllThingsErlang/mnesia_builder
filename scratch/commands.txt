@@ -1,17 +1,17 @@
 
 
 C=fun() -> 
-	R1=c(db_management),
-	io:format("db_management : ~p~n", [R1]), 
+	R1=c(mb_db_management),
+	io:format("mb_db_management : ~p~n", [R1]), 
 
 	R2=c(menu), 
 	io:format("menu : ~p~n", [R2]), 
 
-	R3=c(db_edit), 
-	io:format("db_edit : ~p~n", [R3]), 
+	R3=c(mb_db_edit), 
+	io:format("mb_db_edit : ~p~n", [R3]), 
 
-	R4=c(db_query), 
-	io:format("db_query : ~p~n", [R4]), 
+	R4=c(mb_db_query), 
+	io:format("mb_db_query : ~p~n", [R4]), 
 
 	R5=c(schemas), 
 	io:format("schemas : ~p~n", [R5]), 

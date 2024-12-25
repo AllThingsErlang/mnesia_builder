@@ -2,7 +2,7 @@
 -define(DB_MNESIA_BUILDER_HRL, true).
 
 %-------------------------------------------------------------
--type db_result() :: ok | {error, term()}.
+-type mb_result() :: ok | {error, term()}.
 %-------------------------------------------------------------
 
 -endif.

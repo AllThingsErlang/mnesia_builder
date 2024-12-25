@@ -38,7 +38,7 @@
 %    {Version, { {{session_id, SessionId}, {command_response, MessageName}}, {{result, Result}, ...}}
 %
 
--define(SERVER_DB, db_server).
+-define(SERVER_DB, mb_server).
 -define(SERVER_MODELLER, schema_modeller_server).
 
 -define(MSG_SESSION_ID, session_id).

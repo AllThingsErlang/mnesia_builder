@@ -1,4 +1,4 @@
--module(db_schemas).
+-module(mb_schemas).
 
 -define(CURRENT_VERSION, "0.2").
 
@@ -20,9 +20,9 @@
 -define(DEFAULT_VALUE, default_value).
 
 -define(GEN_H_FILE_NAME, "test.hrl").
--define(QUERY_MODULE, db_query).
--define(MODIFY_MODULE, db_edit).
--define(MANAGE_DB_MODULE, db_management).
+-define(QUERY_MODULE, mb_db_query).
+-define(MODIFY_MODULE, mb_db_edit).
+-define(MANAGE_DB_MODULE, mb_db_management).
 
 % Schema management APIs
 -export([new/0, 
@@ -774,7 +774,7 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
     end;
 
 generate(Module, SrcPath, HrlPath, SS) -> 
-    io:format("db_schemas::error, match guard failed~n"),
+    io:format("mb_schemas::error, match guard failed~n"),
     {error, {invalid_argument, {Module, SrcPath, HrlPath, SS}}}.
 
 
@@ -1205,6 +1205,8 @@ is_type(Type) ->
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
+-spec get_type(term()) -> atom().
+%-------------------------------------------------------------
 get_type(Value) ->
 
   case is_integer(Value) of
@@ -1238,183 +1240,10 @@ get_type(Value) ->
       end 
   end.
 
-%-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
-%-------------------------------------------------------------
-%validate_type(_Table, _FieldName, Value) ->
-
-%  Type = ok, %get_field_type(Table, FieldName),
-%  case Type of
-%    integer -> is_integer(Value);
-%    float -> is_float(Value);
-%    string -> is_list(Value);
-%    list -> is_list();
-%    atom -> is_atom(Value);
-%    tuple -> is_tuple(Value);
-%    term -> true
-%  end.
-
-
-
 
 %============================================================
 %    TEST and PROTOTYPE FUNCTIONS
 %============================================================
 
-%-------------------------------------------------------------
-% Function: This is a test get_schema specifications. The registered
-%           module must provide its own specifications.
-% Purpose:  
-% Returns:  
-%
-% 
-%-------------------------------------------------------------
-%schema_specifications() ->
-
-%    #{
-%        ?VERSION=>"0.2",
-%        ?SCHEMAS=>[
-%                    {table_1, 
-%                        #{
-%                            ?NAME=>table_x,
-%                            ?DISC_COPIES=>[node()],
-%                            ?DISC_ONLY_COPIES=>[],
-%                            ?RAM_COPIES=>[],
-
-%                            ?FIELDS=>[
-%                                        {employee_id, 
-%                                            #{
-%                                                ?NAME=>employee_id,
-%                                                ?LABEL=>"Employee ID",
-%                                                ?ROLE=>key,
-%                                                ?TYPE=>string,
-%                                                ?DESCRIPTION=>"table_x key"
-%                                            }
-%                                        },
-%
-%                                        {job_id,
-%                                            #{
-%                                                ?NAME=>job_id,
-%                                                ?LABEL=>"Job ID",
-%                                                ?ROLE=>field,
-%                                                ?TYPE=>integer,
-%                                                ?PRIORITY=>mandatory,
-%                                                ?DESCRIPTION=>"table_x field 2"
-%                                            }
-%                                        },
-%
-%                                        {hourly_wage,
-%                                            #{
-%                                                ?NAME=>hourly_wage,
-%                                                ?LABEL=>"Hourly Wage",
-%                                                ?ROLE=>field,
-%                                                ?TYPE=>float,
-%                                                ?PRIORITY=>mandatory,
-%                                                ?DESCRIPTION=>"table_x field 3"
-%                                            }
-%                                        },
-%                        
-%                                        {office_id, 
-%                                            #{
-%                                            ?NAME=>office_id,
-%                                            ?LABEL=>"Office Bld ID",
-%                                            ?ROLE=>field,
-%                                            ?TYPE=>string,
-%                                            ?PRIORITY=>optional,
-%                                            ?DEFAULT_VALUE=>"not defined",
-%                                            ?DESCRIPTION=>"table_x field 4"
-%                                            }
-%                                        }
-%                            ]
-%                        }
-%                    },
-%
-%                    {table_2,
-%                        
-%                        #{
-%                            ?NAME=>table_2,
-%                            ?DISC_COPIES=>[node()],
-%                            ?DISC_ONLY_COPIES=>[],
-%                            ?RAM_COPIES=>[],
-%
-%                            ?FIELDS=>[
-%                                        {job_id, 
-%                                            #{
-%                                                ?NAME=>job_id,
-%                                                ?LABEL=>"Job ID",
-%                                                ?ROLE=>key,
-%                                                ?TYPE=>integer,
-%                                                ?PRIORITY=>mandatory,
-%                                                ?DESCRIPTION=>"Each job type has its own ID"
-%                                            }
-%                                        },
-%
-%                                        {max_job_class,      
-%                                            #{
-%                                                ?NAME=>max_job_class,
-%                                                ?LABEL=>"Max Job Class",
-%                                                ?ROLE=>field,
-%                                                ?TYPE=>integer,
-%                                                ?PRIORITY=>mandatory,
-%                                                ?DESCRIPTION=>"Highest job classification qualified to take this job ID"
-%                                            }
-%                                        },
-%
-%                                        {max_hourly_wage,
-%                  
-%                                            #{
-%                                                ?NAME=>max_hourly_wage,
-%                                                ?LABEL=>"Max Hourly Wage",
-%                                                ?ROLE=>field,
-%                                                ?TYPE=>float,
-%                                                ?PRIORITY=>optional,
-%                                                ?DEFAULT_VALUE=>0.0,
-%                                                ?DESCRIPTION=>"Highest hourly wage for this job ID"
-%                                            }
-%                                        },
-%           
-%                                        {admin_first_name,
-%                                            #{
-%                                                ?NAME=>admin_first_name,
-%                                                ?LABEL=>"Admin First Name",
-%                                                ?ROLE=>field,
-%                                                ?TYPE=>string,
-%                                                ?PRIORITY=>optional,
-%                                                ?DEFAULT_VALUE=>"not defined",
-%                                                ?DESCRIPTION=>"First name of admin that defined the job ID"
-%                                            }
-%                                        },
-%                  
-%                                        {admin_last_name, 
-%                                            #{
-%                                            
-%                                                ?NAME=>admin_last_name,
-%                                                ?LABEL=>"Admin Last Name",
-%                                                ?ROLE=>field,
-%                                                ?TYPE=>string,
-%                                                ?PRIORITY=>optional,
-%                                                ?DEFAULT_VALUE=>"not defined",
-%                                                ?DESCRIPTION=>"Last name of admin that defined the job ID"
-%                                            }
-%                                        },                                 
-%                  
-%                                        {status,
-%                                            #{
-%                                            
-%                                                ?NAME=>status,
-%                                                ?LABEL=>"Status",
-%                                                ?ROLE=>field,
-%                                                ?TYPE=>atom,
-%                                                ?PRIORITY=>mandatory,
-%                                                ?DESCRIPTION=>"Job ID status"
-%                                            }
-%                                        }
-%                            ]
-%                        }
-%                    }
-%        ]
-%    }.
 
 

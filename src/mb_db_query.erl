@@ -1,4 +1,4 @@
--module(db_query).
+-module(mb_db_query).
 -import(mnesia, [transaction/1]).
 -import(utilities, [find_list_pos/2]).
 
@@ -7,14 +7,14 @@
 
 
 %-------------------------------------------------------------
-% Reads from the table Table with key = Key. The table must
+% Reads from the table SchemaName with key = Key. The table must
 % have been created.
 %-------------------------------------------------------------
 -spec read(atom(), term()) -> list() | {error, term()}.
 %-------------------------------------------------------------
-read(Table, Key) ->
+read(SchemaName, Key) ->
 
-    Fun = fun() -> mnesia:read({Table, Key}) end,
+    Fun = fun() -> mnesia:read({SchemaName, Key}) end,
 
     case mnesia:transaction(Fun) of
         {atomic, Result} -> Result;
@@ -35,18 +35,18 @@ read(Table, Key) ->
 %-------------------------------------------------------------
 -spec select(atom(), atom(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
-select(Table, FieldName, Operator, Value, SS) -> 
-    MatchHead = build_matchhead(Table, SS),
+select(SchemaName, FieldName, Operator, Value, SS) -> 
+    MatchHead = build_matchhead(SchemaName, SS),
 
     Fun = fun() -> 
 
-        FieldPos = db_schemas:field_position(FieldName, Table, SS),
+        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
         % shifted by one.
         Guard = [{Operator, element(FieldPos + 1, MatchHead), Value}],
-        mnesia:select(Table, [{MatchHead, Guard, ['$_']}])
+        mnesia:select(SchemaName, [{MatchHead, Guard, ['$_']}])
     end,
 
     case mnesia:transaction(Fun) of
@@ -66,12 +66,12 @@ select(Table, FieldName, Operator, Value, SS) ->
 %-------------------------------------------------------------
 -spec select_or(atom(), atom(), atom(), term(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
-select_or(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
+select_or(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
     
-    MatchHead = build_matchhead(Table, SS),
+    MatchHead = build_matchhead(SchemaName, SS),
 
     Fun = fun() -> 
-        FieldPos = db_schemas:field_position(FieldName, Table, SS),
+        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -80,7 +80,7 @@ select_or(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
         
         Guard = [{'orelse', {Operator1, element(FieldPos + 1, MatchHead), Value1}, 
                           {Operator2, element(FieldPos + 1, MatchHead), Value2}}],
-        mnesia:select(Table, [{MatchHead, Guard, ['$_']}])
+        mnesia:select(SchemaName, [{MatchHead, Guard, ['$_']}])
     end,
 
     case mnesia:transaction(Fun) of
@@ -102,11 +102,11 @@ select_or(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
 %-------------------------------------------------------------
 -spec select_and(atom(), atom(), atom(), term(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
-select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
-    MatchHead = build_matchhead(Table, SS),
+select_and(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
+    MatchHead = build_matchhead(SchemaName, SS),
 
     Fun = fun() -> 
-        FieldPos = db_schemas:field_position(FieldName, Table, SS),
+        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SS),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -114,7 +114,7 @@ select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
         Guard = [{'andalso', {Operator1, element(FieldPos + 1, MatchHead), Value1}, 
                           {Operator2, element(FieldPos + 1, MatchHead), Value2}
                  }],
-        mnesia:select(Table, [{MatchHead, Guard, ['$_']}])
+        mnesia:select(SchemaName, [{MatchHead, Guard, ['$_']}])
     end,
 
     case mnesia:transaction(Fun) of
@@ -129,12 +129,12 @@ select_and(Table, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
 %           used by select calls
 % Returns:  Tuple
 %-------------------------------------------------------------
-build_matchhead(Table, SS) -> list_to_tuple([Table | build_matchhead_list(Table, SS)]).
+build_matchhead(SchemaName, SS) -> list_to_tuple([SchemaName | build_matchhead_list(SchemaName, SS)]).
 
 
-build_matchhead_list(Table, SS) ->
+build_matchhead_list(SchemaName, SS) ->
 
-    FieldCount = db_schemas:field_count(Table, SS),
+    FieldCount = mb_schemas:field_count(SchemaName, SS),
     build_matchhead_list_next(FieldCount, []).
 
 build_matchhead_list_next(0, MatchHeadList) -> MatchHeadList;
