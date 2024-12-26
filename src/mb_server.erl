@@ -60,7 +60,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
 handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_COMMAND, ?COMMAND_GET_SESSIONS}}, {}}}, _ClientPid, State) ->
 
     SessionsList = maps:get(sessions, State),
-    Message = mb_ipc:build_command_response(?COMMAND_GET_SESSIONS, SessionsList),
+    Message = mb_ipc:build_command_response(?COMMAND_GET_SESSIONS, {ok, SessionsList}),
     
     {reply, Message, State};
 

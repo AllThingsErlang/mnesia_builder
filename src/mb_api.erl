@@ -1,13 +1,14 @@
 -module(mb_api).
 -include("../include/mb_ipc.hrl").
 -include("../include/mb_api.hrl").
-
+-include("../include/mb.hrl").
 
 -export([connect/0,
          disconnect/1,
          get_sessions/0,
          
          new_specifications/1,
+         new_specifications/5,
          add_schema/2,
          delete_schema/2,
          get_schema/2,
@@ -27,12 +28,18 @@
          get_field_position/3]).
 
 
+%-------------------------------------------------------------
+% IPC specific types
+%-------------------------------------------------------------
+-type mb_session_id() :: {pid(), pid(), integer()}.
+%-------------------------------------------------------------
+
 
 %-------------------------------------------------------------
 % Session Management APIs
 % Connects to the server within the cluster and returns a SessionId.
 %-------------------------------------------------------------
--spec connect() -> {ok, tuple()} | {error, term()}.
+-spec connect() -> {ok, mb_session_id()} | mb_error().
 %-------------------------------------------------------------
 connect() ->
 
@@ -88,7 +95,7 @@ connect() ->
 %-------------------------------------------------------------
 % Disconnects from the server and terminates the session.
 %-------------------------------------------------------------
--spec disconnect(tuple()) -> {ok, term()} | {error, term()}.
+-spec disconnect(tuple()) -> {ok, term()} | mb_error().
 %-------------------------------------------------------------
 disconnect(SessionId) ->
     Message = mb_ipc:build_request(SessionId, ?REQUEST_END_SESSION),
@@ -98,7 +105,7 @@ disconnect(SessionId) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec get_sessions() -> {ok, list()} | {error, term()}.
+-spec get_sessions() -> {ok, []} | {ok, [mb_session_id()]} | mb_error().
 %-------------------------------------------------------------
 get_sessions() -> 
 
@@ -117,7 +124,7 @@ get_sessions() ->
 
             case mb_ipc:call(ServerPid, GetSessionsMessage) of
 
-                {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_COMMAND_RESPONSE, ?COMMAND_GET_SESSIONS}}, {{result, ok}, {sessions, SessionsList}}}} ->
+                {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_COMMAND_RESPONSE, ?COMMAND_GET_SESSIONS}}, {result, {ok, SessionsList}}}} ->
                     io:format("[db::api::~p]: received sessions: ~n", [self()]),
                     {ok, SessionsList};
 
@@ -133,15 +140,33 @@ get_sessions() ->
 %-------------------------------------------------------------
 % Specificiations Management APIs
 %-------------------------------------------------------------
--spec new_specifications(tuple()) -> {ok, term()} | {error, term()}.
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec new_specifications(mb_session_id()) -> ok | mb_error().
 %-------------------------------------------------------------
 new_specifications(SessionId) -> 
     Message = mb_ipc:build_request(SessionId, ?REQUEST_NEW_SPECIFICATIONS),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
+
 %-------------------------------------------------------------
 % 
+%-------------------------------------------------------------
+-spec new_specifications(mb_session_id(), mb_ssg_name(), string(), string(), string()) -> ok | mb_error().
+%-------------------------------------------------------------
+new_specifications(SessionId, Name, Owner, Email, Description) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_NEW_SPECIFICATIONS, {{name, Name}, {owner, Owner}, {email, Email}, {description, Description}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec get_specifications(mb_session_id()) -> {ok, mb_ssg()} | mb_error().
 %-------------------------------------------------------------
 get_specifications(SessionId) -> 
     Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SPECIFICATIONS),
@@ -291,14 +316,5 @@ get_field_position(SessionId, SchemaName, FieldName) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-request_response_result({?PROT_VERSION, {{_SessionId, {?MSG_TYPE_REQUEST_RESPONSE, _}}, {result, Result}}}) -> return_result(Result);
+request_response_result({?PROT_VERSION, {{_SessionId, {?MSG_TYPE_REQUEST_RESPONSE, _}}, {result, Result}}}) -> Result;
 request_response_result(Other) -> {error, {unrecognized_reply, Other}}.
-
-
-%-------------------------------------------------------------
-% Ensures the returned value is compliant to the API return
-% code specifications.
-%-------------------------------------------------------------
-return_result({ok, Result}) -> {ok, Result};
-return_result({error, Reason}) -> {error, Reason};
-return_result(Result) -> {ok, Result}.

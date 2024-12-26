@@ -147,6 +147,17 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SPECIFICATIONS, ok),
     {reply, ReplyMessage, UpdatedState};
 
+    
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SPECIFICATIONS}}, {{name, Name}, {owner, Owner}, {email, Email}, {description, Description}}}}, State) ->
+
+    UpdatedState = maps:update(?STATE_SPECIFICATIONS, mb_schemas:new(Name, Owner, Email, Description), State),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SPECIFICATIONS, ok),
+    {reply, ReplyMessage, UpdatedState};
+
 
 %-------------------------------------------------------------
 % 

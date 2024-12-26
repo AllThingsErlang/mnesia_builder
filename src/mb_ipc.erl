@@ -160,14 +160,14 @@ build_command(CommandId) ->
 
     {?PROT_VERSION, {Header, Payload}}.
 
+
 %-------------------------------------------------------------
 % 
 %--------------------------------------------------------------
-build_command_response(CommandId, SessionsList) ->
+build_command_response(CommandId, Result) ->
 
     Header = build_header(?MSG_TYPE_COMMAND_RESPONSE, CommandId),
-    Result = {result, ok},
-    Payload = {Result, {sessions, SessionsList}},
+    Payload = {result, Result},
 
     {?PROT_VERSION, {Header, Payload}}.
 
