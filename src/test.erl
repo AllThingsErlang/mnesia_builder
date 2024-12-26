@@ -4,7 +4,7 @@
 schema() ->
 
     io:format("test::allocating a new schema map~n"),
-    SS0 = mb_schemas:new(),
+    SS0 = mb_schemas:new(schema_group_1, "Test User", "nowhere@nowehre.com", "Test module to validate the schema handling code"),
     io:format("test::is_map: ~p~n", [is_map(SS0)]),
 
     io:format("test::adding two new schema tables, employees and departments~n"),

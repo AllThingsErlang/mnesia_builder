@@ -35,12 +35,12 @@ read(SchemaName, Key) ->
 %-------------------------------------------------------------
 -spec select(atom(), atom(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
-select(SchemaName, FieldName, Operator, Value, SS) -> 
-    MatchHead = build_matchhead(SchemaName, SS),
+select(SchemaName, FieldName, Operator, Value, SSG) -> 
+    MatchHead = build_matchhead(SchemaName, SSG),
 
     Fun = fun() -> 
 
-        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SS),
+        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SSG),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -66,12 +66,12 @@ select(SchemaName, FieldName, Operator, Value, SS) ->
 %-------------------------------------------------------------
 -spec select_or(atom(), atom(), atom(), term(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
-select_or(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
+select_or(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) -> 
     
-    MatchHead = build_matchhead(SchemaName, SS),
+    MatchHead = build_matchhead(SchemaName, SSG),
 
     Fun = fun() -> 
-        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SS),
+        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SSG),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -102,11 +102,11 @@ select_or(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
 %-------------------------------------------------------------
 -spec select_and(atom(), atom(), atom(), term(), atom(), term(), map()) -> list() | {error, term()}.
 %-------------------------------------------------------------
-select_and(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SS) -> 
-    MatchHead = build_matchhead(SchemaName, SS),
+select_and(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) -> 
+    MatchHead = build_matchhead(SchemaName, SSG),
 
     Fun = fun() -> 
-        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SS),
+        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SSG),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -129,12 +129,12 @@ select_and(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SS) ->
 %           used by select calls
 % Returns:  Tuple
 %-------------------------------------------------------------
-build_matchhead(SchemaName, SS) -> list_to_tuple([SchemaName | build_matchhead_list(SchemaName, SS)]).
+build_matchhead(SchemaName, SSG) -> list_to_tuple([SchemaName | build_matchhead_list(SchemaName, SSG)]).
 
 
-build_matchhead_list(SchemaName, SS) ->
+build_matchhead_list(SchemaName, SSG) ->
 
-    FieldCount = mb_schemas:field_count(SchemaName, SS),
+    FieldCount = mb_schemas:field_count(SchemaName, SSG),
     build_matchhead_list_next(FieldCount, []).
 
 build_matchhead_list_next(0, MatchHeadList) -> MatchHeadList;

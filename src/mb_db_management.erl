@@ -15,20 +15,20 @@
 %
 % TODO: 
 %     - Make the install intelligent by extracting all the nodes
-%       from SS and then installing the schema on them.
-%     - Validate the SS before starting the install.
+%       from SSG and then installing the schema on them.
+%     - Validate the SSG before starting the install.
 %     - If there is an mnesia schema installed, change its config
 %       to support the expanded nodes list.
 %-------------------------------------------------------------
 -spec install(map()) -> mb_result().
 %-------------------------------------------------------------
-install(SS) -> install([node()], SS).
+install(SSG) -> install([node()], SSG).
 
 
 %-------------------------------------------------------------
 -spec install(list(), map()) -> mb_result().
 %-------------------------------------------------------------
-install(NodeList, SS) ->
+install(NodeList, SSG) ->
     
     case mnesia:create_schema(NodeList) of
         ok -> ok;
@@ -37,21 +37,21 @@ install(NodeList, SS) ->
 
     mnesia:start(),
     
-    SchemaNames = mb_schemas:schema_names(SS),
+    SchemaNames = mb_schemas:schema_names(SSG),
 
-    install_next(SchemaNames, SS).
+    install_next(SchemaNames, SSG).
 
 
 install_next([], _) -> ok;
-install_next([NextSchemaName | T], SS) ->
+install_next([NextSchemaName | T], SSG) ->
 
-    case mnesia:create_table(NextSchemaName, [{attributes, mb_schemas:field_names(NextSchemaName, SS)},
-                             {type, mb_schemas:get_schema_attribute(type, NextSchemaName,SS)},
-                             {disc_copies, mb_schemas:get_schema_attribute(disc_copies, NextSchemaName,SS)},
-                             {disc_only_copies, mb_schemas:get_schema_attribute(disc_only_copies, NextSchemaName, SS)},
-                             {ram_copies, mb_schemas:get_schema_attribute(ram_copies, NextSchemaName, SS)}]) of
+    case mnesia:create_table(NextSchemaName, [{attributes, mb_schemas:field_names(NextSchemaName, SSG)},
+                             {type, mb_schemas:get_schema_attribute(type, NextSchemaName,SSG)},
+                             {disc_copies, mb_schemas:get_schema_attribute(disc_copies, NextSchemaName,SSG)},
+                             {disc_only_copies, mb_schemas:get_schema_attribute(disc_only_copies, NextSchemaName, SSG)},
+                             {ram_copies, mb_schemas:get_schema_attribute(ram_copies, NextSchemaName, SSG)}]) of
 
-        {atomic, _} -> install_next(T, SS);
+        {atomic, _} -> install_next(T, SSG);
         {aborted, Reason2} -> io:format("failed to create table ~p~n", [Reason2])
     end.
 
@@ -59,9 +59,9 @@ install_next([NextSchemaName | T], SS) ->
 %-------------------------------------------------------------
 -spec start(map()) -> ok | {error, term()} | {timeout, [atom()]}.
 %-------------------------------------------------------------
-start(SS) ->
+start(SSG) ->
     mnesia:start(),
-    mnesia:wait_for_tables(mb_schemas:schema_names(SS), 10000).
+    mnesia:wait_for_tables(mb_schemas:schema_names(SSG), 10000).
  
 stop() -> mnesia:stop().
 
@@ -72,9 +72,9 @@ stop() -> mnesia:stop().
 %-------------------------------------------------------------
 -spec table_size(atom(), map()) -> integer().
 %-------------------------------------------------------------
-table_size(SchemaName, SS) -> 
+table_size(SchemaName, SSG) -> 
     
-    case mb_schemas:is_schema(SchemaName, SS) of 
+    case mb_schemas:is_schema(SchemaName, SSG) of 
         true -> mnesia:table_info(SchemaName, size);
         false -> {error, {invalid_schema_name, SchemaName}}
     end.
@@ -85,7 +85,7 @@ table_size(SchemaName, SS) ->
 %-------------------------------------------------------------
 -spec table_sizes(map()) -> list().
 %-------------------------------------------------------------
-table_sizes(SS) -> table_sizes_next(mb_schemas:schema_names(SS)).
+table_sizes(SSG) -> table_sizes_next(mb_schemas:schema_names(SSG)).
 
 table_sizes_next([]) -> [];
 table_sizes_next(Tables) -> table_sizes_next(Tables, []).

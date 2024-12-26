@@ -536,7 +536,7 @@ process_add(ArgumentsString, LoadedModules) ->
 
     {SchemaModule, _} = LoadedModules,
 
-    case utilities:parse_input_erlang_terms(ArgumentsString) of
+    case mb_utilities:parse_input_erlang_terms(ArgumentsString) of
         {ok, ParsedInput} -> 
 
             case convert_input_into_record_tuple(ParsedInput, SchemaModule) of 
@@ -707,7 +707,7 @@ process_q(Arg1, Arg2, Arg3, Arg4, LoadedModules) ->
 
                     case SchemaModule:is_field(Field, Table) of
                         true ->
-                            case utilities:is_comparison(Oper) of 
+                            case mb_utilities:is_comparison(Oper) of 
                                 true ->
                                     case mb_schemas:convert_from_stirng(Arg4, FieldType) of
                                         {error, _Reaosn} -> io:format("invalid data type~n");
@@ -749,7 +749,7 @@ process_qor(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
                 true -> 
                     case SchemaModule:is_field(Field, Table) of
                         true ->
-                            case (utilities:is_comparison(Oper1) and utilities:is_comparison(Oper2)) of 
+                            case (mb_utilities:is_comparison(Oper1) and mb_utilities:is_comparison(Oper2)) of 
                                 true ->
                                     FieldType = SchemaModule:get_field_attribute(type, Field, Table),
 
@@ -797,7 +797,7 @@ process_qand(Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, LoadedModules) ->
                 true -> 
                     case SchemaModule:is_field(Field, Table) of
                         true ->
-                            case (utilities:is_comparison(Oper1) and utilities:is_comparison(Oper2)) of 
+                            case (mb_utilities:is_comparison(Oper1) and mb_utilities:is_comparison(Oper2)) of 
                                 true ->
                                     FieldType = SchemaModule:get_field_attribute(type, Field, Table),
 
@@ -905,7 +905,7 @@ write_my_record_list_of_records_to_file(File, [Next|Remaining]) ->
 % Returns:  
 %-------------------------------------------------------------
 create_csv_file() ->
-    case utilities:create_timestamped_file("../reports") of
+    case mb_utilities:create_timestamped_file("../reports") of
         {ok, File} -> 
             %write_csv_header(File, record_info(fields, schemas)),
             {ok, File};
@@ -1027,12 +1027,12 @@ parse_and_add(Line) ->
         lists:nth(2, Fields),
         lists:nth(3, Fields),
         lists:nth(4, Fields),
-        utilities:string_to_float(lists:nth(5, Fields)),
-        utilities:string_to_float(lists:nth(6, Fields)),
-        utilities:string_to_float(lists:nth(7, Fields)),
-        utilities:string_to_float(lists:nth(8, Fields)),
-        utilities:string_to_float(lists:nth(9, Fields)),
-        utilities:string_to_float(lists:nth(10, Fields)),
+        mb_utilities:string_to_float(lists:nth(5, Fields)),
+        mb_utilities:string_to_float(lists:nth(6, Fields)),
+        mb_utilities:string_to_float(lists:nth(7, Fields)),
+        mb_utilities:string_to_float(lists:nth(8, Fields)),
+        mb_utilities:string_to_float(lists:nth(9, Fields)),
+        mb_utilities:string_to_float(lists:nth(10, Fields)),
         lists:nth(11, Fields),
         lists:nth(12, Fields),
         lists:nth(13, Fields)

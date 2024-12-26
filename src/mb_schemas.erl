@@ -1,31 +1,20 @@
 -module(mb_schemas).
+-include("../include/mb.hrl").
 
--define(CURRENT_VERSION, "0.2").
 
--define(VERSION, version).
--define(INDEX, index).
--define(SCHEMAS, schemas).
--define(POSITION, position).
--define(DISC_COPIES, disc_copies).
--define(DISC_ONLY_COPIES, disc_only_copies).
--define(RAM_COPIES, ram_copies).
-
--define(FIELDS, fields).
--define(NAME, name).
--define(LABEL, label).
--define(ROLE, role).
--define(TYPE, type).
--define(DESCRIPTION, description).
--define(PRIORITY, priority).
--define(DEFAULT_VALUE, default_value).
-
--define(GEN_H_FILE_NAME, "test.hrl").
 -define(QUERY_MODULE, mb_db_query).
 -define(MODIFY_MODULE, mb_db_edit).
 -define(MANAGE_DB_MODULE, mb_db_management).
 
 % Schema management APIs
 -export([new/0, 
+         new/4,
+         is_ssg_attribute/1,
+         set_ssg_name/2,
+         set_ssg_owner/2,
+         set_ssg_email/2,
+         set_ssg_description/2,
+         get_ssg_attributes/1,
          add_schema/2, 
          delete_schema/2,
          is_schema_attribute/1,
@@ -36,7 +25,7 @@
          set_schema_attributes/3,
          set_schema_attribute/4,
          get_schema_attribute/3,
-         schema_specifications/1, 
+         get_ssg/1, 
          schema_names/1]).
 
 -export([generate/2, generate/4]).
@@ -75,29 +64,149 @@
 %============================================================
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+% Executes the callback and retrieves its schema spec group.
 %-------------------------------------------------------------
-schema_specifications(Module) when is_atom(Module) -> Module:schema_specification().
+-spec get_ssg(mb_module()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+get_ssg(Module) when (Module /= ?MODULE), is_atom(Module) -> Module:get_ssg();
+get_ssg(Module) -> {error, {invalid_argument, Module}}.
+
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+% Allocates a new schema specifications group with default
+% schema attrbitues.
 %-------------------------------------------------------------
-new() -> #{?VERSION=>?CURRENT_VERSION,
-           ?SCHEMAS=>[]}.
+-spec new() -> mb_ssg().
+%-------------------------------------------------------------
+new() -> new([], [], [], []).
+
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  Add a new get_schema to the specifications.
-% Returns:  
+% Allocates a new schema specifications group.
 %-------------------------------------------------------------
-add_schema(SchemaName, SS) when is_map(SS) ->
+-spec new(mb_ssg_name(), string(), string(), string()) -> mb_ssg().
+%-------------------------------------------------------------
+new(Name, Owner, Email, Description) ->
+    #{?VERSION=>?CURRENT_VERSION,
+      ?NAME=>Name,
+      ?CREATED=>calendar:local_time(),
+      ?OWNER=>Owner,
+      ?EMAIL=>Email,
+      ?DESCRIPTION=>Description,
+      ?SCHEMAS=>[]}.
+ 
+%-------------------------------------------------------------
+%  
+%-------------------------------------------------------------
+-spec is_ssg_attribute(mb_ssg_attribute()) -> boolean().
+%-------------------------------------------------------------
+is_ssg_attribute(Attribute) when is_atom(Attribute) ->
+
+    case Attribute of 
+        ?VERSION -> true;
+        ?NAME -> true;
+        ?CREATED -> true;
+        ?OWNER -> true;
+        ?EMAIL -> true;
+        ?DESCRIPTION -> true;
+        ?SCHEMAS -> true;
+        _ -> false
+    end;
+
+is_ssg_attribute(_) -> false.
+
+%-------------------------------------------------------------
+%  
+%-------------------------------------------------------------
+-spec set_ssg_name(mb_ssg_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_ssg_name(Name, SSG) when is_atom(Name), is_map(SSG) -> set_ssg_attribute(?NAME, Name, SSG).
+
+%-------------------------------------------------------------
+%  
+%-------------------------------------------------------------
+-spec set_ssg_owner(string(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_ssg_owner(Owner, SSG) -> set_ssg_attribute(?OWNER, Owner, SSG).
+
+%-------------------------------------------------------------
+%  
+%-------------------------------------------------------------
+-spec set_ssg_email(string(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_ssg_email(Email, SSG) -> set_ssg_attribute(?EMAIL, Email, SSG).
+
+%-------------------------------------------------------------
+%  
+%-------------------------------------------------------------
+-spec set_ssg_description(string(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_ssg_description(Description, SSG) -> set_ssg_attribute(?DESCRIPTION, Description, SSG).
+
+%-------------------------------------------------------------
+%  Restricted to a subset of the SSG attributes: name, owner, email, and description.
+%-------------------------------------------------------------
+-spec set_ssg_attribute(mb_ssg_attribute(), term(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_ssg_attribute(Attribute, Value, SSG) when is_map(SSG) -> 
+
+    case ((Attribute == ?NAME) or (Attribute == ?OWNER) or (Attribute == ?EMAIL) or (Attribute == ?DESCRIPTION)) of 
+        true ->
+            case maps:find(Attribute, SSG) of 
+                {ok, _} -> maps:update(Attribute, Value, SSG); 
+                error -> {error, {invalid_specifications, SSG}}
+            end;
+
+        false -> {error, {invalid_request, Attribute}}
+    end;
+
+set_ssg_attribute(Attribute, _Value, SSG) -> {error, {invalid_argument, {Attribute, SSG}}}.
+
+%-------------------------------------------------------------
+%  Returns the SSG attributes except the schemas.
+%-------------------------------------------------------------
+-spec get_ssg_attributes(mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+get_ssg_attributes(SSG) when is_map(SSG) ->
+
+    case maps:find(?VERSION, SSG) of 
+        {ok, Version} -> 
+            case maps:find(?NAME, SSG) of
+                {ok, Name} ->
+                    case maps:find(?CREATED, SSG) of 
+                        {ok, Created} ->
+                            case maps:find(?OWNER, SSG) of 
+                                {ok, Owner} ->
+                                    case maps:find(?EMAIL, SSG) of 
+                                        {ok, Email} ->
+                                            case maps:find(?DESCRIPTION, SSG) of
+                                                {ok, Description} -> [{?VERSION, Version}, {?NAME, Name}, {?CREATED, Created}, {?OWNER, Owner}, {?EMAIL, Email}, {?DESCRIPTION, Description}];
+                                                _ -> {error, {invalid_specifications, SSG}} 
+                                            end;
+                                        _ -> {error, {invalid_specifications, SSG}} 
+                                    end;
+                                _ -> {error, {invalid_specifications, SSG}}
+                            end;
+                        _ -> {error, {invalid_specifications, SSG}} 
+                    end;
+                _ -> {error, {invalid_specifications, SSG}} 
+            end;
+        _ -> {error, {invalid_specifications, SSG}} 
+    end;
+
+get_ssg_attributes(SSG) -> {error, {invalid_specifications, SSG}}.
+
+
+
+%-------------------------------------------------------------
+% Add a new schema to the specifications.
+%-------------------------------------------------------------
+-spec add_schema(mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+add_schema(SchemaName, SSG) when is_map(SSG) ->
 
     % Get the list of schemas and their specification maps.
-    SchemasList = schemas(SS),
+    SchemasList = schemas(SSG),
 
     % We will only proceed with the add if the
     % get_schema name does not exist.
@@ -108,34 +217,34 @@ add_schema(SchemaName, SS) when is_map(SS) ->
 
             % Update the schemas list, the map, and return the updated map.
             UpdatedSchemasList = SchemasList ++ [{SchemaName, Schema}],
-            maps:update(?SCHEMAS, UpdatedSchemasList, SS);
+            maps:update(?SCHEMAS, UpdatedSchemasList, SSG);
 
         true -> {error, {schema_exists, SchemaName}}
     end;
 
-add_schema(_, SS) -> {error, {invalid_argument, SS}}.
+add_schema(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  Add a new get_schema to the specifications.
-% Returns:  
+% Delete a schema from the specifications. 
 %-------------------------------------------------------------
-delete_schema(SchemaName, SS) when is_map(SS) ->
+-spec delete_schema(mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+delete_schema(SchemaName, SSG) when is_map(SSG) ->
 
-    SchemasList = schemas(SS),
+    SchemasList = schemas(SSG),
     UpdatedSchemasList = lists:keydelete(SchemaName, 1, SchemasList),
-    maps:update(?SCHEMAS, UpdatedSchemasList, SS);
+    maps:update(?SCHEMAS, UpdatedSchemasList, SSG);
 
-delete_schema(_, SS) -> {error, {invalid_argument, SS}}.
+delete_schema(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+% 
 %-------------------------------------------------------------
-get_schema(SchemaName, SS) when is_map(SS) ->
+-spec get_schema(mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+get_schema(SchemaName, SSG) when is_map(SSG) ->
 
-    case schemas(SS) of 
+    case schemas(SSG) of 
         {error, Reason} -> {error, Reason};
         
         Schemas ->
@@ -145,60 +254,69 @@ get_schema(SchemaName, SS) when is_map(SS) ->
             end
     end;
 
-get_schema(_, SS) -> {error, {invalid_argument, SS}}.
+get_schema(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
-schemas(SS) when is_map(SS) ->
+-spec schemas(mb_ssg()) -> list() | mb_error().
+%-------------------------------------------------------------
+schemas(SSG) when is_map(SSG) ->
 
-    case maps:find(?SCHEMAS, SS) of 
+    case maps:find(?SCHEMAS, SSG) of 
         {ok, Schemas} -> Schemas; 
         error -> {error, invalid_specifications}
     end;
 
-schemas(SS) -> {error, {invalid_argument, SS}}.
+schemas(SSG) -> {error, {invalid_argument, SSG}}.
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec schema_names(mb_ssg()) -> list() | mb_error().
+%-------------------------------------------------------------
+schema_names(SSG) when is_map(SSG) -> 
+    case schemas(SSG) of 
+        {error, Reason} -> {error, Reason};
+        SchemasList -> schema_names([], SchemasList)
+    end;
+
+schema_names(SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+-spec schema_names(list(), list()) -> list() | mb_error().
 %-------------------------------------------------------------
-schema_names(SS) when is_map(SS) -> 
-    SchemasList = schemas(SS),
-    schema_names([], SchemasList);
-
-schema_names(SS) -> {error, {invalid_argument, SS}}.
-
 schema_names(NameList, []) -> lists:reverse(NameList);
 schema_names(NameList, [{Name, _} |T]) ->
-    schema_names([Name | NameList], T).
+    schema_names([Name | NameList], T);
+
+schema_names(_, List) -> {error, {invalid_ssg_format, List}}.
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-is_schema(SchemaName, SS) when is_map(SS) ->
+-spec is_schema(mb_schema_name(), mb_ssg()) -> boolean() | mb_error().
+%-------------------------------------------------------------
+is_schema(SchemaName, SSG) when is_map(SSG) ->
 
-    case maps:find(?SCHEMAS, SS) of 
+    case maps:find(?SCHEMAS, SSG) of 
         {ok, Schemas} -> lists:keymember(SchemaName, 1, Schemas);
         error -> {error, {invalid_schema_name, SchemaName}} 
     end;
 
-is_schema(_, SS) -> {error, {invalid_argument, SS}}.
+is_schema(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
-%  
+% 
 %-------------------------------------------------------------
-is_schema_attribute(Attribute) -> 
+-spec is_schema_attribute(mb_schema_attribute()) -> boolean() | mb_error().
+%-------------------------------------------------------------
+is_schema_attribute(Attribute) when is_atom(Attribute) -> 
 
    case Attribute of 
         type -> true;
@@ -207,14 +325,16 @@ is_schema_attribute(Attribute) ->
         ram_copies -> true;
         fields -> true;
         _ -> false
-    end.
+    end;
+
+is_schema_attribute(Attribute) -> {error, {invalid_argument, Attribute}}.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  boolean()
+% 
 %-------------------------------------------------------------
-is_schema_attribute(Attribute, Value) -> 
+-spec is_schema_attribute(mb_schema_attribute(), term()) -> boolean() | mb_error().
+%-------------------------------------------------------------
+is_schema_attribute(Attribute, Value) when is_atom(Attribute) -> 
 
    case Attribute of 
         type -> 
@@ -230,29 +350,31 @@ is_schema_attribute(Attribute, Value) ->
         ram_copies -> is_list(Value);
         fields -> is_field_list(Value);
         _ -> false
-    end.
+    end;
+
+is_schema_attribute(Attribute, _) -> {error, {invalid_argument, Attribute}}.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  Sets the schema attributes in batch but not fields.
-% Returns:  
+% Sets the schema attributes in batch but not fields. 
 %-------------------------------------------------------------
-set_schema_attributes([], _, SS) when is_map(SS) -> SS;
+-spec set_schema_attributes(mb_schema_avp_list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_schema_attributes([], _, SSG) when is_map(SSG) -> SSG;
 
-set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) when is_map(SS) ->
+set_schema_attributes([{Attribute, Value} | T], SchemaName, SSG) when is_map(SSG) ->
 
     case (is_schema_attribute(Attribute, Value) and (Attribute /= fields)) of 
         true -> 
             case Attribute of 
-                fields -> update_fields(Value, SchemaName, SS);
+                fields -> update_fields(Value, SchemaName, SSG);
                 _ ->
-                    case get_schema(SchemaName, SS) of
+                    case get_schema(SchemaName, SSG) of
                         {error, Reason} -> {error, Reason};
                         Schema -> 
                             UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
-                            SchemasList = schemas(SS),
+                            SchemasList = schemas(SSG),
                             UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
-                            UpdatedSS = maps:update(?SCHEMAS, UpdatedSchemasList, SS),
+                            UpdatedSS = maps:update(?SCHEMAS, UpdatedSchemasList, SSG),
                             set_schema_attributes(T, SchemaName, UpdatedSS)
                     end
             end;
@@ -260,55 +382,59 @@ set_schema_attributes([{Attribute, Value} | T], SchemaName, SS) when is_map(SS) 
         false -> {error, {invalid_attribute, Attribute}}
     end;
 
-set_schema_attributes(AvpList, SchemaName, SS) -> {error, {invalid_argument, {AvpList, SchemaName, SS}}}.
+set_schema_attributes(AvpList, SchemaName, SSG) -> {error, {invalid_argument, {AvpList, SchemaName, SSG}}}.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose: 
-% Returns:  
+% 
 %-------------------------------------------------------------
-set_schema_attribute(Attribute, Value, SchemaName, SS) when is_map(SS) ->
+-spec set_schema_attribute(mb_schema_attribute, term(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_schema_attribute(Attribute, Value, SchemaName, SSG) when is_map(SSG) ->
 
     case is_schema_attribute(Attribute, Value) of 
         true ->
             case Attribute of 
                 %% TODO: revisit why we are doing update_fields here.
-                fields -> update_fields(Value, SchemaName, SS);
+                fields -> update_fields(Value, SchemaName, SSG);
                 _ ->
-                    case get_schema(SchemaName, SS) of
+                    case get_schema(SchemaName, SSG) of
                         {error, Reason} -> {error, Reason};
                         Schema ->
                             UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
-                            SchemasList = schemas(SS),
+                            SchemasList = schemas(SSG),
                             UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
-                            maps:update(?SCHEMAS, UpdatedSchemasList, SS)
+                            maps:update(?SCHEMAS, UpdatedSchemasList, SSG)
                     end
             end;
 
         false -> {error, {invalid_attribute, Attribute}}
     end;
 
-set_schema_attribute(_, _, _, SS) -> {error, {invalid_argument, SS}}.
+set_schema_attribute(_, _, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+% 
 %------------------------------------------------------------- 
-get_schema_attribute(Attribute, SchemaName, SS) when is_map(SS) -> 
+-spec get_schema_attribute(mb_schema_attribute(), mb_schema_name(), mb_ssg()) -> term() | mb_error().
+%------------------------------------------------------------- 
+get_schema_attribute(Attribute, SchemaName, SSG) when is_map(SSG) -> 
     % io:format("~nattribute: ~p~n", [Attribute]),
 
     case is_schema_attribute(Attribute) of
         true ->
-            case get_schema(SchemaName, SS) of 
+            case get_schema(SchemaName, SSG) of 
                 {error, Reason} -> {error, Reason};
-                Schema -> maps:get(Attribute, Schema)
+                Schema -> 
+                    case maps:find(Attribute, Schema) of 
+                        {ok, Value} -> Value;
+                        error -> {error, {invalid_argument, SSG}}
+                    end
             end;
         false -> {error, {invalid_attribute, Attribute}}
     end;
 
-get_schema_attribute(_, _, SS) -> {error, {invalid_argument, SS}}.
+get_schema_attribute(_, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 
@@ -317,41 +443,45 @@ get_schema_attribute(_, _, SS) -> {error, {invalid_argument, SS}}.
 %============================================================
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+%  
 %-------------------------------------------------------------
-add_field(FieldName, SchemaName, SS) when is_map(SS) ->
+-spec add_field(mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+add_field(FieldName, SchemaName, SSG) when is_map(SSG) ->
 
-    Schemas = schemas(SS),
+    Schemas = schemas(SSG),
 
     case lists:keyfind(SchemaName, 1, Schemas) of 
         {SchemaName, SchemaSpecifications} ->
-            FieldList = maps:get(?FIELDS, SchemaSpecifications),
+                
+            case maps:find(?FIELDS, SchemaSpecifications) of 
+                {ok, FieldList} ->
+                    case add_field(FieldName, FieldList) of 
+                        {error, Reason} -> {error, Reason};
 
-            case add_field(FieldName, FieldList) of 
-                {error, Reason} -> {error, Reason};
+                        UpdatedFieldList ->
+                            UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
+                            UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
+                            maps:update(?SCHEMAS, UpdatedSchemas, SSG)
+                    end; 
 
-                UpdatedFieldList ->
-                    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-                    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-                    maps:update(?SCHEMAS, UpdatedSchemas, SS)
+                error -> {error, {invalid_argument, SSG}}
             end;
 
         false -> {error, {schema_name_not_found, SchemaName}}
     end;
 
-add_field(FieldName, SchemaName, SS) -> {error, {invalid_argument, {FieldName, SchemaName, SS}}}.
+add_field(FieldName, SchemaName, SSG) -> {error, {invalid_argument, {FieldName, SchemaName, SSG}}}.
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-get_field(FieldName, SchemaName, SS) when is_map(SS) ->
+-spec get_field(mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_field_spec() | mb_error().
+%-------------------------------------------------------------
+get_field(FieldName, SchemaName, SSG) when is_map(SSG) ->
     
-    case fields(SchemaName, SS) of 
+    case fields(SchemaName, SSG) of 
         {error, Reason} -> {error, Reason};
         FieldsList ->
             case lists:keyfind(FieldName, 1, FieldsList) of
@@ -360,16 +490,16 @@ get_field(FieldName, SchemaName, SS) when is_map(SS) ->
             end
     end;
 
-get_field(_, _, SS) -> {error, {invalid_argument, SS}}.
+get_field(_, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  [{FieldName, FieldSpecifications}]
+% 
 %-------------------------------------------------------------
-fields(SchemaName, SS) when is_map(SS) ->
+-spec fields(mb_schema_name(), mb_ssg()) -> mb_field_spec_list() | mb_error().
+%-------------------------------------------------------------
+fields(SchemaName, SSG) when is_map(SSG) ->
 
-    Schemas = schemas(SS),
+    Schemas = schemas(SSG),
     
     case lists:keyfind(SchemaName, 1, Schemas) of 
         {SchemaName, SchemaSpecifications} ->
@@ -378,17 +508,21 @@ fields(SchemaName, SS) when is_map(SS) ->
         false -> {error, {schema_name_not_found, SchemaName}}
     end;
 
-fields(_, SS) -> {error, {invalid_argument, SS}}.
+fields(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
+%
+%-------------------------------------------------------------
+-spec is_field_attribute(mb_field_attribute()) -> boolean().
 %-------------------------------------------------------------
 is_field_attribute(Attribute) ->
 
     case Attribute of 
+        ?NAME -> true;
         ?LABEL -> true;
         ?ROLE -> true;
-        ?TYPE -> true;
+        ?FIELD_TYPE -> true;
         ?PRIORITY -> true;
         ?DEFAULT_VALUE -> true;
         ?DESCRIPTION -> true;
@@ -396,10 +530,14 @@ is_field_attribute(Attribute) ->
     end.
 
 %-------------------------------------------------------------
+%
+%-------------------------------------------------------------
+-spec is_field_attribute(mb_field_attribute(), term()) -> boolean().
 %-------------------------------------------------------------
 is_field_attribute(Attribute, Value) ->
 
     case Attribute of
+        ?NAME -> is_atom(Value);
         ?LABEL -> is_list(Value);
         ?ROLE -> 
             case Value of
@@ -408,7 +546,7 @@ is_field_attribute(Attribute, Value) ->
                 _ -> false
             end;
 
-        ?TYPE -> is_type(Value);
+        ?SCHEMA_TYPE -> is_type(Value);
 
         ?PRIORITY -> 
             case Value of
@@ -422,43 +560,53 @@ is_field_attribute(Attribute, Value) ->
     end.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+%  
 %-------------------------------------------------------------
-set_field_attribute(Attribute, Value, FieldName, SchemaName, SS) when is_map(SS) ->
+-spec set_field_attribute(mb_field_attribute(), term(), mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) when is_map(SSG) ->
 
-    % Screen the attribute/value pair.
-    case is_field_attribute(Attribute, Value) of
-        true ->
-            Schemas = schemas(SS),
-            
+    % only certain attributes can be modified after field
+    % creation. For example, it is prohibited to change
+    % a field name, it must be deleted and a new one added.
+
+    case Attribute of 
+        PermittedAttribute when PermittedAttribute == ?DESCRIPTION; PermittedAttribute == ?LABEL; PermittedAttribute == ?PRIORITY; PermittedAttribute == ?DEFAULT_VALUE; PermittedAttribute == ?FIELD_TYPE ->
+
+            Schemas = schemas(SSG),
+
             case lists:keyfind(SchemaName, 1, Schemas) of 
-                {SchemaName, SchemaSpecifications} -> 
-                    FieldList = maps:get(?FIELDS, SchemaSpecifications),
+                {SchemaName, SchemaSpecifications} ->                         
+                    case maps:find(?FIELDS, SchemaSpecifications) of
 
-                    UpdatedFieldList = update_field(Attribute, Value, FieldName, FieldList),
+                        {ok, FieldList} ->
+                            UpdatedFieldList = update_field(Attribute, Value, FieldName, FieldList),
+                            UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
+                            UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
+                            maps:update(?SCHEMAS, UpdatedSchemas, SSG);
 
-                    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-                    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-                    maps:update(?SCHEMAS, UpdatedSchemas, SS);
+                        error -> {error, {invalid_field_attribute, Attribute}}
+                    end;
 
                 false -> {error, {schema_name_not_found, SchemaName}}
-
             end;
 
-        false -> {error, {invalid_field_attribute, Attribute}}
+        ?POSITION   -> {error, {not_supported, Attribute}};
+        ?ROLE   -> {error, {not_supported, Attribute}};
+        ?NAME       -> {error, {not_permitted, Attribute}};
+
+        _ -> {error, {invalid_field_attribute, Attribute}}
     end;
 
-set_field_attribute(_, _, _, _, SS) -> {error, {invalid_argument, SS}}.
+set_field_attribute(_, _, _, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
-set_field_attributes(AvpList, FieldName, SchemaName, SS) when is_map(SS) ->
+-spec set_field_attributes(mb_field_avp_list(), mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_field_attributes(AvpList, FieldName, SchemaName, SSG) when is_map(SSG) ->
 
     % 1. Get the schemas list
     % 2. Extract the specifications for SchemaName
@@ -469,50 +617,60 @@ set_field_attributes(AvpList, FieldName, SchemaName, SS) when is_map(SS) ->
     % 7. Put the field list back in the get_schema specifications
     % 8. Update the get_schema specifications map
 
-    Schemas = schemas(SS),
+    Schemas = schemas(SSG),
 
     case lists:keyfind(SchemaName, 1, Schemas) of
 
         {SchemaName, SchemaSpecifications} -> 
-            FieldList = maps:get(?FIELDS, SchemaSpecifications),
+            case maps:find(?FIELDS, SchemaSpecifications) of
 
-            case lists:keyfind(FieldName, 1, FieldList) of 
-                {FieldName, FieldSpecifications} -> 
-                
-                    case set_field_attributes(AvpList, FieldSpecifications) of 
-                        {error, Reason} -> {error, Reason};
+                {ok, FieldList} ->
 
-                        UpdatedFieldSpecifications ->
-                            UpdatedFieldList = lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications}),
-                            UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-                            UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-                            maps:update(?SCHEMAS, UpdatedSchemas, SS)
+                    case lists:keyfind(FieldName, 1, FieldList) of 
+                        {FieldName, FieldSpecifications} -> 
+                        
+                            case set_field_attributes(AvpList, FieldSpecifications) of 
+                                {error, Reason} -> {error, Reason};
+
+                                UpdatedFieldSpecifications ->
+                                    UpdatedFieldList = lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications}),
+                                    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
+                                    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
+                                    maps:update(?SCHEMAS, UpdatedSchemas, SSG)
+                            end;
+                        
+                        false -> {error, {field_name_not_found, FieldName}}
                     end;
-                
-                false -> {error, {field_name_not_found, FieldName}}
+
+                error -> {error, {invalid_argument, SSG}}
             end;
 
         false -> {error, {schema_name_not_found, SchemaName}}
     end;
 
-set_field_attributes(_, _, _, SS) -> {error, {invalid_argument, SS}}.
+set_field_attributes(_, _, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
-get_field_attribute(Attribute, FieldName, SchemaName, SS) when is_map(SS) -> 
+-spec get_field_attribute(mb_field_attribute(), mb_field_name(), mb_schema_name(), mb_ssg()) -> term() | mb_error().
+%-------------------------------------------------------------
+get_field_attribute(Attribute, FieldName, SchemaName, SSG) when is_map(SSG) -> 
 
-    case fields(SchemaName, SS) of 
+    case fields(SchemaName, SSG) of 
         {error, Reason} -> {error, Reason};
         
         Fields ->
             case lists:keyfind(FieldName, 1, Fields) of 
                 {FieldName, FieldSpecifications} -> 
                     case is_field_attribute(Attribute) of 
-                        true -> maps:get(Attribute, FieldSpecifications);
+                        true -> 
+                            case maps:find(Attribute, FieldSpecifications) of
+                                {ok, Value} -> Value;
+                                error -> {error, {invalid_argument, SSG}}
+                            end;
+
                         false -> {error, {invalid_argument, Attribute}}
                     end;
 
@@ -520,31 +678,35 @@ get_field_attribute(Attribute, FieldName, SchemaName, SS) when is_map(SS) ->
             end
     end;
 
-get_field_attribute(_, _, _, SS) -> {error, {invalid_argument, SS}}.
+get_field_attribute(_, _, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-is_field(FieldName, SchemaName, SS) when is_map(SS) ->
+-spec is_field(mb_field_name(), mb_schema_name(), mb_ssg()) -> boolean() | mb_error().
+%-------------------------------------------------------------
+is_field(FieldName, SchemaName, SSG) when is_map(SSG) ->
 
-    Fields = fields(SchemaName, SS),
-    lists:keymember(FieldName, 1, Fields);
+    case fields(SchemaName, SSG) of 
+        {error, Reason} -> {error, Reason};
+        Fields -> lists:keymember(FieldName, 1, Fields)
+    end;
 
-is_field(_, _, SS) -> {error, {invalid_argument, SS}}.
+is_field(_, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+%   
 %------------------------------------------------------------- 
-update_fields(FieldList, SchemaName, SS) when is_map(SS) -> 
+-spec update_fields(mb_field_spec_list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%------------------------------------------------------------- 
+update_fields(FieldList, SchemaName, SSG) when is_map(SSG) -> 
 
     %% First, validate the field list
     case is_field_list(FieldList) of 
         true -> 
-            SchemasList = schemas(SS),
+            SchemasList = schemas(SSG),
 
             case lists:keyfind(SchemaName, 1, SchemasList) of
 
@@ -552,7 +714,7 @@ update_fields(FieldList, SchemaName, SS) when is_map(SS) ->
                     UpdatedSchemaSpecifications = maps:update(?FIELDS, FieldList, SchemaSpecifications),
 
                     UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
-                    maps:update(?SCHEMAS, UpdatedSchemasList, SS);
+                    maps:update(?SCHEMAS, UpdatedSchemasList, SSG);
 
                 false -> {error, {schema_name_not_found, SchemaName}}
             end;
@@ -560,52 +722,59 @@ update_fields(FieldList, SchemaName, SS) when is_map(SS) ->
         false -> {error, {bad_field_list, FieldList}}
     end;
 
-update_fields(_, _, SS) -> {error, {invalid_argument, SS}}.
+update_fields(_, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-field_count(SchemaName, SS) when is_map(SS) ->
+-spec field_count(mb_schema_name(), mb_ssg()) -> integer() | mb_error().
+%-------------------------------------------------------------
+field_count(SchemaName, SSG) when is_map(SSG) ->
 
-    case fields(SchemaName, SS) of 
+    case fields(SchemaName, SSG) of 
         {error, Reason} -> {error, Reason};
         Fields -> length(Fields) 
     end;
 
-field_count(_, SS) -> {error, {invalid_argument, SS}}.
+field_count(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-mandatory_field_count(SchemaName, SS) when is_map(SS) ->
+-spec mandatory_field_count(mb_schema_name(), mb_ssg()) -> integer() | mb_error().
+%-------------------------------------------------------------
+mandatory_field_count(SchemaName, SSG) when is_map(SSG) ->
 
-    case fields(SchemaName, SS) of 
+    case fields(SchemaName, SSG) of 
         {error, Reason} -> {error, Reason};
         Fields -> mandatory_field_count_next(Fields, 0)
     end;
 
-mandatory_field_count(_, SS) -> {error, {invalid_argument, SS}}.
+mandatory_field_count(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 mandatory_field_count_next([], FinalMandatoryCount) -> FinalMandatoryCount;
 mandatory_field_count_next([{_, FieldSpec} | T], MandatoryCount) ->
     
-    case maps:get(priority, FieldSpec) of 
-        mandatory -> mandatory_field_count_next(T, MandatoryCount+1);
-        optional -> mandatory_field_count_next(T, MandatoryCount) 
+    case maps:find(?PRIORITY, FieldSpec) of 
+        {ok, mandatory} -> mandatory_field_count_next(T, MandatoryCount+1);
+        {ok, optional} -> mandatory_field_count_next(T, MandatoryCount);
+        error -> {error, {invalid_argument, FieldSpec}}
     end.
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-field_names(SchemaName, SS) when is_map(SS) -> 
-    case fields(SchemaName, SS) of 
+-spec field_names(mb_schema_name(), mb_ssg()) -> list() | mb_error().
+%-------------------------------------------------------------
+field_names(SchemaName, SSG) when is_map(SSG) -> 
+    case fields(SchemaName, SSG) of 
         {error, Reason} -> {error, Reason};
         Fields -> field_names_next(Fields, [])
     end;
 
-field_names(_, SS) -> {error, {invalid_argument, SS}}.
+field_names(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 field_names_next([], FinalList) -> lists:reverse(FinalList);
@@ -615,32 +784,38 @@ field_names_next([{FieldName, _} | T], CompiledList) -> field_names_next(T, [Fie
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-key_name(SchemaName, SS) when is_map(SS) -> 
+-spec key_name(mb_schema_name(), mb_ssg()) -> mb_field_name() | mb_error().
+%-------------------------------------------------------------
+key_name(SchemaName, SSG) when is_map(SSG) -> 
 
-    case fields(SchemaName, SS) of 
+    case fields(SchemaName, SSG) of 
         {error, Reason} -> {error, Reason};
          [Key|_] -> Key
     end;
 
-key_name(_, SS) -> {error, {invalid_argument, SS}}.
+key_name(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-key_type(SchemaName, SS) when is_map(SS) -> 
+-spec key_type(mb_schema_name(), mb_ssg()) -> mb_value_type() | mb_error().
+%-------------------------------------------------------------
+key_type(SchemaName, SSG) when is_map(SSG) -> 
 
-    case field_names(SchemaName, SS) of 
+    case field_names(SchemaName, SSG) of 
         {error, Reason} -> {error, Reason};
-         [Key|_] -> get_field_attribute(type, Key, SchemaName, SS)
+         [Key|_] -> get_field_attribute(type, Key, SchemaName, SSG)
     end;
 
-key_type(_, SS) -> {error, {invalid_argument, SS}}.
+key_type(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-field_position(FieldName, SchemaName, SS) -> get_field_attribute(?POSITION, FieldName, SchemaName, SS).
+-spec field_position(mb_field_name(), mb_schema_name(), mb_ssg()) -> integer() | mb_error().
+%-------------------------------------------------------------
+field_position(FieldName, SchemaName, SSG) -> get_field_attribute(?POSITION, FieldName, SchemaName, SSG).
 
 %============================================================
 %    CODE GENERATION APIs
@@ -649,18 +824,18 @@ field_position(FieldName, SchemaName, SS) -> get_field_attribute(?POSITION, Fiel
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-generate(Module, SS) -> generate(Module, ".", ".", SS).
+%-------------------------------------------------------------
+generate(Module, SSG) -> generate(Module, ".", ".", SSG).
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
-generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath) and is_list(HrlPath) and is_map(SS)) ->
+%-------------------------------------------------------------
+generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), is_list(HrlPath), is_map(SSG) ->
 
     io:format("generate::started~n"),
 
-    case utilities:is_unquoted_atom(Module) of 
+    case mb_utilities:is_unquoted_atom(Module) of 
 
         
         true ->
@@ -671,7 +846,7 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
 
                     io:format("generate::header file opened for writing~n"),
                     
-                    generate_records(SS, HrlIoDevice),
+                    generate_records(SSG, HrlIoDevice),
 
                     case file:open(SrcPath ++ "/" ++ atom_to_list(Module) ++ ".erl", [write]) of
                         {ok, SrcIoDevice}  -> 
@@ -683,7 +858,7 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             
 
                             io:format(SrcIoDevice, "~n", []),
-                            io:format(SrcIoDevice, "-export([schema_specifications/0]).~n", []),
+                            io:format(SrcIoDevice, "-export([get_ssg/0]).~n", []),
 
                             io:format(SrcIoDevice, "-export([install/0, install/1, start/0, stop/0, table_size/1, table_sizes/0]).~n", []),
                             io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
@@ -692,8 +867,8 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
                             io:format(SrcIoDevice, "-export([add/1, add/2, add/3, delete/1, delete/2, clear_all_tables/0]).~n", []),
                             io:format(SrcIoDevice, "-export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).~n", []),
                             io:format(SrcIoDevice, "~n", []),
-                            io:format(SrcIoDevice, "schema_specifications() ->~n", []),
-                            io:format(SrcIoDevice, "    ~p.~n", [SS]),    
+                            io:format(SrcIoDevice, "get_ssg() ->~n", []),
+                            io:format(SrcIoDevice, "    ~p.~n", [SSG]),    
 
                             io:format(SrcIoDevice, "~n~n", []),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
@@ -773,9 +948,9 @@ generate(Module, SrcPath, HrlPath, SS) when (is_atom(Module) and is_list(SrcPath
         false -> {error, {invalid_module_name, Module}}
     end;
 
-generate(Module, SrcPath, HrlPath, SS) -> 
+generate(Module, SrcPath, HrlPath, SSG) -> 
     io:format("mb_schemas::error, match guard failed~n"),
-    {error, {invalid_argument, {Module, SrcPath, HrlPath, SS}}}.
+    {error, {invalid_argument, {Module, SrcPath, HrlPath, SSG}}}.
 
 
 %============================================================
@@ -783,22 +958,21 @@ generate(Module, SrcPath, HrlPath, SS) ->
 %============================================================
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: converts the value or crashes
+% 
+%-------------------------------------------------------------
 %-------------------------------------------------------------
 convert_from_stirng(Value, Type) ->
 
   case is_list(Value) of
     true ->
       case Type of
-        integer -> {integer, utilities:string_to_integer(Value)};
-        float -> {float, utilities:string_to_float(Value)};
+        integer -> {integer, mb_utilities:string_to_integer(Value)};
+        float -> {float, mb_utilities:string_to_float(Value)};
         string -> {string, Value};
         list -> {list, Value};
         atom -> {atom, list_to_atom(Value)};
         tuple -> 
-            case utilities:string_to_tuple(Value) of 
+            case mb_utilities:string_to_tuple(Value) of 
                 {ok, Tuple} -> {tuple, Tuple};
                 {error, Reason} -> {error, Reason}
             end;
@@ -821,14 +995,15 @@ convert_from_stirng(Value, Type) ->
 %
 % Returns: {SchemaName, FieldValue1, FieldValue2, ...} or {error, Reason}
 %-------------------------------------------------------------
-convert_schema_data_avp_list_into_record_tuple(AvpList, SS) when (is_list(AvpList) and is_map(SS)) -> 
+%-------------------------------------------------------------
+convert_schema_data_avp_list_into_record_tuple(AvpList, SSG) when is_list(AvpList), is_map(SSG) -> 
     
     % io:format("~nAvp list: ~p~n", [AvpList]),
     
     case lists:keyfind(schema, 1, AvpList) of
         {schema, SchemaName} -> 
             % Get the ordered list of fields, [{FieldName, FieldSpecMap}]
-            case fields(SchemaName, SS) of 
+            case fields(SchemaName, SSG) of 
                 {error, Reason} -> {error, Reason};
                 Fields ->
                     case validate_schema_data_avp_list_next(Fields, lists:keydelete(schema, 1, AvpList), [{schema, SchemaName}]) of
@@ -840,7 +1015,7 @@ convert_schema_data_avp_list_into_record_tuple(AvpList, SS) when (is_list(AvpLis
         false -> {error, schema_name_not_in_avp}
     end;
 
-convert_schema_data_avp_list_into_record_tuple(AvpList, SS) -> {error, {invalid_argument, {AvpList, SS}}}.
+convert_schema_data_avp_list_into_record_tuple(AvpList, SSG) -> {error, {invalid_argument, {AvpList, SSG}}}.
 
 
 validate_schema_data_avp_list_next([], [], FinalList) -> FinalList;
@@ -852,30 +1027,30 @@ validate_schema_data_avp_list_next([{FieldName, FieldSpecMap} | F], AvpList, Int
         {FieldName, FieldValue} -> 
             % Found it, the field is in the supplied list. Validate that
             % the supplied value has the right type.
-            ExpectedType = maps:get(type, FieldSpecMap),
-            ActualType = get_type(FieldValue),
-
-            case ExpectedType == ActualType of
-                true -> validate_schema_data_avp_list_next(F, lists:keydelete(FieldName, 1, AvpList), [{FieldName, FieldValue} | InterimList]);
-                false -> {error, {invalid_type, {FieldName, FieldValue, ActualType}}}
+            case maps:find(type, FieldSpecMap) of 
+                {ok, ExpectedType} ->
+                    ActualType = get_type(FieldValue),
+                    case ExpectedType == ActualType of
+                        true -> validate_schema_data_avp_list_next(F, lists:keydelete(FieldName, 1, AvpList), [{FieldName, FieldValue} | InterimList]);
+                        false -> {error, {invalid_type, {FieldName, FieldValue, ActualType}}}
+                    end;
+                error -> {error, {invalid_argument, FieldSpecMap}}
             end;
 
         false ->
             % If mandatory, then validation fails, otherwise
             % we will select the default value.
 
-            Priority = maps:get(priority, FieldSpecMap),
-
-            case Priority of 
-                mandatory -> {error, {missing_mandatory_field, FieldName}};
-                optional -> validate_schema_data_avp_list_next(F, lists:keydelete(FieldName, 1, AvpList), [{FieldName, maps:get(default_value, FieldSpecMap)} | InterimList])
+            case maps:find(priority, FieldSpecMap) of
+                {ok, mandatory} -> {error, {missing_mandatory_field, FieldName}};
+                {ok, optional} -> validate_schema_data_avp_list_next(F, lists:keydelete(FieldName, 1, AvpList), [{FieldName, maps:get(default_value, FieldSpecMap)} | InterimList]);
+                error -> {error, {invalid_argument, FieldSpecMap}}
             end 
     end.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+% 
+%-------------------------------------------------------------
 %-------------------------------------------------------------
 schema_data_avp_list_to_record_tuple(SchemaDataAvpList) -> 
     %io:format("~nconverting to tuple: ~p~n", [SchemaDataAvpList]),
@@ -885,19 +1060,17 @@ schema_data_avp_list_to_record_tuple_next([], FinalList) -> list_to_tuple(FinalL
 schema_data_avp_list_to_record_tuple_next([{_, Value} | T], InterimList) -> schema_data_avp_list_to_record_tuple_next(T, [Value | InterimList]);
 schema_data_avp_list_to_record_tuple_next(InvalidList, _) -> {error, {invalid_argument, InvalidList}}.
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+% 
 %-------------------------------------------------------------
-build_schema_record_from_specifications(SchemaName, SS) when is_map(SS) -> 
-    tuple_to_list([SchemaName, field_names(SchemaName, SS)]);
+%-------------------------------------------------------------
+build_schema_record_from_specifications(SchemaName, SSG) when is_map(SSG) -> 
+    tuple_to_list([SchemaName, field_names(SchemaName, SSG)]);
 
-build_schema_record_from_specifications(_, SS) -> {error, {invalid_argument, SS}}.
+build_schema_record_from_specifications(_, SSG) -> {error, {invalid_argument, SSG}}.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+% 
+%-------------------------------------------------------------
 %-------------------------------------------------------------
 compare_fields_from_specs([], []) -> true;
 compare_fields_from_specs(_, []) -> false;
@@ -919,25 +1092,24 @@ compare_fields_from_specs([Next1 | T1], [Next2 | T2]) ->
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+% 
+%-------------------------------------------------------------
 %-------------------------------------------------------------
 create_schema(SchemaName) when is_atom(SchemaName) -> 
 
-    maps:put(?FIELDS, [], 
-        maps:put(ram_copies, [], 
-            maps:put(disc_only_copies, [], 
-                maps:put(disc_copies, [], 
-                    maps:put(type, set, 
-                        maps:put(?NAME, SchemaName, maps:new()))))));
+    maps:put(?DESCRIPTION, [], 
+        maps:put(?FIELDS, [], 
+            maps:put(?RAM_COPIES, [], 
+                maps:put(?DISC_ONLY_COPIES, [], 
+                    maps:put(?DISC_COPIES, [], 
+                        maps:put(?SCHEMA_TYPE, set, 
+                            maps:put(?NAME, SchemaName, maps:new())))))));
 
 create_schema(SchemaName) -> {error, {invalid_argument, SchemaName}}.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+% 
+%-------------------------------------------------------------
 %-------------------------------------------------------------
 create_field(FieldName) when is_atom(FieldName) ->
 
@@ -945,7 +1117,7 @@ create_field(FieldName) when is_atom(FieldName) ->
     maps:put(?DEFAULT_VALUE, not_defined, 
         maps:put(?PRIORITY, mandatory, 
             maps:put(?POSITION, 0, 
-                maps:put(?TYPE, term, 
+                maps:put(?SCHEMA_TYPE, term, 
                     maps:put(?ROLE, field, 
                         maps:put(?LABEL, "", 
                             maps:put(?NAME, FieldName, maps:new()))))))));
@@ -953,11 +1125,10 @@ create_field(FieldName) when is_atom(FieldName) ->
 create_field(SchemaName) -> {error, {invalid_argument, SchemaName}}.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+% 
 %-------------------------------------------------------------
-add_field(FieldName, FieldList) when (is_atom(FieldName) and is_list(FieldList)) ->
+%-------------------------------------------------------------
+add_field(FieldName, FieldList) when is_atom(FieldName), is_list(FieldList) ->
 
     % We are building a field list for a get_schema.
     % We will create a default field specifications
@@ -984,10 +1155,9 @@ add_field(FieldName, FieldList) -> {error, {invalid_argument, {FieldName, FieldL
 
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  Sets field attributes except for position and role,
-%           they are unchangeable.
-% Returns:  
+% Sets field attributes except for position and role,
+% they are unchangeable.
+%-------------------------------------------------------------
 %-------------------------------------------------------------
 update_field(Attribute, Value, FieldName, FieldList) when is_list(FieldList) ->
 
@@ -1014,10 +1184,9 @@ update_field(_, _, _, FieldList) -> {error, {invalid_argument, FieldList}}.
 
       
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+% 
 %------------------------------------------------------------- 
+%-------------------------------------------------------------
 is_field_list([]) -> true;
 is_field_list([{FieldName, FieldSpecifications} | T]) when is_map(FieldSpecifications) ->
 
@@ -1028,9 +1197,8 @@ is_field_list([{FieldName, FieldSpecifications} | T]) when is_map(FieldSpecifica
 is_field_list(_) -> false.
 
 %-------------------------------------------------------------
-% Function:
-% Purpose:  
-% Returns:  
+%  
+%-------------------------------------------------------------
 %-------------------------------------------------------------
 set_field_attributes([], FieldSpecifications) -> FieldSpecifications;
 
@@ -1083,7 +1251,7 @@ generate_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
 % Returns:  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, BaseModule, IoDevice) -> 
-    io:format(IoDevice, "~n~p() -> ~p:~p(schema_specifications()).~n", 
+    io:format(IoDevice, "~n~p() -> ~p:~p(get_ssg()).~n", 
         [FunctionName, BaseModule, FunctionName]).
 
 
@@ -1093,7 +1261,7 @@ generate_spec_function(FunctionName, BaseModule, IoDevice) ->
 % Returns:  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, BaseModule, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s, schema_specifications()).~n", 
+    io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s, get_ssg()).~n", 
         [FunctionName, Arg1, BaseModule, FunctionName, Arg1]).
 
 %-------------------------------------------------------------
@@ -1102,7 +1270,7 @@ generate_spec_function(FunctionName, Arg1, BaseModule, IoDevice) ->
 % Returns:  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s, schema_specifications()).~n", 
+    io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s, get_ssg()).~n", 
         [FunctionName, Arg1, Arg2, BaseModule, FunctionName, Arg1, Arg2]).
 
 
@@ -1112,7 +1280,7 @@ generate_spec_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
 % Returns:  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, schema_specifications()).~n", 
+    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, get_ssg()).~n", 
         [FunctionName, Arg1, Arg2, Arg3, BaseModule, FunctionName, Arg1, Arg2, Arg3]).
 
 
@@ -1122,7 +1290,7 @@ generate_spec_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) ->
 % Returns:  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, schema_specifications()).~n", 
+    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, get_ssg()).~n", 
         [FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, FunctionName, Arg1, Arg2, Arg3, Arg4]).
 
 
@@ -1132,7 +1300,7 @@ generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, IoDevic
 % Returns:  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, BaseModule, IoDevice) -> 
-    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, ~s, ~s, schema_specifications()).~n", 
+    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, ~s, ~s, get_ssg()).~n", 
         [FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, 
          BaseModule, FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6]).
 
@@ -1142,10 +1310,14 @@ generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, BaseMod
 % Purpose:  
 % Returns:  
 %-------------------------------------------------------------
-generate_records(SS, IoDevice) -> 
+generate_records(SSG, IoDevice) when is_map(SSG) -> 
 
-    Schemas = maps:get(?SCHEMAS, SS),
-    generate_record(Schemas, IoDevice).
+    case maps:find(?SCHEMAS, SSG) of 
+        {ok, Schemas} -> generate_record(Schemas, IoDevice);
+        error -> {error, {invalid_argument, SSG}} 
+    end;
+
+    generate_records(SSG, _IoDevice) -> {error, {invalid_argument, SSG}}.
 
 
 %-------------------------------------------------------------
@@ -1156,13 +1328,15 @@ generate_records(SS, IoDevice) ->
 generate_record([], _) -> ok;
 generate_record([{SchemaName, SchemaSpecifications} | T], HrlIoDevice) -> 
 
-    FieldList = maps:get(?FIELDS, SchemaSpecifications),
-    io:format(HrlIoDevice, "-record(~p, {", [SchemaName]),
-    generate_record_field(FieldList, HrlIoDevice),
-    io:format(HrlIoDevice, "}).~n", []),
+    case maps:find(?FIELDS, SchemaSpecifications) of 
+        {ok, FieldList} ->
+            io:format(HrlIoDevice, "-record(~p, {", [SchemaName]),
+            generate_record_field(FieldList, HrlIoDevice),
+            io:format(HrlIoDevice, "}).~n", []),
+            generate_record(T, HrlIoDevice);
 
-    generate_record(T, HrlIoDevice).
-
+        error -> {error, {invalid_argument, SchemaSpecifications}}
+    end.
 
 %-------------------------------------------------------------
 % Function: 
@@ -1220,7 +1394,7 @@ get_type(Value) ->
           case is_list(Value) of
             true ->
 
-              case utilities:is_printable_string(Value) of
+              case mb_utilities:is_printable_string(Value) of
                 true -> string;
                 false -> list
               end;
