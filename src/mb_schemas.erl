@@ -937,7 +937,8 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
                             generate_spec_function(build_schema_record_from_specifications, "SchemaName", ?MODULE, SrcIoDevice),
                             generate_spec_function(convert_schema_data_avp_list_into_record_tuple, "AvpList", ?MODULE, SrcIoDevice),
                             
-                            file:close(SrcIoDevice);
+                            file:close(SrcIoDevice),
+                            ok;
 
                         {error, Reason} -> {error, Reason}
                     end;

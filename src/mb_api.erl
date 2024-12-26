@@ -6,17 +6,26 @@
 -export([connect/0,
          disconnect/1,
          get_sessions/0,
-         
-         new_specifications/1,
-         new_specifications/5,
+         new_ssg/1,
+         new_ssg/5,
+         set_ssg_name/2,
+         set_ssg_owner/2,
+         set_ssg_email/2,
+         set_ssg_description/2,
+         set_module_name/2,
+         use_module/1,
+         use_ssg/1,
+         generate/1,
+
          add_schema/2,
          delete_schema/2,
          get_schema/2,
+         get_all_schemas/1,
          set_schema_attributes/3,
          get_schema_attribute/3,
-         get_specifications/1,
+         get_ssg/1,
          get_schema_names/1,
-         generate/1,
+         
          add_field/3,
          set_field_attributes/4,
          get_field_attribute/4,
@@ -25,7 +34,16 @@
          get_field_count/2,
          get_mandatory_field_count/2,
          get_field_names/2,
-         get_field_position/3]).
+         get_field_position/3,
+        
+         read/3,
+         select/5,
+         select_or/7,
+         select_and/7,
+        
+         add_record/2,
+         add_record/3,
+         add_record/4]).
 
 
 %-------------------------------------------------------------
@@ -145,10 +163,10 @@ get_sessions() ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec new_specifications(mb_session_id()) -> ok | mb_error().
+-spec new_ssg(mb_session_id()) -> ok | mb_error().
 %-------------------------------------------------------------
-new_specifications(SessionId) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_NEW_SPECIFICATIONS),
+new_ssg(SessionId) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_NEW_SSG),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
@@ -156,20 +174,91 @@ new_specifications(SessionId) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec new_specifications(mb_session_id(), mb_ssg_name(), string(), string(), string()) -> ok | mb_error().
+-spec new_ssg(mb_session_id(), mb_ssg_name(), string(), string(), string()) -> ok | mb_error().
 %-------------------------------------------------------------
-new_specifications(SessionId, Name, Owner, Email, Description) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_NEW_SPECIFICATIONS, {{name, Name}, {owner, Owner}, {email, Email}, {description, Description}}),
+new_ssg(SessionId, Name, Owner, Email, Description) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_NEW_SSG, {{name, Name}, {owner, Owner}, {email, Email}, {description, Description}}),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec get_specifications(mb_session_id()) -> {ok, mb_ssg()} | mb_error().
+-spec get_ssg(mb_session_id()) -> {ok, mb_ssg()} | mb_error().
 %-------------------------------------------------------------
-get_specifications(SessionId) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SPECIFICATIONS),
+get_ssg(SessionId) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SSG),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec set_ssg_name(mb_session_id(), atom()) -> ok | mb_error().
+%-------------------------------------------------------------
+set_ssg_name(SessionId, Name) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SSG_NAME, {{name, Name}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec set_ssg_owner(mb_session_id(), string()) -> ok | mb_error().
+%-------------------------------------------------------------
+set_ssg_owner(SessionId, Owner) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SSG_OWNER, {{owner, Owner}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec set_ssg_email(mb_session_id(), string()) -> ok | mb_error().
+%-------------------------------------------------------------
+set_ssg_email(SessionId, Email) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SSG_EMAIL, {{email, Email}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec set_ssg_description(mb_session_id(), string()) -> ok | mb_error().
+%-------------------------------------------------------------
+set_ssg_description(SessionId, Description) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SSG_DESCRIPTION, {{description, Description}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec set_module_name(mb_session_id(), atom()) -> ok | mb_error().
+%-------------------------------------------------------------
+set_module_name(SessionId, Module) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_MODULE_NAME, {{module_name, Module}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec use_module(mb_session_id()) -> ok | mb_error().
+%-------------------------------------------------------------
+use_module(SessionId) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_USE_MODULE, {{use_module, true}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec use_ssg(mb_session_id()) -> ok | mb_error().
+%-------------------------------------------------------------
+use_ssg(SessionId) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_USE_MODULE, {{use_module, false}}),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
@@ -206,6 +295,14 @@ delete_schema(SessionId, SchemaName) ->
 %-------------------------------------------------------------
 get_schema(SessionId, SchemaName) ->  
     Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+get_all_schemas(SessionId) ->  
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_ALL_SCHEMAS),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
@@ -312,6 +409,66 @@ get_field_position(SessionId, SchemaName, FieldName) ->
     request_response_result(Reply).
 
 
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+read(SessionId, SchemaName, Key) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_READ_RECORD, {{schema_name, SchemaName}, {key_name, Key}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+select(SessionId, SchemaName, Field, Oper, Value) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SELECT, {{schema_name, SchemaName}, {field_name, Field}, {operator, Oper}, {value, Value}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+select_or(SessionId, SchemaName, Field, Oper1, Value1, Oper2, Value2) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SELECT_OR, {{schema_name, SchemaName}, {field_name, Field}, {operator1, Oper1}, {value1, Value1}, {operator2, Oper2}, {value2, Value2}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+select_and(SessionId, SchemaName, Field, Oper1, Value1, Oper2, Value2) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SELECT_AND, {{schema_name, SchemaName}, {field_name, Field}, {operator1, Oper1}, {value1, Value1}, {operator2, Oper2}, {value2, Value2}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+add_record(SessionId, Record) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_RECORD, {{record, Record}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+add_record(SessionId, SchemaName, Record) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_RECORD, {{schema_name, SchemaName}, {record, Record}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+add_record(SessionId, SchemaName, Key, Data) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_RECORD, {{schema_name, SchemaName}, {key_name, Key}, {data, Data}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 

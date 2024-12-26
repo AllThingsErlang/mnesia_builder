@@ -1,4 +1,4 @@
--module(test_schema).
+-module(ssg1).
 
 -export([get_ssg/0]).
 -export([install/0, install/1, start/0, stop/0, table_size/1, table_sizes/0]).
@@ -9,49 +9,28 @@
 -export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).
 
 get_ssg() ->
-    #{name => schema_group_1,owner => "Test User",version => "0.2",
-      description => "Test module to validate the schema handling code",
+    #{name => ssg1,owner => "George K.",version => "0.2",
+      description => "test gss",email => "george@gmail.com",
       schemas =>
           [{employees,
                #{name => employees,type => set,description => [],
                  fields =>
-                     [{employee_id,
-                          #{label => "Employee ID",name => employee_id,
-                            position => 1,priority => mandatory,
-                            type => integer,description => [],role => key,
-                            default_value => not_defined}},
-                      {employee_last_name,
-                          #{label => [],name => employee_last_name,
-                            position => 2,priority => mandatory,
-                            type => string,description => [],role => field,
-                            default_value => not_defined}},
-                      {employee_first_name,
-                          #{label => "First Name",name => employee_first_name,
-                            position => 3,priority => optional,type => string,
-                            description => [],role => field,
-                            default_value => []}}],
-                 disc_copies => [],disc_only_copies => [],ram_copies => []}},
-           {departments,
-               #{name => departments,type => set,description => [],
-                 fields =>
-                     [{department_id,
-                          #{label => [],name => department_id,position => 1,
-                            priority => mandatory,type => string,
-                            description => [],role => key,
-                            default_value => not_defined}},
-                      {manager_last_name,
-                          #{label => [],name => manager_last_name,
-                            position => 2,priority => mandatory,
-                            type => string,description => [],role => field,
-                            default_value => not_defined}},
-                      {manager_first_name,
-                          #{label => [],name => manager_first_name,
-                            position => 3,priority => mandatory,
-                            type => string,description => [],role => field,
-                            default_value => not_defined}}],
+                     [{id,#{label => [],name => id,position => 1,
+                            priority => mandatory,type => term,
+                            description => [],default_value => not_defined,
+                            role => key}},
+                      {last_name,
+                          #{label => [],name => last_name,position => 2,
+                            priority => mandatory,type => term,
+                            description => [],default_value => not_defined,
+                            role => field}},
+                      {first_name,
+                          #{label => [],name => first_name,position => 3,
+                            priority => mandatory,type => term,
+                            description => [],default_value => not_defined,
+                            role => field}}],
                  disc_copies => [],disc_only_copies => [],ram_copies => []}}],
-      created => {{2024,12,25},{20,2,19}},
-      email => "nowhere@nowehre.com"}.
+      created => {{2024,12,26},{13,42,40}}}.
 
 
 %-------------------------------------------------------

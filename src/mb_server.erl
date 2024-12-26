@@ -5,6 +5,12 @@
 
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
+
+-define(STATE_SESSIONS, sessions).
+-define(STATE_SESSION_DIR, session_dir).
+
+-define(DIR_SESSIONS, "sessions").
+
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
@@ -20,7 +26,15 @@ start_link() ->
 %-------------------------------------------------------------
 init([]) -> 
     process_flag(trap_exit, true),
-    {ok, #{sessions=>[]}}.
+
+    State = #{?STATE_SESSIONS=>[], ?STATE_SESSION_DIR=>?DIR_SESSIONS},
+
+    case file:make_dir(?DIR_SESSIONS) of
+        ok -> {ok, State};
+        {error, eexist} -> {ok, State};
+        {error, Reason} -> {stop, {error, {failed_to_create_session_root_dir, Reason}}}
+    end.
+
 
 
 %-------------------------------------------------------------
@@ -40,7 +54,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
     Token = random_10_digit_number(),
 
     % Launch a worker to handle the new session
-    {ok, WorkerPid} = mb_worker:start(self(), ClientPid, Token),
+    {ok, WorkerPid} = mb_worker:start(self(), ClientPid, Token, maps:get(?STATE_SESSION_DIR, State)),
 
     SessionId = {WorkerPid, ClientPid, Token},
 

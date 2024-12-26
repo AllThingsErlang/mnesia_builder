@@ -1,2 +1,0 @@
--record(employees, {employee_id,employee_last_name,employee_first_name}).
--record(departments, {department_id,manager_last_name,manager_first_name}).

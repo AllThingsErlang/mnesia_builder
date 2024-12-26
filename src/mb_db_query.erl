@@ -1,24 +1,31 @@
 -module(mb_db_query).
+-include("../include/mb.hrl").
+
 -import(mnesia, [transaction/1]).
 -import(utilities, [find_list_pos/2]).
 
 
--export([read/2, select/5, select_or/7, select_and/7, build_matchhead/2]).
+-export([read/3, select/5, select_or/7, select_and/7, build_matchhead/2]).
 
 
 %-------------------------------------------------------------
 % Reads from the table SchemaName with key = Key. The table must
 % have been created.
 %-------------------------------------------------------------
--spec read(atom(), term()) -> list() | {error, term()}.
+-spec read(mb_schema_name(), term(), mb_ssg()) -> list() | mb_error().
 %-------------------------------------------------------------
-read(SchemaName, Key) ->
+read(SchemaName, Key, SSG) ->
 
-    Fun = fun() -> mnesia:read({SchemaName, Key}) end,
+    case mb_schemas:is_schema(SchemaName, SSG) of 
+        true -> 
+            Fun = fun() -> mnesia:read({SchemaName, Key}) end,
 
-    case mnesia:transaction(Fun) of
-        {atomic, Result} -> Result;
-        {aborted, Reason} -> {error, Reason}
+            case mnesia:transaction(Fun) of
+                {atomic, Result} -> Result;
+                {aborted, Reason} -> {error, Reason}
+            end;
+
+        false -> {error, {invalid_schema_name, SchemaName}}
     end.
 
 %-------------------------------------------------------------
@@ -33,7 +40,7 @@ read(SchemaName, Key) ->
 %    - Validate Operator before using it.
 %
 %-------------------------------------------------------------
--spec select(atom(), atom(), atom(), term(), map()) -> list() | {error, term()}.
+-spec select(atom(), atom(), atom(), term(), mb_ssg()) -> list() | mb_error().
 %-------------------------------------------------------------
 select(SchemaName, FieldName, Operator, Value, SSG) -> 
     MatchHead = build_matchhead(SchemaName, SSG),
@@ -64,7 +71,7 @@ select(SchemaName, FieldName, Operator, Value, SSG) ->
 %      (age '<' 18) or (age '>' 45)
 %
 %-------------------------------------------------------------
--spec select_or(atom(), atom(), atom(), term(), atom(), term(), map()) -> list() | {error, term()}.
+-spec select_or(atom(), atom(), atom(), term(), atom(), term(), mb_ssg()) -> list() | mb_error().
 %-------------------------------------------------------------
 select_or(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) -> 
     
@@ -100,7 +107,7 @@ select_or(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) ->
 %      (age '>' 18) and (age '<' 45)
 %
 %-------------------------------------------------------------
--spec select_and(atom(), atom(), atom(), term(), atom(), term(), map()) -> list() | {error, term()}.
+-spec select_and(atom(), atom(), atom(), term(), atom(), term(), mb_ssg()) -> list() | mb_error().
 %-------------------------------------------------------------
 select_and(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) -> 
     MatchHead = build_matchhead(SchemaName, SSG),
