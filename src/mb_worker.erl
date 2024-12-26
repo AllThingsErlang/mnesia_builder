@@ -961,9 +961,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
+%-------------------------------------------------------------
+handle_cast(shutdown, State) ->
+    io:format("[db::worker::~p]: handle_cast: shutdown~n", [self()]),
+    {stop, normal, State};
+
+%-------------------------------------------------------------
+% 
 %-------------------------------------------------------------
 handle_cast(Message, State) ->
     io:format("[db::worker::~p]: unsupported message: ~p~n", [self(), Message]),
@@ -1029,6 +1034,11 @@ handle_info({'DOWN', _Ref, process, ClientPid, _Reason}, State) ->
 handle_info(Info, State) ->
     io:format("[db::worker::~p]: unsupported info notification: ~p~n", [self(), Info]),
     {noreply, State}.
+
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+terminate(shutdown, _State) -> ok;
 
 %-------------------------------------------------------------
 % Function: 

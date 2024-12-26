@@ -134,13 +134,32 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns: 
+% 
 %-------------------------------------------------------------
-terminate(Reason, _State) ->
+terminate(normal, State) ->
+    io:format("[db::server::~p]: terminate: normal~n", [self()]),
+    shutdown_workers(maps:get(?STATE_SESSIONS, State));
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+terminate(shutdown, State) ->
+    io:format("[db::server::~p]: terminate: shutdown~n", [self()]),
+    shutdown_workers(maps:get(?STATE_SESSIONS, State));
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+terminate({shutdown, _}, State) ->
+    io:format("[db::server::~p]: terminate: shutdown~n", [self()]),
+    shutdown_workers(maps:get(?STATE_SESSIONS, State));
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+terminate(Reason, State) ->
     io:format("[db::server::~p]: terminate: ~p~n", [self(), Reason]),
-    ok.
+    shutdown_workers(maps:get(?STATE_SESSIONS, State)).
 
 %-------------------------------------------------------------
 % Function: 
@@ -161,3 +180,10 @@ random_10_digit_number() ->
     Min = 1000000000,
     Max = 9999999999,
     Min + rand:uniform(Max - Min + 1) - 1.
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+shutdown_workers([]) -> ok;
+shutdown_workers([{WorkerPid, _, _} | T]) -> 
+    supervisor:cast(WorkerPid, shutdown),
+    shutdown_workers(T).
