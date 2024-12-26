@@ -11,7 +11,7 @@
 -define(STATE_SESSION_ACTIVE, session_active).
 -define(STATE_CLIENT_PROCESS_REF, client_process_ref).
 -define(STATE_TIMER, timer).
--define(STATE_SPECIFICATIONS, specifications).
+-define(STATE_SSG, specifications).
 -define(STATE_MODULE, module).
 -define(STATE_USE_MODULE, use_module).
 -define(STATE_SESSION_DIR, session_dir).
@@ -49,7 +49,7 @@ init({ServerPid, ClientPid, Token, SessionRootDir}) ->
                 ?STATE_MODULE=>[],
                 ?STATE_USE_MODULE=>false,
                 ?STATE_SESSION_DIR=>SessionDir,
-                ?STATE_SPECIFICATIONS=>mb_schemas:new()},
+                ?STATE_SSG=>mb_schemas:new()},
 
     case file:make_dir(SessionDir) of
         ok -> {ok, State};
@@ -162,7 +162,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, _SessionId}, {?MSG_TYPE_REQUE
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SSG}}, {}}}, State) ->
 
-    UpdatedState = maps:update(?STATE_SPECIFICATIONS, mb_schemas:new(), State),
+    UpdatedState = maps:update(?STATE_SSG, mb_schemas:new(), State),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
     {reply, ReplyMessage, UpdatedState};
 
@@ -173,7 +173,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SSG}}, {{name, Name}, {owner, Owner}, {email, Email}, {description, Description}}}}, State) ->
 
-    UpdatedState = maps:update(?STATE_SPECIFICATIONS, mb_schemas:new(Name, Owner, Email, Description), State),
+    UpdatedState = maps:update(?STATE_SSG, mb_schemas:new(Name, Owner, Email, Description), State),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
     {reply, ReplyMessage, UpdatedState};
 
@@ -183,7 +183,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_SSG}}, {}}}, State) ->
 
-    Result = {ok, maps:get(?STATE_SPECIFICATIONS, State)},
+    Result = {ok, maps:get(?STATE_SSG, State)},
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_GET_SSG, Result),
     {reply, ReplyMessage, State};
 
@@ -193,7 +193,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SSG_NAME}}, {{name, Name}}}}, State) ->
 
-    SSG =  maps:get(?STATE_SPECIFICATIONS, State),
+    SSG =  maps:get(?STATE_SSG, State),
 
     case mb_schemas:set_ssg_name(Name, SSG) of 
         {error, Reason} -> 
@@ -201,7 +201,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSSG, State),
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
             Result = ok
     end,
 
@@ -214,7 +214,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SSG_OWNER}}, {{owner, Owner}}}}, State) ->
 
-    SSG =  maps:get(?STATE_SPECIFICATIONS, State),
+    SSG =  maps:get(?STATE_SSG, State),
 
     case mb_schemas:set_ssg_owner(Owner, SSG) of 
         {error, Reason} -> 
@@ -222,7 +222,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSSG, State),
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
             Result = ok
     end,
     
@@ -235,7 +235,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SSG_EMAIL}}, {{email, Email}}}}, State) ->
 
-    SSG =  maps:get(?STATE_SPECIFICATIONS, State),
+    SSG =  maps:get(?STATE_SSG, State),
 
     case mb_schemas:set_ssg_email(Email, SSG) of 
         {error, Reason} -> 
@@ -243,7 +243,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSSG, State),
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
             Result = ok
     end,
     
@@ -256,7 +256,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SSG_DESCRIPTION}}, {{description, Description}}}}, State) ->
 
-    SSG =  maps:get(?STATE_SPECIFICATIONS, State),
+    SSG =  maps:get(?STATE_SSG, State),
 
     case mb_schemas:set_ssg_description(Description, SSG) of 
         {error, Reason} -> 
@@ -264,7 +264,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSSG, State),
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
             Result = ok
     end,
     
@@ -293,13 +293,98 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GENERATE}}, {}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_UPLOAD_MODULE}}, {{module_name, Module}, {module, Binary}}}}, State) ->
+
+    % 1. Validate module name
+    % 2. Create module file and write the source code to file
+    % 3. Compile module
+    % 4. Load module
+    % 5. Retrieve the new SSG
+    % 6. Update State
+    % 7. Reply
+
+    case is_atom(Module) of 
+        true -> 
+            SessionDir = maps:get(?STATE_SESSION_DIR, State),
+            File = SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl",
+
+            case file:write_file(File, Binary) of
+                ok -> 
+                    case compile:file(File, [report_errors]) of
+                        {ok, Module} -> 
+                            case code:load_file(Module) of 
+                                {module, Module} -> 
+                                    NewSSG = Module:get_ssg(),
+                                    UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
+                                    Result = ok;
+
+                                {error, Reason} -> 
+                                    UpdatedState = State,
+                                    Result = {error, Reason}
+                            end;
+
+                        {error, Errors} -> 
+                            UpdatedState = State,
+                            Result = {error, Errors}
+                    end;
+
+                {error, Reason} ->
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end;
+
+        false ->
+            UpdatedState = State,
+            Result = {error, {invalid_module_name, Module}}
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_UPLOAD_MODULE, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DOWNLOAD_MODULE}}, {}}}, State) ->
 
     case maps:get(?STATE_MODULE, State) of 
+        [] -> Result = {error, module_not_defined};
+        Module ->
+
+            SessionDir = maps:get(?STATE_SESSION_DIR, State),
+            SrcFile = SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl",
+            HrlFile = SessionDir ++ "/" ++ atom_to_list(Module) ++ ".hrl",
+
+            % Generate to make sure that the source and header files are in place.
+            SSG = maps:get(?STATE_SSG, State),
+            case mb_schemas:generate(Module, SessionDir, SessionDir, SSG) of
+                ok -> 
+                    case file:read_file(SrcFile) of
+                        {ok, SrcBinary} -> 
+                            
+                            case file:read_file(HrlFile) of
+                                {ok, HrlBinary} -> Result = {ok, {Module, SrcBinary, HrlBinary}};
+                                {error, Reason} -> Result = {error, {Reason, HrlFile}}
+                            end;
+
+                        {error, Reason} -> Result = {error, {Reason, SrcFile}}
+                    end;
+                {error, Reason} -> Result = {error, Reason}
+            end
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DOWNLOAD_MODULE, Result),
+    {reply, ReplyMessage, State};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GENERATE}}, {}}}, State) ->
+
+    case maps:get(?STATE_MODULE, State) of  
         [] -> Result = {error, module_name_not_defined};
         Module ->
             SessionDir = maps:get(?STATE_SESSION_DIR, State),
-            SSG =  maps:get(?STATE_SPECIFICATIONS, State),
+            SSG =  maps:get(?STATE_SSG, State),
 
             case mb_schemas:generate(Module, SessionDir, SessionDir, SSG) of
                 ok -> 
@@ -358,14 +443,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_SCHEMA}}, {{schema_name, SchemaName}}}}, State) ->
 
-    SSG = maps:get(?STATE_SPECIFICATIONS, State),
+    SSG = maps:get(?STATE_SSG, State),
     case mb_schemas:add_schema(SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
 
         UpdatedSS ->
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
             Result = ok 
     end,
 
@@ -378,9 +463,9 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_SCHEMA}}, {{schema_name, SchemaName}}}}, State) ->
 
-    SSG = maps:get(?STATE_SPECIFICATIONS, State),
+    SSG = maps:get(?STATE_SSG, State),
     UpdatedSS = mb_schemas:delete_schema(SchemaName, SSG),
-    UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+    UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SCHEMA, ok),
     {reply, ReplyMessage, UpdatedState};
 
@@ -389,7 +474,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_SCHEMA}}, {{schema_name, SchemaName}}}}, State) ->
 
-    SSG = maps:get(?STATE_SPECIFICATIONS, State),
+    SSG = maps:get(?STATE_SSG, State),
     
     case mb_schemas:get_schema(SchemaName, SSG) of 
         {error, Reason} -> Result = {error, Reason};
@@ -404,7 +489,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_ALL_SCHEMAS}}, {}}}, State) ->
 
-    SSG = maps:get(?STATE_SPECIFICATIONS, State),
+    SSG = maps:get(?STATE_SSG, State),
     
     case mb_schemas:schemas(SSG) of 
         {error, Reason} -> Result = {error, Reason};
@@ -419,7 +504,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_ATTRIBUTES}}, {{schema_name, SchemaName}, {schema_avp_list, SchemaAvpList}}}}, State) ->
 
-    SSG = maps:get(?STATE_SPECIFICATIONS, State),
+    SSG = maps:get(?STATE_SSG, State),
     
     case mb_schemas:set_schema_attributes(SchemaAvpList, SchemaName, SSG) of 
         {error, Reason} -> 
@@ -427,7 +512,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSS -> 
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
             Result = ok
     end,
 
@@ -439,7 +524,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GET_SCHEMA_ATTRIBUTE}}, {{schema_name, SchemaName}, {schema_attribute, Attribute}}}}, State) ->
 
-    SSG = maps:get(?STATE_SPECIFICATIONS, State),
+    SSG = maps:get(?STATE_SSG, State),
     
     case mb_schemas:get_schema_attribute(Attribute, SchemaName, SSG) of 
         {error, Reason} -> Result = {error, Reason};
@@ -459,7 +544,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         {ok, Module} -> Result = {ok, Module:schema_names()};
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
             Result = {ok, mb_schemas:schema_names(SSG)}
     end,
     
@@ -472,7 +557,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_FIELD}}, {{schema_name, SchemaName}, {field_name, FieldName}}}}, State) ->
 
-    SSG = maps:get(?STATE_SPECIFICATIONS, State),
+    SSG = maps:get(?STATE_SSG, State),
     
     case mb_schemas:add_field(FieldName, SchemaName, SSG) of 
         {error, Reason} -> 
@@ -480,7 +565,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSS -> 
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
             Result = ok 
     end,
 
@@ -493,7 +578,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_FIELD_ATTRIBUTES}}, {{schema_name, SchemaName}, {field_name, FieldName}, {field_avp_list, FieldAvpList}}}}, State) ->
 
-    SSG = maps:get(?STATE_SPECIFICATIONS, State),
+    SSG = maps:get(?STATE_SSG, State),
     
     case mb_schemas:set_field_attributes(FieldAvpList, FieldName, SchemaName, SSG) of 
         {error, Reason} -> 
@@ -501,7 +586,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSS -> 
-            UpdatedState = maps:update(?STATE_SPECIFICATIONS, UpdatedSS, State),
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
             Result = ok
     end,
 
@@ -522,7 +607,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:get_field_attribute(Attribute, FieldName, SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -547,7 +632,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:fields(SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -572,7 +657,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:get_field(FieldName, SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -597,7 +682,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:field_count(SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -622,7 +707,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:mandatory_field_count(SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -648,7 +733,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:field_names(SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -673,7 +758,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:field_position(FieldName, SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -700,7 +785,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false ->
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
 
             case mb_schemas:read(Key, SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -727,7 +812,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:select(SchemaName, Field, Oper, Value, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -754,7 +839,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:select_or(SchemaName, Field, Oper1, Value1, Oper2, Value2, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -781,7 +866,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:select_and(SchemaName, Field, Oper1, Value1, Oper2, Value2, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -808,7 +893,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:add(Record, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -835,7 +920,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:add(SchemaName, Record, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
@@ -862,7 +947,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
         {error, Reason} -> Result = {error, Reason};
         false -> 
-            SSG = maps:get(?STATE_SPECIFICATIONS, State),
+            SSG = maps:get(?STATE_SSG, State),
     
             case mb_schemas:add(SchemaName, Key, Data, SSG) of 
                 {error, Reason} -> Result = {error, Reason};

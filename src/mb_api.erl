@@ -15,6 +15,10 @@
          set_module_name/2,
          use_module/1,
          use_ssg/1,
+         upload_module/2,
+         upload_module/3,
+         download_module/1,
+         download_module/2,
          generate/1,
 
          add_schema/2,
@@ -261,6 +265,61 @@ use_ssg(SessionId) ->
     Message = mb_ipc:build_request(SessionId, ?REQUEST_USE_MODULE, {{use_module, false}}),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec upload_module(mb_session_id(), atom()) -> ok | mb_error().
+%-------------------------------------------------------------
+upload_module(SessionId, Module) -> upload_module(SessionId, ".", Module).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec upload_module(mb_session_id(), string(), atom()) -> ok | mb_error().
+%-------------------------------------------------------------
+upload_module(SessionId, Path, Module) when is_list(Path), is_atom(Module) -> 
+
+    case file:read_file(Path ++ "/" ++ atom_to_list(Module) ++ ".erl") of
+        {ok, Binary} ->
+            Message = mb_ipc:build_request(SessionId, ?REQUEST_UPLOAD_MODULE, {{module_name, Module}, {module, Binary}}),
+            Reply = mb_ipc:worker_call(SessionId, Message),
+            request_response_result(Reply);
+
+        {error, Reason} -> {error, Reason}
+    end;
+
+upload_module(_SessionId, Path, Module) -> {error, {invalid_argument, {Path, Module}}}.
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec download_module(mb_session_id()) -> ok | mb_error().
+%-------------------------------------------------------------
+download_module(SessionId) -> download_module(SessionId, ".").
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec download_module(mb_session_id(), string()) -> ok | mb_error().
+%-------------------------------------------------------------
+download_module(SessionId, Path) when is_list(Path) -> 
+
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_DOWNLOAD_MODULE, {}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+
+    case request_response_result(Reply) of 
+        {ok, {Module, SrcBinary, HrlBinary}} -> 
+            
+            case file:write_file(Path ++ "/" ++ atom_to_list(Module) ++ ".erl", SrcBinary) of 
+                ok -> file:write_file(Path ++ "/" ++ atom_to_list(Module) ++ ".hrl", HrlBinary);
+                {error, Reason} -> {error, Reason}
+            end;
+
+        {error, Reason} -> {error, Reason}
+    end.
 
 %-------------------------------------------------------------
 % 

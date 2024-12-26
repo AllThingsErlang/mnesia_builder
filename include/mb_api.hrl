@@ -12,6 +12,8 @@
 -define(REQUEST_GENERATE, generate).
 -define(REQUEST_SET_MODULE_NAME, set_module_name).
 -define(REQUEST_USE_MODULE, use_module).
+-define(REQUEST_DOWNLOAD_MODULE, download_module).
+-define(REQUEST_UPLOAD_MODULE, upload_module).
 
 
 % Schema management
