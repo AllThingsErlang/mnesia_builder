@@ -4,14 +4,13 @@
 -export([start_link/0, init/1, terminate/2]).
 
 start_link() ->
-    supervisor:start_link({global, mb_supervisor}, ?MODULE, []).
+    supervisor:start_link({local, mb_supervisor}, ?MODULE, []).
 
 init([]) ->
     SupFlags = #{
         strategy => one_for_one, 
         intensity => 1, 
-        period => 5, 
-        auto_shutdown => all_significant 
+        period => 5
     },
     Processes = [
         {mb_server, {mb_server, start_link, []},
@@ -21,6 +20,9 @@ init([]) ->
 
 
 terminate(Reason, _State) -> 
-    io:format("mb_supervisor: terminated, reason: ~p.~n", [Reason]), 
-    ok.
+    try io:format("mb_supervisor: terminated, reason: ~p.~n", [Reason]) of
+        ok -> ok
+    catch
+        _:_ -> ok
+    end.
     

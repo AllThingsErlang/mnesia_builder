@@ -11,7 +11,7 @@ start(_StartType, _StartArgs) ->
             io:format("dependent application started successfully.~n"),
             case mb_supervisor:start_link() of
                 {ok, SupervisorPid} -> 
-                    {ok, {SupervisorPid, []}}; % Set initial state as a tuple 
+                    {ok, SupervisorPid}; % Set initial state as a tuple 
                 {error, Reason} ->
                     {error, {supervisor_start_failed, Reason}}
             end;
@@ -21,8 +21,7 @@ start(_StartType, _StartArgs) ->
             {error, Reason}
     end.
 
-stop({SupervisorPid, _}) -> 
-    supervisor:terminate_child(SupervisorPid, shutdown),
-    ok;
-stop(_) -> 
+
+stop(_State) -> 
+    io:format("mnesia_builder:stop(...)~n"),
     ok.

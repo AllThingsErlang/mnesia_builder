@@ -17,7 +17,10 @@
 % Returns: 
 %-------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    io:format("[mb::server::~p]: start_link started~n", [self()]),
+    Result = gen_server:start_link({global, ?MODULE}, ?MODULE, [], []),
+    io:format("[mb::server::~p]: start_link returned ~p~n", [self(), Result]),
+    Result.
 
 %-------------------------------------------------------------
 % Function: 
