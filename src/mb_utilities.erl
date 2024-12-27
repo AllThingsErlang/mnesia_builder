@@ -3,7 +3,7 @@
 -export([find_list_pos/2, create_timestamped_file/1, 
          is_printable_string/1, identify_type_in_string/1, 
          string_to_float/1, string_to_integer/1, string_to_integer/2, 
-         string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1]).
+         string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, get_linked_processes/0]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -202,3 +202,14 @@ parse_input_erlang_terms(Input) ->
         {error, Reason, _} -> {error, Reason}
     end.
 
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+get_linked_processes() ->
+    case erlang:process_info(self(), links) of
+        {links, LinkList} ->
+            LinkList;
+        undefined ->
+            [] % Or handle the case where the process doesn't exist
+    end.
+    

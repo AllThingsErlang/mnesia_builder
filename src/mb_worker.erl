@@ -30,7 +30,7 @@ start(ServerPid, ClientPid, Token, SessionDir) ->
 % Returns: 
 %-------------------------------------------------------------
 init({ServerPid, ClientPid, Token, SessionRootDir}) ->
-    io:format("[db::worker::~p]: serving client ~p with token ~p~n", [self(), ClientPid, Token]),
+    io:format("[mb::worker::~p]: serving client ~p with token ~p~n", [self(), ClientPid, Token]),
     process_flag(trap_exit, true),
     TimerRef = erlang:start_timer(30000, self(), session_start_timer),
 
@@ -66,7 +66,7 @@ init({ServerPid, ClientPid, Token, SessionRootDir}) ->
 handle_call({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, MessageId}}, Payload}}, From, State) ->
 
     ReceivedPid = mb_ipc:remove_pid_alias(From),
-    io:format("[db::worker::~p]: received ~p from ~p~n", [self(), {?MSG_TYPE_REQUEST, MessageId}, ReceivedPid]),
+    io:format("[mb::worker::~p]: received ~p from ~p~n", [self(), {?MSG_TYPE_REQUEST, MessageId}, ReceivedPid]),
 
     MySessionId = maps:get(?STATE_SESSION_ID, State),
 
@@ -94,19 +94,19 @@ handle_call({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, 
                     case ExpectedMessage of 
                         true -> handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, MessageId}}, Payload}}, State);
                         false -> 
-                            io:format("[db::worker::~p]: message rejected, unexpected_message ~n", [self()]),
+                            io:format("[mb::worker::~p]: message rejected, unexpected_message ~n", [self()]),
                             ReplyMessage = mb_ipc:build_end_session_response(SessionId, {unexpected_message, {MessageId, {?STATE_SESSION_ACTIVE, maps:get(?STATE_SESSION_ACTIVE, State)}}}),
                             {reply, ReplyMessage, State}
                     end;
 
                 false ->
-                    io:format("[db::worker::~p]: message rejected, invalid_session_credentials, unrecognized_sender ~n", [self()]),
+                    io:format("[mb::worker::~p]: message rejected, invalid_session_credentials, unrecognized_sender ~n", [self()]),
                     ReplyMessage = mb_ipc:build_end_session_response(SessionId, {invalid_session_credentials, unrecognized_sender}),
                     {reply, ReplyMessage, State}
             end;
 
         _ -> 
-            io:format("[db::worker::~p]: message rejected, invalid_session_credentials, unrecognized_session_id ~n", [self()]),
+            io:format("[mb::worker::~p]: message rejected, invalid_session_credentials, unrecognized_session_id ~n", [self()]),
             ReplyMessage = mb_ipc:build_end_session_response(SessionId, {invalid_session_credentials, unrecognized_session_id}),
             {reply, ReplyMessage, State}
     end;
@@ -117,7 +117,7 @@ handle_call({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, 
 % Returns: 
 %-------------------------------------------------------------
 handle_call(Request, _From, State) ->
-    io:format("[db::worker::~p]: unsupported_request: ~p~n", [self(), Request]),
+    io:format("[mb::worker::~p]: unsupported_request: ~p~n", [self(), Request]),
 
     ReplyMessage = mb_ipc:build_error(unsupported_request),
     {reply, ReplyMessage, State}.
@@ -129,7 +129,7 @@ handle_call(Request, _From, State) ->
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_START_SESSION}}, {}}}, State) ->
 
-    io:format("[db::worker::~p]: ~p accepted, cancelling timer~n", [self(), ?REQUEST_START_SESSION]),
+    io:format("[mb::worker::~p]: ~p accepted, cancelling timer~n", [self(), ?REQUEST_START_SESSION]),
 
     TimerRef = maps:get(?STATE_TIMER, State),
     case TimerRef of 
@@ -153,7 +153,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, _SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_END_SESSION}}, {}}}, State) ->
 
-    io:format("[db::worker::~p]: ~p accepted~n", [self(), ?REQUEST_END_SESSION]),
+    io:format("[mb::worker::~p]: ~p accepted~n", [self(), ?REQUEST_END_SESSION]),
     UpdatedState = maps:update(?STATE_SESSION_ACTIVE, false, State),
     {stop, normal, ok, UpdatedState};
 
@@ -964,14 +964,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 % 
 %-------------------------------------------------------------
 handle_cast(shutdown, State) ->
-    io:format("[db::worker::~p]: handle_cast: shutdown~n", [self()]),
+    io:format("[mb::worker::~p]: handle_cast: shutdown~n", [self()]),
     {stop, normal, State};
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 handle_cast(Message, State) ->
-    io:format("[db::worker::~p]: unsupported message: ~p~n", [self(), Message]),
+    io:format("[mb::worker::~p]: unsupported message: ~p~n", [self(), Message]),
     {noreply, State}.
 
 %-------------------------------------------------------------
@@ -996,7 +996,7 @@ handle_info({timeout, IncomingTimerRef, session_start_timer}, State) ->
                     {stop, normal, UpdatedState};
                 
                 false -> 
-                    io:format("[db::worker::~p]: unknown timer reference ~p~n", [self(), IncomingTimerRef]),
+                    io:format("[mb::worker::~p]: unknown timer reference ~p~n", [self(), IncomingTimerRef]),
                     {noreply, State}
             end 
     end;
@@ -1007,24 +1007,24 @@ handle_info({timeout, IncomingTimerRef, session_start_timer}, State) ->
 % Returns: 
 %-------------------------------------------------------------
 handle_info({'EXIT', _FromPid, Reason}, State) ->
-    io:format("[db::worker::~p]: received exit signal, reason: ~p~n", [self(), Reason]),
+    io:format("[mb::worker::~p]: received exit signal, reason: ~p~n", [self(), Reason]),
     {stop, Reason, State};
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, ClientPid, _Reason}, State) ->
-    io:format("[db::worker::~p]: client disconnected~n", [self()]),
+    io:format("[mb::worker::~p]: client disconnected~n", [self()]),
 
     % Handle client disconnection
     SessionId = maps:get(?STATE_SESSION_ID, State),
 
     case SessionId of
         {_, ClientPid, _} ->
-            io:format("[db::worker::~p]:  client ~p disconnected. Stopping worker.~n", [self(), ClientPid]),
+            io:format("[mb::worker::~p]:  client ~p disconnected. Stopping worker.~n", [self(), ClientPid]),
             {stop, normal, State};
         _ ->
-            io:format("[db::worker::~p]:  no associated session id found: ~p.~n", [self(), SessionId]),
+            io:format("[mb::worker::~p]:  no associated session id found: ~p.~n", [self(), SessionId]),
             {noreply, State}
     end;
 
@@ -1032,7 +1032,7 @@ handle_info({'DOWN', _Ref, process, ClientPid, _Reason}, State) ->
 % 
 %-------------------------------------------------------------
 handle_info(Info, State) ->
-    io:format("[db::worker::~p]: unsupported info notification: ~p~n", [self(), Info]),
+    io:format("[mb::worker::~p]: unsupported info notification: ~p~n", [self(), Info]),
     {noreply, State}.
 
 
@@ -1046,7 +1046,7 @@ terminate(shutdown, _State) -> ok;
 % Returns: 
 %-------------------------------------------------------------
 terminate(_Reason, State) ->
-    io:format("[db::worker::~p]: terminated for session ~p~n", [self(), maps:get(?STATE_SESSION_ID, State)]),
+    io:format("[mb::worker::~p]: terminated for session ~p~n", [self(), maps:get(?STATE_SESSION_ID, State)]),
     ok.
 
 %-------------------------------------------------------------

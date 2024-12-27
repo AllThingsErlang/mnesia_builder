@@ -4,7 +4,7 @@
 -export([start_link/0, init/1, terminate/2]).
 
 start_link() ->
-    supervisor:start_link({local, mb_supervisor}, ?MODULE, []).
+    supervisor:start_link({global, mb_supervisor}, ?MODULE, []).
 
 init([]) ->
     SupFlags = #{

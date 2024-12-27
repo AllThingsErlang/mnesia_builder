@@ -17,7 +17,7 @@
 % Returns: 
 %-------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %-------------------------------------------------------------
 % Function: 
@@ -29,10 +29,20 @@ init([]) ->
 
     State = #{?STATE_SESSIONS=>[], ?STATE_SESSION_DIR=>?DIR_SESSIONS},
 
+    io:format("[mb::server::~p]: linked processes: ~p~n", [self(), mb_utilities:get_linked_processes()]),
+
     case file:make_dir(?DIR_SESSIONS) of
-        ok -> {ok, State};
-        {error, eexist} -> {ok, State};
-        {error, Reason} -> {stop, {error, {failed_to_create_session_root_dir, Reason}}}
+        ok -> 
+            %io:format("[mb::server::~p]: session dir created, init ok~n", [self()]),
+            {ok, State};
+
+        {error, eexist} -> 
+            %io:format("[mb::server::~p]: session dir available, init ok~n", [self()]),
+            {ok, State};
+
+        {error, Reason} -> 
+            %io:format("[mb::server::~p]: could not create session dir~n", [self()]),
+            {stop, {error, {failed_to_create_session_root_dir, Reason}}}
     end.
 
 
@@ -47,7 +57,7 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_REQUEST, ?REQUES
     % Strip out the alias if it is there
     ClientPid = mb_ipc:remove_pid_alias(ReceivedClientPid),
 
-    io:format("[db::server::~p]: connect request from: ~p~n", [self(), ClientPid]),
+    io:format("[mb::server::~p]: connect request from: ~p~n", [self(), ClientPid]),
 
     % Generate a random token to allow client and the worker
     % validate one another (not encrypted, very basic security)
@@ -86,7 +96,7 @@ handle_call(Request, From, State) ->
     % Strip out the alias if it is there
     ClientPid = mb_ipc:remove_pid_alias(From),
 
-    io:format("[db::server::~p]: unsupported ~p: ~p from ~p~n", [self(), ?MSG_TYPE_REQUEST, Request, ClientPid]),
+    io:format("[mb::server::~p]: unsupported ~p: ~p from ~p~n", [self(), ?MSG_TYPE_REQUEST, Request, ClientPid]),
 
     case mb_ipc:get_session_id(Request) of 
         {error, _Error} ->
@@ -108,7 +118,7 @@ handle_call(Request, From, State) ->
 % Returns: 
 %-------------------------------------------------------------
 handle_cast(Message, State) ->
-    io:format("[db::server::~p]: unsupported message: ~p~n", [self(), Message]),
+    io:format("[mb::server::~p]: unsupported message: ~p~n", [self(), Message]),
     {noreply, State}.
 
 
@@ -118,7 +128,7 @@ handle_cast(Message, State) ->
 % Returns: 
 %-------------------------------------------------------------
 handle_info({'EXIT', WorkerPid, Reason}, State) ->
-    io:format("[db::server::~p]: worker ~p exited, reason: ~p~n", [self(), WorkerPid, Reason]),
+    io:format("[mb::server::~p]: worker ~p exited, reason: ~p~n", [self(), WorkerPid, Reason]),
 
     SessionList = maps:get(sessions, State),
     UpdatedSessionList = lists:keydelete(WorkerPid, 1, SessionList),
@@ -130,35 +140,35 @@ handle_info({'EXIT', WorkerPid, Reason}, State) ->
 % 
 %-------------------------------------------------------------
 handle_info(Info, State) ->
-    io:format("[db::server::~p]: unsupported info notification: ~p~n", [self(), Info]),
+    io:format("[mb::server::~p]: unsupported info notification: ~p~n", [self(), Info]),
     {noreply, State}.
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 terminate(normal, State) ->
-    io:format("[db::server::~p]: terminate: normal~n", [self()]),
+    io:format("[mb::server::~p]: terminate: normal~n", [self()]),
     shutdown_workers(maps:get(?STATE_SESSIONS, State));
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 terminate(shutdown, State) ->
-    io:format("[db::server::~p]: terminate: shutdown~n", [self()]),
+    io:format("[mb::server::~p]: terminate: shutdown~n", [self()]),
     shutdown_workers(maps:get(?STATE_SESSIONS, State));
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 terminate({shutdown, _}, State) ->
-    io:format("[db::server::~p]: terminate: shutdown~n", [self()]),
+    io:format("[mb::server::~p]: terminate: shutdown~n", [self()]),
     shutdown_workers(maps:get(?STATE_SESSIONS, State));
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
 terminate(Reason, State) ->
-    io:format("[db::server::~p]: terminate: ~p~n", [self(), Reason]),
+    io:format("[mb::server::~p]: terminate: ~p~n", [self(), Reason]),
     shutdown_workers(maps:get(?STATE_SESSIONS, State)).
 
 %-------------------------------------------------------------
