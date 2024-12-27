@@ -6,6 +6,6 @@
              mb_ipc, mb_schemas, mb_server, mb_supervisor, mb_utilities,
              mb_worker, mnesia_builder]},
   {registered, [mb_supervisor, mb_server]},
-  {applications, [kernel, stdlib, mnesia]},
+  {applications, [kernel, stdlib]},
   {mod, {mnesia_builder, []}}
  ]}.
