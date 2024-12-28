@@ -18,10 +18,15 @@
          add_schema/2, 
          delete_schema/2,
          is_schema_attribute/1,
-         is_schema_attribute/2,
+         validate_schema_attribute/2,
          is_schema/2, 
          schemas/1, 
          get_schema/2, 
+         set_field_description/4,
+         set_field_type/4,
+         set_field_priority/4,
+         set_field_default_value/4,
+         set_field_label/4,
          set_schema_attributes/3,
          set_schema_attribute/4,
          get_schema_attribute/3,
@@ -33,7 +38,7 @@
 % Field Management APIs
 -export([add_field/3, 
          is_field_attribute/1,
-         is_field_attribute/2,
+         validate_field_attribute/5,
          is_field/3, 
          get_field/3,
          fields/2, 
@@ -46,7 +51,6 @@
          get_field_attribute/4,
          move_field/4,
          make_key/3,
-         set_field_attributes/4, 
          set_field_attribute/5]).
 
 % Utility APIs
@@ -333,12 +337,13 @@ is_schema_attribute(Attribute) -> {error, {invalid_argument, Attribute}}.
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec is_schema_attribute(mb_schema_attribute(), term()) -> boolean() | mb_error().
+-spec validate_schema_attribute(mb_schema_attribute(), term()) -> boolean() | mb_error().
 %-------------------------------------------------------------
-is_schema_attribute(Attribute, Value) when is_atom(Attribute) -> 
+validate_schema_attribute(Attribute, Value) when is_atom(Attribute) -> 
 
    case Attribute of 
-        type -> 
+        ?NAME -> is_atom(Value);
+        ?SCHEMA_TYPE -> 
             case Value of 
                 set -> true;
                 ordered_set -> true;
@@ -346,14 +351,14 @@ is_schema_attribute(Attribute, Value) when is_atom(Attribute) ->
                 _ -> false 
             end;
 
-        disc_copies -> is_list(Value);
-        disc_only_copies -> is_list(Value);
-        ram_copies -> is_list(Value);
-        fields -> is_field_list(Value);
+        ?DISC_COPIES -> mb_utilities:is_node_name_list(Value);
+        ?DISC_ONLY_COPIES -> mb_utilities:is_node_name_list(Value);
+        ?RAM_COPIES -> mb_utilities:is_node_name_list(Value);
+        ?FIELDS -> is_field_list(Value);
         _ -> false
     end;
 
-is_schema_attribute(Attribute, _) -> {error, {invalid_argument, Attribute}}.
+validate_schema_attribute(Attribute, _) -> {error, {invalid_argument, Attribute}}.
 
 %-------------------------------------------------------------
 % Sets the schema attributes in batch but not fields. 
@@ -364,24 +369,11 @@ set_schema_attributes([], _, SSG) when is_map(SSG) -> SSG;
 
 set_schema_attributes([{Attribute, Value} | T], SchemaName, SSG) when is_map(SSG) ->
 
-    case (is_schema_attribute(Attribute, Value) and (Attribute /= fields)) of 
+    case validate_schema_attribute(Attribute, Value) of 
         true -> 
             case Attribute of 
-                fields -> {error, {not_permitted, fields}};
-                SchemaCopies when SchemaCopies == ram_copies; SchemaCopies == disc_copies; SchemaCopies == disc_only_copies ->
-
-                    case mb_utilities:is_node_name_list(Value) of 
-                        true ->
-                            case get_schema(SchemaName, SSG) of
-                                {error, Reason} -> {error, Reason};
-                                Schema -> 
-                                    UpdatedSSG = update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG),
-                                    set_schema_attributes(T, SchemaName, UpdatedSSG)
-                            end; 
-
-                        false -> {error, {invalid_attribute, Value}}
-                    end;
-
+                ?FIELDS -> {error, {not_permitted, fields}};
+                ?NAME -> {error, {not_permitted, fields}};
                 _ ->
                     case get_schema(SchemaName, SSG) of
                         {error, Reason} -> {error, Reason};
@@ -403,7 +395,7 @@ set_schema_attributes(AvpList, SchemaName, SSG) -> {error, {invalid_argument, {A
 %-------------------------------------------------------------
 set_schema_attribute(Attribute, Value, SchemaName, SSG) when is_map(SSG) ->
 
-    case is_schema_attribute(Attribute, Value) of 
+    case validate_schema_attribute(Attribute, Value) of 
         true ->
             case Attribute of 
                 fields -> {error, {not_permitted, fields}};
@@ -532,42 +524,57 @@ is_field_attribute(Attribute) ->
     case Attribute of 
         ?NAME -> true;
         ?LABEL -> true;
+        ?DESCRIPTION -> true;
         ?ROLE -> true;
         ?FIELD_TYPE -> true;
+        ?POSITION -> true;
         ?PRIORITY -> true;
         ?DEFAULT_VALUE -> true;
-        ?DESCRIPTION -> true;
         _ -> false 
     end.
 
 %-------------------------------------------------------------
 %
 %-------------------------------------------------------------
--spec is_field_attribute(mb_field_attribute(), term()) -> boolean().
+-spec validate_field_attribute(mb_field_attribute(), term(), mb_field_name(), mb_schema_name(), mb_ssg()) -> boolean().
 %-------------------------------------------------------------
-is_field_attribute(Attribute, Value) ->
+validate_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) ->
 
-    case Attribute of
+    case Attribute of 
+        
         ?NAME -> is_atom(Value);
-        ?LABEL -> is_list(Value);
-        ?ROLE -> 
-            case Value of
-                field -> true;
+        ?LABEL -> mb_utilities:is_printable_string(Value);
+        ?DESCRIPTION -> mb_utilities:is_printable_string(Value);
+
+        ?ROLE       -> 
+            case Value of 
                 key -> true;
-                _ -> false
+                field -> true;
+                _ -> false 
             end;
-
-        ?SCHEMA_TYPE -> is_type(Value);
-
+               
+        ?FIELD_TYPE -> is_type(Value);
+        ?POSITION   -> is_integer(Value) andalso Value > 0; 
         ?PRIORITY -> 
-            case Value of
+            case Value of 
                 mandatory -> true;
                 optional -> true;
-                _ -> false
+                _ -> false 
             end;
 
-        ?DEFAULT_VALUE -> true;
-        ?DESCRIPTION -> is_list(Value)
+        ?DEFAULT_VALUE -> 
+
+            case get_field_attribute(?FIELD_TYPE, FieldName, SchemaName, SSG) of 
+                {error, _} -> false;
+                Type ->
+                    case get_type(Value) of 
+                        Type -> true;
+                        _ -> false
+                    end
+            end;
+
+        _ -> false
+
     end.
 
 %-------------------------------------------------------------
@@ -580,33 +587,51 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) when is_map(SS
     % only certain attributes can be modified after field
     % creation. For example, it is prohibited to change
     % a field name, it must be deleted and a new one added.
+    % Other attributes need to be handled by special functions.
+    
+    % Screening ...
 
-    case Attribute of 
-        PermittedAttribute when PermittedAttribute == ?DESCRIPTION; PermittedAttribute == ?LABEL; PermittedAttribute == ?PRIORITY; PermittedAttribute == ?DEFAULT_VALUE; PermittedAttribute == ?FIELD_TYPE ->
-
-            Schemas = schemas(SSG),
-
-            case lists:keyfind(SchemaName, 1, Schemas) of 
-                {SchemaName, SchemaSpecifications} ->                         
-                    case maps:find(?FIELDS, SchemaSpecifications) of
-
-                        {ok, FieldList} ->
-                            UpdatedFieldList = update_field(Attribute, Value, FieldName, FieldList),
-                            UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-                            UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-                            maps:update(?SCHEMAS, UpdatedSchemas, SSG);
-
-                        error -> {error, {invalid_field_attribute, Attribute}}
-                    end;
-
-                false -> {error, {schema_name_not_found, SchemaName}}
+    ScreenResult = case validate_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) of
+        true -> 
+            case Attribute of 
+                ?FIELD_TYPE -> ok;
+                ?DESCRIPTION -> ok;
+                ?LABEL -> ok;
+                ?DEFAULT_VALUE -> ok;
+                ?POSITION -> ok;
+                _ -> {error, {not_permitted, Attribute}}
             end;
 
-        ?POSITION   -> {error, {not_supported, Attribute}};
-        ?ROLE   -> {error, {not_supported, Attribute}};
-        ?NAME       -> {error, {not_permitted, Attribute}};
+        false -> {error, {invalid_attribute_value_pair, {Attribute, Value}}}
+    end,
+        
+    case ScreenResult of 
+        ok ->
+            case Attribute of 
 
-        _ -> {error, {invalid_field_attribute, Attribute}}
+                ?POSITION -> move_field(FieldName, Value, SchemaName, SSG);
+                _ ->
+                
+                    Schemas = schemas(SSG),
+
+                    case lists:keyfind(SchemaName, 1, Schemas) of 
+                        {SchemaName, SchemaSpecifications} ->                         
+                            case maps:find(?FIELDS, SchemaSpecifications) of
+
+                                {ok, FieldList} ->
+                                    UpdatedFieldList = update_field(Attribute, Value, FieldName, FieldList),
+                                    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
+                                    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
+                                    maps:update(?SCHEMAS, UpdatedSchemas, SSG);
+
+                                error -> {error, {invalid_field_attribute, Attribute}}
+                            end;
+
+                        false -> {error, {schema_name_not_found, SchemaName}}
+                    end
+            end;
+
+        Error -> Error
     end;
 
 set_field_attribute(_, _, _, _, SSG) -> {error, {invalid_argument, SSG}}.
@@ -709,56 +734,44 @@ make_key(_, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 
 
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec set_field_description(string(), mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_field_description(Description, FieldName, SchemaName, SSG) when is_map(SSG) ->
+    set_field_attribute(?DESCRIPTION, Description, FieldName, SchemaName, SSG).
 
 %-------------------------------------------------------------
 %   
 %-------------------------------------------------------------
--spec set_field_attributes(mb_field_avp_list(), mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+-spec set_field_label(string(), mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
 %-------------------------------------------------------------
-set_field_attributes(AvpList, FieldName, SchemaName, SSG) when is_map(SSG) ->
+set_field_label(Label, FieldName, SchemaName, SSG) when is_map(SSG) ->
+    set_field_attribute(?LABEL, Label, FieldName, SchemaName, SSG).
 
-    % 1. Get the schemas list
-    % 2. Extract the specifications for SchemaName
-    % 3. Extract the field list from the get_schema specifications
-    % 4. Find FieldName and get its field specifications
-    % 5. Cycle through all the attributes and update them
-    % 6. Now we have a new field specifications, put it back in the field list
-    % 7. Put the field list back in the get_schema specifications
-    % 8. Update the get_schema specifications map
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec set_field_type(mb_value_type(), mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_field_type(Type, FieldName, SchemaName, SSG) when is_map(SSG) ->
+    set_field_attribute(?FIELD_TYPE, Type, FieldName, SchemaName, SSG).
 
-    Schemas = schemas(SSG),
-
-    case lists:keyfind(SchemaName, 1, Schemas) of
-
-        {SchemaName, SchemaSpecifications} -> 
-            case maps:find(?FIELDS, SchemaSpecifications) of
-
-                {ok, FieldList} ->
-
-                    case lists:keyfind(FieldName, 1, FieldList) of 
-                        {FieldName, FieldSpecifications} -> 
-                        
-                            case set_field_attributes(AvpList, FieldSpecifications) of 
-                                {error, Reason} -> {error, Reason};
-
-                                UpdatedFieldSpecifications ->
-                                    UpdatedFieldList = lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications}),
-                                    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-                                    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-                                    maps:update(?SCHEMAS, UpdatedSchemas, SSG)
-                            end;
-                        
-                        false -> {error, {field_name_not_found, FieldName}}
-                    end;
-
-                error -> {error, {invalid_argument, SSG}}
-            end;
-
-        false -> {error, {schema_name_not_found, SchemaName}}
-    end;
-
-set_field_attributes(_, _, _, SSG) -> {error, {invalid_argument, SSG}}.
-
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec set_field_priority(mb_field_priority(), mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_field_priority(Priority, FieldName, SchemaName, SSG) when is_map(SSG) ->
+    set_field_attribute(?PRIORITY, Priority, FieldName, SchemaName, SSG).
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec set_field_default_value(term(), mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+set_field_default_value(DefaultValue, FieldName, SchemaName, SSG) when is_map(SSG) ->
+    set_field_attribute(?DEFAULT_VALUE, DefaultValue, FieldName, SchemaName, SSG).
 
 %-------------------------------------------------------------
 %   
@@ -1265,29 +1278,17 @@ add_field(FieldName, FieldList) -> {error, {invalid_argument, {FieldName, FieldL
 
 
 %-------------------------------------------------------------
-% Sets field attributes except for position and role,
-% they are unchangeable.
+% Sets field attributes, does not do any validation.
 %-------------------------------------------------------------
 %-------------------------------------------------------------
 update_field(Attribute, Value, FieldName, FieldList) when is_list(FieldList) ->
 
-    case is_field_attribute(Attribute, Value) of 
-        true -> 
-            case Attribute of 
-                ?POSITION -> {error, {attribute_already_set, Attribute}};
-                ?ROLE -> {error, {attribute_already_set, Attribute}};
-                _ ->
-                    case lists:keyfind(FieldName, 1, FieldList) of 
-                        
-                        {FieldName, FieldSpecifications} ->
-                            UpdatedFieldSpecifications = maps:update(Attribute, Value, FieldSpecifications),
-                            lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications});
+    case lists:keyfind(FieldName, 1, FieldList) of 
+        {FieldName, FieldSpecifications} ->
+            UpdatedFieldSpecifications = maps:update(Attribute, Value, FieldSpecifications),
+            lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications});
 
-                        false -> {error, {field_name_not_found, {FieldName, FieldList}}}
-                    end
-            end;
-
-        false -> {error, {invalid_attribute, {Attribute, Value}}}
+        false -> {error, {field_name_not_found, {FieldName, FieldList}}}
     end;
 
 update_field(_, _, _, FieldList) -> {error, {invalid_argument, FieldList}}.
@@ -1305,24 +1306,6 @@ is_field_list([{FieldName, FieldSpecifications} | T]) when is_map(FieldSpecifica
         _ -> false 
     end; 
 is_field_list(_) -> false.
-
-%-------------------------------------------------------------
-%  
-%-------------------------------------------------------------
-%-------------------------------------------------------------
-set_field_attributes([], FieldSpecifications) -> FieldSpecifications;
-
-set_field_attributes([{Attribute, Value} | T], FieldSpecifications) -> 
-    case is_field_attribute(Attribute, Value) of 
-        true -> 
-            case Attribute of 
-                ?ROLE -> {error, {not_permitted, Attribute}};
-                _ -> set_field_attributes(T, maps:update(Attribute, Value, FieldSpecifications))
-            end;
-
-        false -> {error, {invalid_argument, {Attribute, Value}}}
-    end.
-
 
 %-------------------------------------------------------------
 % 

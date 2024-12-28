@@ -3,6 +3,7 @@
 
 -include("../include/mb_ipc.hrl").
 -include("../include/mb_api.hrl").
+-include("../include/mb.hrl").
 
 -export([start/4, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
@@ -166,8 +167,6 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
     {reply, ReplyMessage, UpdatedState};
 
-    
-
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
@@ -177,7 +176,6 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
     {reply, ReplyMessage, UpdatedState};
 
-
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
@@ -186,7 +184,6 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     Result = {ok, maps:get(?STATE_SSG, State)},
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_GET_SSG, Result),
     {reply, ReplyMessage, State};
-
 
 %-------------------------------------------------------------
 % 
@@ -208,7 +205,6 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SSG_NAME, Result),
     {reply, ReplyMessage, UpdatedState};
 
-    
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
@@ -228,7 +224,6 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SSG_OWNER, Result),
     {reply, ReplyMessage, UpdatedState};
-
 
 %-------------------------------------------------------------
 % 
@@ -400,7 +395,6 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_GENERATE, Result),
     {reply, ReplyMessage, State};
 
-
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
@@ -527,11 +521,11 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_ATTRIBUTES}}, {{schema_name, SchemaName}, {schema_avp_list, SchemaAvpList}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_RAM_COPIES}}, {{schema_name, SchemaName}, {?RAM_COPIES, NodesList}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_attributes(SchemaAvpList, SchemaName, SSG) of 
+    case mb_schemas:set_schema_attributes([{?RAM_COPIES, NodesList}], SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -541,7 +535,68 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_RAM_COPIES, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_DISC_COPIES}}, {{schema_name, SchemaName}, {?DISC_COPIES, NodesList}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:set_schema_attributes([{?DISC_COPIES, NodesList}], SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_DISC_COPIES, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES}}, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, NodesList}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:set_schema_attributes([{?DISC_ONLY_COPIES, NodesList}], SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_TYPE}}, {{schema_name, SchemaName}, {?SCHEMA_TYPE, SchemaType}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:set_schema_attributes([{?SCHEMA_TYPE, SchemaType}], SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
@@ -601,26 +656,6 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_MOVE_FIELD}}, {{schema_name, SchemaName}, {field_name, FieldName}, {position, ToPosition}}}}, State) ->
-
-    SSG = maps:get(?STATE_SSG, State),
-    
-    case mb_schemas:move_field(FieldName, ToPosition, SchemaName, SSG) of 
-        {error, Reason} -> 
-            UpdatedState = State,
-            Result = {error, Reason};
-
-        UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
-    end,
-
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_MOVE_FIELD, Result),
-    {reply, ReplyMessage, UpdatedState};
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_MAKE_FIELD_KEY}}, {{schema_name, SchemaName}, {field_name, FieldName}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
@@ -641,11 +676,11 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_FIELD_ATTRIBUTES}}, {{schema_name, SchemaName}, {field_name, FieldName}, {field_avp_list, FieldAvpList}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_MOVE_FIELD}}, {{schema_name, SchemaName}, {field_name, FieldName}, {position, ToPosition}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_field_attributes(FieldAvpList, FieldName, SchemaName, SSG) of 
+    case mb_schemas:move_field(FieldName, ToPosition, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -655,8 +690,90 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_ATTRIBUTES, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_MOVE_FIELD, Result),
     {reply, ReplyMessage, UpdatedState};
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_FIELD_DESCRIPTION}}, {{schema_name, SchemaName}, {field_name, FieldName}, {?DESCRIPTION, NewDescription}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:set_field_description(NewDescription, FieldName, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_FIELD_DESCRIPTION, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_FIELD_LABEL}}, {{schema_name, SchemaName}, {field_name, FieldName}, {?LABEL, NewLabel}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:set_field_label(NewLabel, FieldName, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_FIELD_LABEL, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_FIELD_PRIORITY}}, {{schema_name, SchemaName}, {field_name, FieldName}, {?PRIORITY, NewPriority}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:set_field_priority(NewPriority, FieldName, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_FIELD_PRIORITY, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_FIELD_DEFAULT_VALUE}}, {{schema_name, SchemaName}, {field_name, FieldName}, {?DEFAULT_VALUE, NewDefaultValue}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:set_field_default_value(NewDefaultValue, FieldName, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_FIELD_DEFAULT_VALUE, Result),
+    {reply, ReplyMessage, UpdatedState};
+
 
 %-------------------------------------------------------------
 % 

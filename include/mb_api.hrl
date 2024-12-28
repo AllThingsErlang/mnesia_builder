@@ -22,15 +22,24 @@
 -define(REQUEST_DELETE_SCHEMA, delete_schema).
 -define(REQUEST_GET_SCHEMA, get_schema).
 -define(REQUEST_GET_ALL_SCHEMAS, get_all_schemas).
--define(REQUEST_SET_SCHEMA_ATTRIBUTES, set_schema_attributes).
+-define(REQUEST_SET_SCHEMA_TYPE, set_schema_type).
+-define(REQUEST_SET_SCHEMA_RAM_COPIES, set_schema_ram_copies).
+-define(REQUEST_SET_SCHEMA_DISC_COPIES, set_schema_ram_copies).
+-define(REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, set_schema_ram_copies).
 -define(REQUEST_GET_SCHEMA_ATTRIBUTE, get_schema_attributes).
 -define(REQUEST_GET_SCHEMA_NAMES, get_schema_names).
 
 % Field management
 -define(REQUEST_ADD_FIELD, add_field).
+
 -define(REQUEST_MOVE_FIELD, move_field).
 -define(REQUEST_MAKE_FIELD_KEY, make_field_key).
--define(REQUEST_SET_FIELD_ATTRIBUTES, set_field_attributes).
+-define(REQUEST_SET_FIELD_TYPE, set_field_type).
+-define(REQUEST_SET_FIELD_DESCRIPTION, set_field_description).
+-define(REQUEST_SET_FIELD_LABEL, set_field_label).
+-define(REQUEST_SET_FIELD_PRIORITY, set_field_priority).
+-define(REQUEST_SET_FIELD_DEFAULT_VALUE, ser_field_default_value).
+
 -define(REQUEST_GET_FIELD_ATTRIBUTE, get_field_attribute).
 -define(REQUEST_GET_FIELDS, get_fields).
 -define(REQUEST_GET_FIELD, get_field).
