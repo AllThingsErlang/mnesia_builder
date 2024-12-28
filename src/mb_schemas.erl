@@ -46,7 +46,7 @@
          get_field_attribute/4,
          set_field_attributes/4, 
          set_field_attribute/5, 
-         update_fields/3]).
+         update_schema_fields/3]).
 
 % Utility APIs
 -export([convert_from_stirng/2, 
@@ -366,16 +366,27 @@ set_schema_attributes([{Attribute, Value} | T], SchemaName, SSG) when is_map(SSG
     case (is_schema_attribute(Attribute, Value) and (Attribute /= fields)) of 
         true -> 
             case Attribute of 
-                fields -> update_fields(Value, SchemaName, SSG);
+                fields -> update_schema_fields(Value, SchemaName, SSG);
+                SchemaCopies when SchemaCopies == ram_copies; SchemaCopies == disc_copies; SchemaCopies == disc_only_copies ->
+
+                    case mb_utilities:is_node_name_list(Value) of 
+                        true ->
+                            case get_schema(SchemaName, SSG) of
+                                {error, Reason} -> {error, Reason};
+                                Schema -> 
+                                    UpdatedSSG = update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG),
+                                    set_schema_attributes(T, SchemaName, UpdatedSSG)
+                            end; 
+
+                        false -> {error, {invalid_attribute, Value}}
+                    end;
+
                 _ ->
                     case get_schema(SchemaName, SSG) of
                         {error, Reason} -> {error, Reason};
                         Schema -> 
-                            UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
-                            SchemasList = schemas(SSG),
-                            UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
-                            UpdatedSS = maps:update(?SCHEMAS, UpdatedSchemasList, SSG),
-                            set_schema_attributes(T, SchemaName, UpdatedSS)
+                            UpdatedSSG = update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG),
+                            set_schema_attributes(T, SchemaName, UpdatedSSG)
                     end
             end;
 
@@ -394,8 +405,8 @@ set_schema_attribute(Attribute, Value, SchemaName, SSG) when is_map(SSG) ->
     case is_schema_attribute(Attribute, Value) of 
         true ->
             case Attribute of 
-                %% TODO: revisit why we are doing update_fields here.
-                fields -> update_fields(Value, SchemaName, SSG);
+                %% TODO: revisit why we are doing update_schema_fields here.
+                fields -> update_schema_fields(Value, SchemaName, SSG);
                 _ ->
                     case get_schema(SchemaName, SSG) of
                         {error, Reason} -> {error, Reason};
@@ -699,9 +710,9 @@ is_field(_, _, SSG) -> {error, {invalid_argument, SSG}}.
 %-------------------------------------------------------------
 %   
 %------------------------------------------------------------- 
--spec update_fields(mb_field_spec_list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+-spec update_schema_fields(mb_field_spec_list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
 %------------------------------------------------------------- 
-update_fields(FieldList, SchemaName, SSG) when is_map(SSG) -> 
+update_schema_fields(FieldList, SchemaName, SSG) when is_map(SSG) -> 
 
     %% First, validate the field list
     case is_field_list(FieldList) of 
@@ -722,7 +733,7 @@ update_fields(FieldList, SchemaName, SSG) when is_map(SSG) ->
         false -> {error, {bad_field_list, FieldList}}
     end;
 
-update_fields(_, _, SSG) -> {error, {invalid_argument, SSG}}.
+update_schema_fields(_, _, SSG) -> {error, {invalid_argument, SSG}}.
 
 %-------------------------------------------------------------
 % 
@@ -1376,9 +1387,7 @@ is_type(Type) ->
   end.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
 -spec get_type(term()) -> atom().
 %-------------------------------------------------------------
@@ -1414,6 +1423,17 @@ get_type(Value) ->
           end 
       end 
   end.
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec update_schema_attribute(mb_schema_attribute(), term(), mb_schema_name(), mb_schema_spec(), mb_ssg()) -> mb_ssg().
+%-------------------------------------------------------------
+update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG) ->
+    UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
+    SchemasList = schemas(SSG),
+    UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
+    maps:update(?SCHEMAS, UpdatedSchemasList, SSG).
 
 
 %============================================================

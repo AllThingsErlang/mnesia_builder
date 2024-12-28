@@ -20,13 +20,54 @@
 %     - If there is an mnesia schema installed, change its config
 %       to support the expanded nodes list.
 %-------------------------------------------------------------
--spec install(map()) -> mb_result().
+-spec install(map()) -> ok | mb_error().
 %-------------------------------------------------------------
-install(SSG) -> install([node()], SSG).
+install(SSG) -> 
+    case get_storage_nodes(SSG) of
+        {error, Reason1} -> {error, Reason1};
+        [] -> {error, storage_nodes_not_defined};
+        Nodes ->
 
+            % 1. Is local node in the list? If not, add it.
+            case lists:member(node(), Nodes) of 
+                true -> UpdatedNodes = Nodes;
+                false -> UpdatedNodes = [node() | Nodes] 
+            end,
+
+            % 2. Is mnesia schema created? If not, create one.
+            CreateSchema = case mnesia:table_info(schema, storage_type) of
+                undefined -> 
+                    % Schema not created
+                    case mnesia:create_schema([node()]) of
+                        {error, Reason2} -> {error, Reason2};
+                        _ -> ok
+                    end;
+
+                _ -> ok
+            end,
+
+            case CreateSchema of 
+                ok ->
+                    % 3. Add remaining nodes not already in the schema 
+                    %    and start mnesia.
+                    CurrentNodes = mnesia:system_info(db_nodes),
+
+                    case lists:subtract(UpdatedNodes, CurrentNodes) of 
+                        [] -> application:start(mnesia);
+                        ExtraNodes ->
+                            % TODO: this may be dangerous ...
+                            case mnesia:change_config(extra_db_nodes, ExtraNodes) of
+                                {ok, _} -> application:start(mnesia);
+                                {error, Reason3} -> {error, Reason3}
+                            end
+                    end;
+
+                _ -> CreateSchema
+            end
+    end.
 
 %-------------------------------------------------------------
--spec install(list(), map()) -> mb_result().
+-spec install(list(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
 install(NodeList, SSG) ->
     
@@ -83,7 +124,7 @@ table_size(SchemaName, SSG) ->
 %-------------------------------------------------------------
 % Returns a list of tuples [{SchemaName, TableSize}]. 
 %-------------------------------------------------------------
--spec table_sizes(map()) -> list().
+-spec table_sizes(mb_ssg()) -> list().
 %-------------------------------------------------------------
 table_sizes(SSG) -> table_sizes_next(mb_schemas:schema_names(SSG)).
 
@@ -94,3 +135,30 @@ table_sizes_next([], Sizes) -> lists:reverse(Sizes);
 table_sizes_next([H|T], Sizes) -> table_sizes_next(T, [{H, mnesia:table_info(H, size)} | Sizes]).
 
 
+%-------------------------------------------------------------
+% Returns a list of tuples [{SchemaName, TableSize}]. 
+%-------------------------------------------------------------
+-spec get_storage_nodes(mb_ssg()) -> list() | mb_error().
+%-------------------------------------------------------------
+get_storage_nodes(SSG) ->
+    case mb_schemas:schema_names(SSG) of 
+        {error, Reason} -> {error, Reason};
+        SchemaNames -> get_storage_nodes(SchemaNames, [], SSG) 
+    end.
+
+get_storage_nodes([], Aggregate, _) -> lists:uniq(Aggregate);
+get_storage_nodes([NextSchema | T], Aggregate, SSG) ->
+    case mb_schemas:get_schema_attribute(ram_copies, NextSchema, SSG) of
+        {error, Reason} -> {error, Reason};
+        RamCopies ->
+            case mb_schema:get_schema_attribute(disc_copies, NextSchema, SSG) of
+                {error, Reason} -> {error, Reason};
+                DiscCopies ->
+                    case mb_schema:get_schema_attribute(disc_only_copies, NextSchema, SSG) of
+                        {error, Reason} -> {error, Reason};
+                        DiscOnlyCopies ->
+                            NodesList = RamCopies ++ DiscCopies ++ DiscOnlyCopies,
+                            get_storage_nodes(T, Aggregate ++ NodesList, SSG)
+                    end 
+            end
+    end.

@@ -34,7 +34,6 @@
 
 %-------------------------------------------------------------
 -type mb_error() :: {error, term()}.
--type mb_result() :: ok | mb_error().
 
 -type mb_module() :: atom().
 

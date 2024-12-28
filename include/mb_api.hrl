@@ -14,6 +14,7 @@
 -define(REQUEST_USE_MODULE, use_module).
 -define(REQUEST_DOWNLOAD_MODULE, download_module).
 -define(REQUEST_UPLOAD_MODULE, upload_module).
+-define(REQUEST_INSTALL, install).
 
 
 % Schema management

@@ -3,7 +3,8 @@
 -export([find_list_pos/2, create_timestamped_file/1, 
          is_printable_string/1, identify_type_in_string/1, 
          string_to_float/1, string_to_integer/1, string_to_integer/2, 
-         string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, get_linked_processes/0]).
+         string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, 
+         get_linked_processes/0, is_node_name/1, is_node_name_list/1]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -213,3 +214,28 @@ get_linked_processes() ->
             [] % Or handle the case where the process doesn't exist
     end.
     
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec is_node_name(atom()) -> boolean().
+%-------------------------------------------------------------
+is_node_name(Value) when is_atom(Value) -> string:find(atom_to_list(Value), "@") /= nomatch;
+
+is_node_name(_) -> false.
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec is_node_name_list(list()) -> boolean().
+%-------------------------------------------------------------
+is_node_name_list([]) -> true;
+is_node_name_list([Next | T]) ->
+    case is_node_name(Next) of 
+        true -> is_node_name_list(T);
+        false -> false 
+    end;
+
+is_node_name_list(_) -> false.

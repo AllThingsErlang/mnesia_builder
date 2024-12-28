@@ -19,7 +19,7 @@
 %    (3) add(SchemaName, Key, Data, SSG) 
 %
 %-------------------------------------------------------------
--spec add(tuple(), map()) -> mb_result().
+-spec add(tuple(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
 add(Record, SSG) when (is_tuple(Record) and is_map(SSG)) ->
 
@@ -40,7 +40,7 @@ add(Record, SSG) -> {error, {invalid_argument, {Record, SSG}}}.
 
 
 %-------------------------------------------------------------
--spec add(atom(), tuple(), map()) -> mb_result().
+-spec add(atom(), tuple(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
 add(SchemaName, Record, SSG) when (is_atom(SchemaName) and is_tuple(Record) and is_map(SSG)) ->
 
@@ -57,7 +57,7 @@ add(SchemaName, Record, SSG) when (is_atom(SchemaName) and is_tuple(Record) and 
 add(SchemaName, Record, SSG) -> {error, {invalid_argument, {SchemaName, Record, SSG}}}.
 
 %-------------------------------------------------------------
--spec add(atom(), term(), term(), map()) -> mb_result().
+-spec add(atom(), term(), term(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
 add(SchemaName, Key, Data, SSG) when (is_atom(SchemaName) and 
                                     is_tuple(Data) and 
@@ -89,13 +89,13 @@ add(SchemaName, Key, Data, SSG) -> {error, {invalid_argument, {SchemaName, Key, 
 % are applied to ensure that the delete operation remains
 % within the domain of the specifications.
 %-------------------------------------------------------------
--spec delete(tuple(), map()) -> mb_result().
+-spec delete(tuple(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
 delete({SchemaName, Key}, SSG) when is_map(SSG) -> delete(SchemaName, Key, SSG);
 delete(TableKey, SSG) -> {error, {invalid_argument, {TableKey, SSG}}}.
 
 %-------------------------------------------------------------
--spec delete(atom(), term(), map()) -> mb_result().
+-spec delete(atom(), term(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
 delete(SchemaName, Key, SSG) when (is_atom(SchemaName) and is_map(SSG)) -> 
     

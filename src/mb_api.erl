@@ -20,6 +20,7 @@
          download_module/1,
          download_module/2,
          generate/1,
+         install/1,
 
          add_schema/2,
          delete_schema/2,
@@ -324,8 +325,21 @@ download_module(SessionId, Path) when is_list(Path) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
+-spec generate(mb_session_id()) -> ok | mb_error().
+%-------------------------------------------------------------
 generate(SessionId) -> 
     Message = mb_ipc:build_request(SessionId, ?REQUEST_GENERATE),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec install(mb_session_id()) -> ok | mb_error().
+%-------------------------------------------------------------
+install(SessionId) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_INSTALL),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 

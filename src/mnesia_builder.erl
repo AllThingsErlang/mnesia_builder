@@ -6,19 +6,11 @@
 start(_StartType, _StartArgs) ->
     io:format("mnesia_builder:start(...)~n"),
 
-    case application:ensure_all_started(mnesia) of
-        {ok, _} ->
-            io:format("dependent application started successfully.~n"),
-            case mb_supervisor:start_link() of
-                {ok, SupervisorPid} -> 
-                    {ok, SupervisorPid}; % Set initial state as a tuple 
-                {error, Reason} ->
-                    {error, {supervisor_start_failed, Reason}}
-            end;
-
+    case mb_supervisor:start_link() of
+        {ok, SupervisorPid} -> 
+            {ok, SupervisorPid}; % Set initial state as a tuple 
         {error, Reason} ->
-            io:format("dependent application(s) not started: ~p~n", [Reason]),
-            {error, Reason}
+            {error, {supervisor_start_failed, Reason}}
     end.
 
 

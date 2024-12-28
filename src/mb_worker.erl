@@ -404,6 +404,31 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_INSTALL}}, {}}}, State) ->
+
+    case use_module(State) of 
+        {ok, Module} -> 
+            case Module:install() of
+                {error, Reason} -> Result = {error, Reason};
+                Result -> ok
+            end;
+
+        {error, Reason} -> Result = {error, Reason};
+        false -> 
+            SSG = maps:get(?STATE_SSG, State),
+    
+            case mb_db_management:install(SSG) of 
+                {error, Reason} -> Result = {error, Reason};
+                Result -> ok
+            end
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_INSTALL, Result),
+    {reply, ReplyMessage, State};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_USE_MODULE}}, {{use_module, true}}}}, State) ->
 
     case maps:get(?STATE_MODULE, State) of
