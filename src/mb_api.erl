@@ -32,6 +32,13 @@
          get_schema_names/1,
          
          add_field/3,
+         move_field/4,
+         make_field_key/3,
+         set_field_type/4,
+         set_field_label/4,
+         set_field_priority/4,
+         set_field_default_value/4,
+         set_field_description/4,
          set_field_attributes/4,
          get_field_attribute/4,
          get_fields/2,
@@ -415,6 +422,31 @@ add_field(SessionId, SchemaName, FieldName) ->
     Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_FIELD, {{schema_name, SchemaName}, {field_name, FieldName}}),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+move_field(SessionId, SchemaName, FieldName, ToPosition) ->  
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_MOVE_FIELD, {{schema_name, SchemaName}, {field_name, FieldName}, {position, ToPosition}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+ 
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+make_field_key(SessionId, SchemaName, FieldName) ->  
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_MAKE_FIELD_KEY, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+set_field_type(SessionId, SchemaName, FieldName, NewType) -> set_field_attributes(SessionId, SchemaName, FieldName, [{?FIELD_TYPE, NewType}]).
+set_field_description(SessionId, SchemaName, FieldName, NewDescription) -> set_field_attributes(SessionId, SchemaName, FieldName, [{?DESCRIPTION, NewDescription}]).
+set_field_label(SessionId, SchemaName, FieldName, NewLabel) -> set_field_attributes(SessionId, SchemaName, FieldName, [{?LABEL, NewLabel}]).
+set_field_priority(SessionId, SchemaName, FieldName, NewPriority) -> set_field_attributes(SessionId, SchemaName, FieldName, [{?PRIORITY, NewPriority}]).
+set_field_default_value(SessionId, SchemaName, FieldName, NewDefaultValue) -> set_field_attributes(SessionId, SchemaName, FieldName, [{?DEFAULT_VALUE, NewDefaultValue}]).
 
 %-------------------------------------------------------------
 % 

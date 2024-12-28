@@ -474,8 +474,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             UpdatedState = State,
             Result = {error, Reason};
 
-        UpdatedSS ->
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
+        UpdatedSSG ->
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
             Result = ok 
     end,
 
@@ -489,8 +489,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_SCHEMA}}, {{schema_name, SchemaName}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
-    UpdatedSS = mb_schemas:delete_schema(SchemaName, SSG),
-    UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
+    UpdatedSSG = mb_schemas:delete_schema(SchemaName, SSG),
+    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SCHEMA, ok),
     {reply, ReplyMessage, UpdatedState};
 
@@ -536,8 +536,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             UpdatedState = State,
             Result = {error, Reason};
 
-        UpdatedSS -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
             Result = ok
     end,
 
@@ -589,14 +589,54 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             UpdatedState = State,
             Result = {error, Reason};
 
-        UpdatedSS -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
             Result = ok 
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_FIELD, Result),
     {reply, ReplyMessage, UpdatedState};
 
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_MOVE_FIELD}}, {{schema_name, SchemaName}, {field_name, FieldName}, {position, ToPosition}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:move_field(FieldName, ToPosition, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_MOVE_FIELD, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_MAKE_FIELD_KEY}}, {{schema_name, SchemaName}, {field_name, FieldName}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    case mb_schemas:make_key(FieldName, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_MOVE_FIELD, Result),
+    {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
 % 
@@ -610,8 +650,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             UpdatedState = State,
             Result = {error, Reason};
 
-        UpdatedSS -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSS, State),
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
             Result = ok
     end,
 

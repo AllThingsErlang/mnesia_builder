@@ -50,7 +50,7 @@
 -type mb_field_role() :: key | field.
 -type mb_field_priority() :: mandatory | optional.
 
--type mb_value_type() :: integer | float | string | list | atom | tuple | term.
+-type mb_value_type() :: integer | float | string | list | atom | tuple | map | term.
 -type mb_timestamp() :: {{integer(), integer(), integer()}, {integer(), integer(), integer()}}.
 
 -type mb_field_spec() ::  #{?NAME=>mb_field_name(),

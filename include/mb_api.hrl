@@ -28,6 +28,8 @@
 
 % Field management
 -define(REQUEST_ADD_FIELD, add_field).
+-define(REQUEST_MOVE_FIELD, move_field).
+-define(REQUEST_MAKE_FIELD_KEY, make_field_key).
 -define(REQUEST_SET_FIELD_ATTRIBUTES, set_field_attributes).
 -define(REQUEST_GET_FIELD_ATTRIBUTE, get_field_attribute).
 -define(REQUEST_GET_FIELDS, get_fields).

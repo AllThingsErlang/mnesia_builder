@@ -44,9 +44,10 @@
          key_type/2,
          field_position/3, 
          get_field_attribute/4,
+         move_field/4,
+         make_key/3,
          set_field_attributes/4, 
-         set_field_attribute/5, 
-         update_schema_fields/3]).
+         set_field_attribute/5]).
 
 % Utility APIs
 -export([convert_from_stirng/2, 
@@ -366,7 +367,7 @@ set_schema_attributes([{Attribute, Value} | T], SchemaName, SSG) when is_map(SSG
     case (is_schema_attribute(Attribute, Value) and (Attribute /= fields)) of 
         true -> 
             case Attribute of 
-                fields -> update_schema_fields(Value, SchemaName, SSG);
+                fields -> {error, {not_permitted, fields}};
                 SchemaCopies when SchemaCopies == ram_copies; SchemaCopies == disc_copies; SchemaCopies == disc_only_copies ->
 
                     case mb_utilities:is_node_name_list(Value) of 
@@ -405,8 +406,7 @@ set_schema_attribute(Attribute, Value, SchemaName, SSG) when is_map(SSG) ->
     case is_schema_attribute(Attribute, Value) of 
         true ->
             case Attribute of 
-                %% TODO: revisit why we are doing update_schema_fields here.
-                fields -> update_schema_fields(Value, SchemaName, SSG);
+                fields -> {error, {not_permitted, fields}};
                 _ ->
                     case get_schema(SchemaName, SSG) of
                         {error, Reason} -> {error, Reason};
@@ -611,6 +611,104 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) when is_map(SS
 
 set_field_attribute(_, _, _, _, SSG) -> {error, {invalid_argument, SSG}}.
 
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec move_field(mb_field_name(), integer(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+move_field(FieldName, ToPosition, SchemaName, SSG) when is_integer(ToPosition), ToPosition > 0, is_map(SSG) ->
+
+    case ToPosition > 1 of 
+        true -> 
+            Schemas = schemas(SSG),
+
+            case lists:keyfind(SchemaName, 1, Schemas) of
+
+            {SchemaName, SchemaSpecifications} -> 
+                case maps:find(?FIELDS, SchemaSpecifications) of
+
+                    {ok, FieldList} ->
+
+                        FieldCount = length(FieldList),
+
+                        case ToPosition =< FieldCount of 
+                            true ->
+                                case lists:keyfind(FieldName, 1, FieldList) of 
+                                    {FieldName, FieldSpecifications} -> 
+
+                                        CurrentPosition = maps:get(?POSITION, FieldSpecifications),
+                                        UpdatedFieldList1 = mb_utilities:move_element(FieldList, CurrentPosition, ToPosition),
+                                        UpdatedFieldList2 = update_field_positions(UpdatedFieldList1),
+
+                                        update_schema_fields(UpdatedFieldList2, SchemaName, SSG);
+                                    false -> {error, {field_name_not_found, FieldName}}
+                                end;
+                            false -> {error, {position_greater_than_field_count, ToPosition}}
+                        end;
+
+                    _ -> {error, {invalid_specifications, SSG}}
+                end;
+            false -> {error, {schema_name_not_found, SchemaName}}
+        end;
+
+        false -> {error, {not_permitted, make_key}} 
+    end;
+
+move_field(_FieldName, ToPosition, _SchemaName, SSG) -> {error, {invalid_argument, {ToPosition, SSG}}}.
+                        
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec make_key(mb_field_name(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+make_key(FieldName, SchemaName, SSG) when is_map(SSG) ->
+
+    Schemas = schemas(SSG),
+
+    case lists:keyfind(SchemaName, 1, Schemas) of
+
+        {SchemaName, SchemaSpecifications} -> 
+            case maps:find(?FIELDS, SchemaSpecifications) of
+
+                {ok, FieldList} ->
+
+                    case lists:keyfind(FieldName, 1, FieldList) of 
+                        {FieldName, FieldSpecifications} -> 
+                            case maps:get(?ROLE, FieldSpecifications) of 
+                                key -> SSG; % It is already the key, nothing to do
+                                field ->
+                                    % Extract the current key which is the header of the list
+                                    [{Key, KeySpecifications} | Remainder] = FieldList,
+
+                                    % Change the key and make it a regular field
+                                    NewFieldSpecifications = maps:update(?ROLE, field, KeySpecifications),
+
+                                    % Now change the selected field specifications to be a key and delete its entry
+                                    % from the list
+                                    NewKeySpecifications = maps:update(?ROLE, key, FieldSpecifications),
+                                    UpdatedRemainder = lists:keydelete(FieldName, 1, Remainder),
+
+                                    % Put the new key at the front followed by the old key and then the rest of the fields
+                                    UpdatedFieldList = [{FieldName, NewKeySpecifications}] ++ ([{Key, NewFieldSpecifications}] ++ UpdatedRemainder),
+
+                                    % Update the SSG
+                                    update_schema_fields(UpdatedFieldList, SchemaName, SSG)
+                            end;
+
+                        false -> {error, {field_not_found, FieldName}} 
+                    end;
+
+                _ -> {error, {invalid_specifications, SSG}}
+            end;
+
+        _ -> {error, {invalid_specifications, SSG}}
+    end;
+
+make_key(_, _, SSG) -> {error, {invalid_argument, SSG}}.
+
+
+
 
 %-------------------------------------------------------------
 %   
@@ -710,7 +808,7 @@ is_field(_, _, SSG) -> {error, {invalid_argument, SSG}}.
 %-------------------------------------------------------------
 %   
 %------------------------------------------------------------- 
--spec update_schema_fields(mb_field_spec_list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-spec update_schema_fields(mb_field_spec_list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
 %------------------------------------------------------------- 
 update_schema_fields(FieldList, SchemaName, SSG) when is_map(SSG) -> 
 
@@ -1216,51 +1314,46 @@ set_field_attributes([], FieldSpecifications) -> FieldSpecifications;
 
 set_field_attributes([{Attribute, Value} | T], FieldSpecifications) -> 
     case is_field_attribute(Attribute, Value) of 
-        true -> set_field_attributes(T, maps:update(Attribute, Value, FieldSpecifications));
+        true -> 
+            case Attribute of 
+                ?ROLE -> {error, {not_permitted, Attribute}};
+                _ -> set_field_attributes(T, maps:update(Attribute, Value, FieldSpecifications))
+            end;
+
         false -> {error, {invalid_argument, {Attribute, Value}}}
     end.
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+% 
 %-------------------------------------------------------------
 generate_function(FunctionName, BaseModule, IoDevice) ->
     io:format(IoDevice, "~n~p() -> ~p:~p().~n", 
         [FunctionName, BaseModule, FunctionName]).
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+% 
 %-------------------------------------------------------------
 %generate_function(FunctionName, Arg1, BaseModule, IoDevice) ->
 %    io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s).~n", 
 %        [FunctionName, Arg1, BaseModule, FunctionName, Arg1]).
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
 generate_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
     io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s).~n", 
         [FunctionName, Arg1, Arg2, BaseModule, FunctionName, Arg1, Arg2]).
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
 %generate_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) ->
 %    io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s).~n", 
 %        [FunctionName, Arg1, Arg2, Arg3, BaseModule, FunctionName, Arg1, Arg2, Arg3]).
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, BaseModule, IoDevice) -> 
     io:format(IoDevice, "~n~p() -> ~p:~p(get_ssg()).~n", 
@@ -1268,18 +1361,14 @@ generate_spec_function(FunctionName, BaseModule, IoDevice) ->
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, BaseModule, IoDevice) -> 
     io:format(IoDevice, "~n~p(~s) -> ~p:~p(~s, get_ssg()).~n", 
         [FunctionName, Arg1, BaseModule, FunctionName, Arg1]).
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) -> 
     io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s, get_ssg()).~n", 
@@ -1287,9 +1376,7 @@ generate_spec_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) -> 
     io:format(IoDevice, "~n~p(~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, get_ssg()).~n", 
@@ -1297,9 +1384,7 @@ generate_spec_function(FunctionName, Arg1, Arg2, Arg3, BaseModule, IoDevice) ->
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, IoDevice) -> 
     io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, get_ssg()).~n", 
@@ -1307,9 +1392,7 @@ generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, IoDevic
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%  
 %-------------------------------------------------------------
 generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, BaseModule, IoDevice) -> 
     io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, ~s, ~s, get_ssg()).~n", 
@@ -1318,9 +1401,7 @@ generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, BaseMod
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
 generate_records(SSG, IoDevice) when is_map(SSG) -> 
 
@@ -1333,9 +1414,7 @@ generate_records(SSG, IoDevice) when is_map(SSG) ->
 
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
 generate_record([], _) -> ok;
 generate_record([{SchemaName, SchemaSpecifications} | T], HrlIoDevice) -> 
@@ -1351,9 +1430,7 @@ generate_record([{SchemaName, SchemaSpecifications} | T], HrlIoDevice) ->
     end.
 
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+% 
 %-------------------------------------------------------------
 generate_record_field([], _) -> ok;
 generate_record_field([{FieldName, _FieldSpecifications} | T], HrlIoDevice) ->
@@ -1366,12 +1443,8 @@ generate_record_field([{FieldName, _FieldSpecifications} | T], HrlIoDevice) ->
 
     generate_record_field(T, HrlIoDevice).
 
-
-
 %-------------------------------------------------------------
-% Function: 
-% Purpose:  
-% Returns:  
+%   
 %-------------------------------------------------------------
 is_type(Type) ->
 
@@ -1383,6 +1456,7 @@ is_type(Type) ->
     atom -> true;
     tuple -> true;
     term -> true;
+    map -> true;
     _ -> false 
   end.
 
@@ -1417,7 +1491,12 @@ get_type(Value) ->
 
                   case is_tuple(Value) of 
                     true -> tuple;
-                    false -> term
+                    false -> 
+                        
+                        case is_map(Value) of 
+                            true -> map;
+                            false -> term
+                        end
                   end
               end 
           end 
@@ -1434,6 +1513,24 @@ update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG) ->
     SchemasList = schemas(SSG),
     UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),
     maps:update(?SCHEMAS, UpdatedSchemasList, SSG).
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec update_field_positions(mb_field_spec_list()) -> mb_field_spec_list().
+%-------------------------------------------------------------
+update_field_positions([]) -> [];
+update_field_positions(FieldList) ->
+    update_field_positions(FieldList, 1, []).
+
+
+update_field_positions([], _, UpdatedFieldList) -> lists:reverse(UpdatedFieldList);
+update_field_positions([{FieldName, FieldSpecifications}| Remainder], NextPos, Aggregate) ->
+
+    UpdatedFieldSpecifications = maps:update(?POSITION, NextPos, FieldSpecifications),
+    update_field_positions(Remainder, NextPos+1, [{FieldName, UpdatedFieldSpecifications} | Aggregate]).
+
 
 
 %============================================================

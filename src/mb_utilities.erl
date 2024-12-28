@@ -4,7 +4,8 @@
          is_printable_string/1, identify_type_in_string/1, 
          string_to_float/1, string_to_integer/1, string_to_integer/2, 
          string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, 
-         get_linked_processes/0, is_node_name/1, is_node_name_list/1]).
+         get_linked_processes/0, is_node_name/1, is_node_name_list/1,
+         move_element/3]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -239,3 +240,24 @@ is_node_name_list([Next | T]) ->
     end;
 
 is_node_name_list(_) -> false.
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec move_element(list(), integer(), integer()) -> list().
+%-------------------------------------------------------------
+move_element(List, N, M) ->
+    % Step 1: Remove the element at position N
+    {Element, Rest} = pop_at(List, N),
+    
+    % Step 2: Insert the element at position M
+    insert_at(Rest, M, Element).
+
+pop_at(List, N) ->
+    {Prefix, [Element | Suffix]} = lists:split(N - 1, List), % Split at N-1
+    {Element, Prefix ++ Suffix}.
+
+insert_at(List, M, Element) ->
+    {Prefix, Suffix} = lists:split(M - 1, List), % Split at M-1
+    Prefix ++ [Element] ++ Suffix.
+
