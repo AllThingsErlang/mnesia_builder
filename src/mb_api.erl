@@ -26,10 +26,18 @@
          delete_schema/2,
          get_schema/2,
          get_all_schemas/1,
+
+         set_schema_name/3,
          set_schema_type/3,
          set_schema_ram_copies/3,
          set_schema_disc_copies/3,
          set_schema_disc_only_copies/3,
+
+         get_schema_type/2,
+         get_schema_ram_copies/2,
+         get_schema_disc_copies/2,
+         get_schema_disc_only_copies/2,
+
          get_schema_attribute/3,
          get_ssg/1,
          get_schema_names/1,
@@ -37,11 +45,19 @@
          add_field/3,
          make_field_key/3,
          move_field/4,
+
          set_field_type/4,
          set_field_label/4,
          set_field_priority/4,
          set_field_default_value/4,
          set_field_description/4,
+
+         get_field_type/3,
+         get_field_label/3,
+         get_field_priority/3,
+         get_field_default_value/3,
+         get_field_description/3,
+
          get_field_attribute/4,
          get_fields/2,
          get_field/3,
@@ -400,6 +416,16 @@ get_all_schemas(SessionId) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
+-spec set_schema_name(mb_session_id(), mb_schema_name(), mb_schema_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+set_schema_name(SessionId, SchemaOldName, SchemaNewName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_NAME, {{schema_old_name, SchemaOldName}, {schema_new_name, SchemaNewName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+ 
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
 -spec set_schema_type(mb_session_id(), mb_schema_name(), mb_schema_type()) -> ok | mb_error().
 %-------------------------------------------------------------
 set_schema_type(SessionId, SchemaName, SchemaType) -> 
@@ -436,6 +462,50 @@ set_schema_disc_only_copies(SessionId, SchemaName, NodesList) ->
     Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, NodesList}}),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
+
+ 
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec get_schema_type(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_schema_type(SessionId, SchemaName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_TYPE, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec get_schema_ram_copies(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_schema_ram_copies(SessionId, SchemaName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_RAM_COPIES, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec get_schema_disc_copies(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_schema_disc_copies(SessionId, SchemaName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_DISC_COPIES, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec get_schema_disc_only_copies(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_schema_disc_only_copies(SessionId, SchemaName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_SCHEMA_DISC_ONLY_COPIES, {{schema_name, SchemaName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
 
 %-------------------------------------------------------------
 % 
@@ -538,6 +608,70 @@ set_field_default_value(SessionId, SchemaName, FieldName, NewDefaultValue) ->
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply). 
 
+
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec get_field_type(mb_session_id(), mb_schema_name(), mb_field_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_field_type(SessionId, SchemaName, FieldName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_TYPE, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+%-------------------------------------------------------------
+%
+%-------------------------------------------------------------
+-spec get_field_description(mb_session_id(), mb_schema_name(), mb_field_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_field_description(SessionId, SchemaName, FieldName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_DESCRIPTION, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).    
+
+
+%-------------------------------------------------------------
+%
+%-------------------------------------------------------------
+-spec get_field_label(mb_session_id(), mb_schema_name(), mb_field_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_field_label(SessionId, SchemaName, FieldName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_LABEL, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).  
+
+%-------------------------------------------------------------
+%
+%-------------------------------------------------------------
+-spec get_field_priority(mb_session_id(), mb_schema_name(), mb_field_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_field_priority(SessionId, SchemaName, FieldName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_PRIORITY, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply). 
+
+%-------------------------------------------------------------
+%
+%-------------------------------------------------------------
+-spec get_field_default_value(mb_session_id(), mb_schema_name(), mb_field_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_field_default_value(SessionId, SchemaName, FieldName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_DEFAULT_VALUE, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply). 
+
+%-------------------------------------------------------------
+%
+%-------------------------------------------------------------
+-spec get_field_position(mb_session_id(), mb_schema_name(), mb_field_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+get_field_position(SessionId, SchemaName, FieldName) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_POSITION, {{schema_name, SchemaName}, {field_name, FieldName}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
@@ -595,16 +729,6 @@ get_mandatory_field_count(SessionId, SchemaName) ->
 %-------------------------------------------------------------
 get_field_names(SessionId, SchemaName) -> 
     Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_NAMES, {{schema_name, SchemaName}}),
-    Reply = mb_ipc:worker_call(SessionId, Message),
-    request_response_result(Reply).
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
--spec get_field_position(mb_session_id(), mb_schema_name(), mb_field_name()) -> integer() | mb_error().
-%-------------------------------------------------------------
-get_field_position(SessionId, SchemaName, FieldName) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_GET_FIELD_POSITION, {{schema_name, SchemaName}, {field_name, FieldName}}),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 

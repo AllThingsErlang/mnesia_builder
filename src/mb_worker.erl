@@ -525,7 +525,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_attributes([{?RAM_COPIES, NodesList}], SchemaName, SSG) of 
+    case mb_schemas:set_schema_ram_copies(NodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -545,7 +545,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_attributes([{?DISC_COPIES, NodesList}], SchemaName, SSG) of 
+    case mb_schemas:set_schema_disc_copies(NodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -565,7 +565,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_attributes([{?DISC_ONLY_COPIES, NodesList}], SchemaName, SSG) of 
+    case mb_schemas:set_schema_disc_only_copies(NodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -586,7 +586,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_attributes([{?SCHEMA_TYPE, SchemaType}], SchemaName, SSG) of 
+    case mb_schemas:set_schema_type(SchemaType, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};

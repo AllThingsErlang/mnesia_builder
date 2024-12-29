@@ -4,7 +4,7 @@
          is_printable_string/1, identify_type_in_string/1, 
          string_to_float/1, string_to_integer/1, string_to_integer/2, 
          string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, 
-         get_linked_processes/0, is_node_name/1, is_node_name_list/1,
+         get_linked_processes/0, is_node_name/1, is_node_name_list/1, is_email/1,
          move_element/3]).
 
 
@@ -90,8 +90,10 @@ string_to_tuple(String) ->
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-is_printable_string(Input) ->
-    lists:all(fun(Char) -> Char >= 32 andalso Char =< 126 end, Input).
+is_printable_string(Input) when is_list(Input) ->
+    lists:all(fun(Char) -> Char >= 32 andalso Char =< 126 end, Input);
+
+is_printable_string(_) -> false.
 
 
 %-------------------------------------------------------------
@@ -226,6 +228,47 @@ is_node_name(Value) when is_atom(Value) -> string:find(atom_to_list(Value), "@")
 
 is_node_name(_) -> false.
 
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec is_email(string()) -> boolean().
+%-------------------------------------------------------------
+is_email(Value) when is_list(Value) -> 
+    case is_printable_string(Value) of 
+        true -> 
+            case (is_valid_email_chars(Value)) of 
+                true -> 
+                    case string:find(Value, "@") of 
+                        nomatch -> false; % no @ not an email
+                        "@" -> false; % only one @ at end of email, no domain name
+                        Remainder1 -> 
+                            case string:find(Remainder1, ".") of 
+                                nomatch -> false; % not a valid domain name
+                                "." -> false; % only one . at the end, invalid domain name
+                                Remainder2 -> 
+                                    case string:find(Remainder2, "@") of 
+                                        nomatch -> % only one @, good
+                                            LastAsciiValue = lists:last(Remainder2),
+                                            case [LastAsciiValue] of
+                                                "." -> false;   % ends with a .
+                                                _ -> true % valid email address
+                                            end;
+                                        _ -> false
+                                    end
+                            end 
+                    end;
+
+                _ -> false
+            end;
+        false -> false 
+    end;
+
+is_email(_) -> false.
+
+
+is_valid_email_chars(String) ->
+    ValidChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@._-",
+    lists:all(fun(Char) -> lists:member(Char, ValidChars) end, String).
 
 %-------------------------------------------------------------
 %   
