@@ -697,10 +697,10 @@ validate_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) ->
                 {error, _} -> false;
                 term -> true;
                 Type ->
-                    io:format("--- fieldname: ~p~n", [FieldName]),
-                    io:format("--- type: ~p~n", [Type]),
-                    io:format("--- value: ~p~n", [Value]),
-                    io:format("--- type: ~p~n", [get_type(Value)]),
+                    %io:format("--- fieldname: ~p~n", [FieldName]),
+                    %io:format("--- type: ~p~n", [Type]),
+                    %io:format("--- value: ~p~n", [Value]),
+                    %io:format("--- type: ~p~n", [get_type(Value)]),
 
                     case get_type(Value) of 
                         Type -> true; 
@@ -1308,325 +1308,6 @@ validate_ssg(SSG) ->
         Errors -> Errors 
     end.
 
-validate_ssg_specifications(SSG) when is_map(SSG) ->
-
-    VersionResult = case maps:find(?VERSION, SSG) of
-        {ok, Version} ->
-            case mb_utilities:is_printable_string(Version) of 
-                true -> [];
-                false -> [{ssg_version, invalid_type}]
-            end;
-        error -> [{ssg_version, map_element_missing}]
-    end,
-    
-    NameResult = case maps:find(?NAME, SSG) of
-        {ok, Name} ->
-            case is_atom(Name) of 
-                true -> [];
-                false -> [{ssg_name, invalid_type}]
-            end;
-        error -> [{ssg_name, map_element_missing}]
-    end,
-
-    DescriptionResult = case maps:find(?DESCRIPTION, SSG) of
-        {ok, Description} -> 
-            case mb_utilities:is_printable_string(Description) of 
-                true -> [];
-                false -> [{ssg_description, invalid_type}]
-            end;
-        error -> [{ssg_description, map_element_missing}]
-    end,
-
-    CreatedResult = case maps:find(?CREATED, SSG) of
-        {ok, Created} -> 
-            case mb_utilities:is_timestamp(Created) of 
-                true -> [];
-                false -> [{ssg_created, invalid_type}]
-            end;
-        error -> [{ssg_created, map_element_missing}]
-    end,
-
-    OwnerResult = case maps:find(?OWNER, SSG) of
-        {ok, Owner} -> 
-            case mb_utilities:is_printable_string(Owner) of 
-                true -> [];
-                false -> [{ssg_owner, invalid_type}]
-            end;
-        error -> [{ssg_owner, map_element_missing}]
-    end,
-
-    EmailResult = case maps:find(?EMAIL, SSG) of
-        {ok, Email} -> 
-            case mb_utilities:is_printable_string(Email) of 
-                true -> [];
-                false -> [{ssg_email, invalid_type}]
-            end;
-        error -> [{ssg_email, map_element_missing}]
-    end,
-
-    SchemasResult = case maps:find(?SCHEMAS, SSG) of
-        {ok, Schemas} -> 
-            case is_schema_list(Schemas) of 
-                true -> [];
-                false -> [{ssg_schemas, invalid_type}]
-            end;
-        error -> [{ssg_schemas, map_element_missing}]
-    end,
-
-    SizeResult = case maps:size(SSG) of 
-        7 -> [];
-        _ -> [{ssg, invalid_element_count}]
-    end,
-
-    VersionResult ++ NameResult ++ DescriptionResult ++ CreatedResult ++ OwnerResult ++ EmailResult ++ SchemasResult ++ SizeResult;
-
-
-validate_ssg_specifications(_) -> [{{ssg, not_a_map}}].
-
-
-%-------------------------------------------------------------
-%   
-%-------------------------------------------------------------
-%-------------------------------------------------------------
-validate_all_schema_specifications(SchemaSpecList) ->
-    validate_all_schema_specifications(SchemaSpecList, []).
-
-
-validate_all_schema_specifications([], Result) -> Result;
-validate_all_schema_specifications([{SchemaName, SchemaSpecifications} | T], Result) ->
-    
-    %io:format("...~p~n", [SchemaName]),
-
-    case validate_schema_specifications(SchemaName, SchemaSpecifications) of 
-        [] -> 
-            %io:format("schema errors: []~n"),
-            validate_all_schema_specifications(T, Result);
-        Errors -> 
-            %io:format("schema errors: ~p~n", [Errors]),
-            validate_all_schema_specifications(T, [{SchemaName, Errors}] ++ Result)
-    end;
-
-validate_all_schema_specifications([_ | T], Result) -> validate_all_schema_specifications(T, [{schema, not_a_name_map_pair}] ++ Result).
-
-
-
-%-------------------------------------------------------------
-%   
-%-------------------------------------------------------------
-%-------------------------------------------------------------
-validate_all_field_specifications(SSG) ->
-    SchemaSpecList = schemas(SSG),
-    validate_all_field_specifications(SchemaSpecList, SSG, []).
-
-
-% Cycle through all the schemas and validate each of their field specifications.
-validate_all_field_specifications([], _, Result) -> Result;
-validate_all_field_specifications([{SchemaName, _} | T], SSG, Result) ->
-    case fields(SchemaName, SSG) of 
-        {error, _} -> NewResult = [{SchemaName, fields_not_found}];
-        FieldSpecifications -> NewResult = validate_all_field_specifications_in_schema(FieldSpecifications, SchemaName, SSG, Result)
-    end,
-
-    validate_all_field_specifications(T, SSG, NewResult ++ Result);
-
-validate_all_field_specifications([_ | T], SSG, Result) -> validate_all_field_specifications(T, SSG, [{schema, not_a_name_map_pair}] ++ Result).
-
-
-
-validate_all_field_specifications_in_schema([], _, _, Result) -> Result;
-validate_all_field_specifications_in_schema([{FieldName, FieldSpecifications} | T], SchemaName, SSG, Result) ->
-    
-    %io:format("...~p~n", [FieldName]),
-
-    case validate_field_specifications(FieldName, FieldSpecifications, SchemaName, SSG) of 
-        [] -> 
-            %io:format("field errors: []~n"),
-            validate_all_field_specifications_in_schema(T, SchemaName, SSG, Result);
-        Errors -> 
-            %io:format("field errors: ~p~n", [Errors]),
-            validate_all_field_specifications_in_schema(T, SchemaName, SSG, [{{SchemaName, FieldName}, Errors}] ++ Result)
-    end;
-
-validate_all_field_specifications_in_schema([_ | T], SchemaName, SSG, Result) -> validate_all_field_specifications_in_schema(T, SchemaName, SSG, [{{SchemaName, field}, not_a_name_map_pair}] ++ Result).
-
-
-%-------------------------------------------------------------
-%   
-%-------------------------------------------------------------
-%-------------------------------------------------------------
-validate_schema_specifications(SchemaName, SchemaSpecifications) when is_map(SchemaSpecifications) ->
-
-    NameResult = case maps:find(?NAME, SchemaSpecifications) of
-        {ok, Name} ->
-            case validate_schema_attribute(?NAME, Name) of 
-                true -> 
-                    case Name == SchemaName of 
-                        true -> [];
-                        false -> [{schema_name, mismatch}]
-                    end;
-
-                false -> [{schema_name, invalid_type}]
-            end;
-        error -> [{schema_name, map_element_missing}]
-    end,
-    
-    TypeResult = case maps:find(?SCHEMA_TYPE, SchemaSpecifications) of
-        {ok, Type} ->
-            case validate_schema_attribute(?SCHEMA_TYPE, Type) of 
-                true -> [];
-                false -> [{schema_type, invalid_type}]
-            end;
-        error -> [{schema_type, map_element_missing}]
-    end,
-    
-    DescriptionResult = case maps:find(?DESCRIPTION, SchemaSpecifications) of
-        {ok, Description} -> 
-            case validate_schema_attribute(?DESCRIPTION, Description) of 
-                true -> [];
-                false -> [{schema_description, invalid_type}]
-            end;
-        error -> [{schema_description, map_element_missing}]
-    end,
-
-    RamCopiesResult = case maps:find(?RAM_COPIES, SchemaSpecifications) of
-        {ok, RamCopies} -> 
-            case validate_schema_attribute(?RAM_COPIES, RamCopies) of 
-                true -> [];
-                false -> [{schema_ram_copies, invalid_type}]
-            end;
-        error -> [{schema_ram_copies, map_element_missing}]
-    end,
-
-    DiscCopiesResult = case maps:find(?RAM_COPIES, SchemaSpecifications) of
-        {ok, DiscCopies} -> 
-            case validate_schema_attribute(?DISC_COPIES, DiscCopies) of 
-                true -> [];
-                false -> [{schema_disc_copies, invalid_type}]
-            end;
-        error -> [{schema_disc_copies, map_element_missing}]
-    end,
-
-    DiscOnlyCopiesResult = case maps:find(?DISC_ONLY_COPIES, SchemaSpecifications) of
-        {ok, DiscOnlyCopies} -> 
-            case validate_schema_attribute(?DISC_ONLY_COPIES, DiscOnlyCopies) of 
-                true -> [];
-                false -> [{schema_disc_only_copies, invalid_type}]
-            end;
-        error -> [{schema_disc_only_copies, map_element_missing}]
-    end,
-
-    FieldResult = case maps:find(?FIELDS, SchemaSpecifications) of
-        {ok, Fields} -> 
-            case validate_schema_attribute(?FIELDS, Fields) of 
-                true -> [];
-                false -> [{schema_fields, invalid_type}]
-            end;
-        error -> [{schema_fields, map_element_missing}]
-    end,
-
-    SizeResult = case maps:size(SchemaSpecifications) of 
-        7 -> [];
-        _ -> [{schema, invalid_element_count}]
-    end,
-
-    NameResult ++ TypeResult ++ DescriptionResult ++ RamCopiesResult ++ DiscCopiesResult ++ DiscOnlyCopiesResult ++ FieldResult ++ SizeResult;
-
-
-validate_schema_specifications(_,_) -> [{{schema, not_a_map}}].
-
-
-
-
-%-------------------------------------------------------------
-%   Attribute, Value, FieldName, SchemaName, SSG
-%-------------------------------------------------------------
-%-------------------------------------------------------------
-validate_field_specifications(FieldName, FieldSpecifications, SchemaName, SSG) when is_map(FieldSpecifications) ->
-
-    NameResult = case maps:find(?NAME, FieldSpecifications) of
-        {ok, Name} ->
-            case validate_field_attribute(?NAME, Name, FieldName, SchemaName, SSG) of 
-                true -> [];
-                false -> [{field_name, invalid_type}]
-            end;
-        error -> [{field_name, map_element_missing}]
-    end,
-    
-    TypeResult = case maps:find(?FIELD_TYPE, FieldSpecifications) of
-        {ok, Type} ->
-            case validate_field_attribute(?FIELD_TYPE, Type, FieldName, SchemaName, SSG) of 
-                true -> [];
-                false -> [{field_type, invalid_type}]
-            end;
-        error -> [{field_type, map_element_missing}]
-    end,
-    
-    DescriptionResult = case maps:find(?DESCRIPTION, FieldSpecifications) of
-        {ok, Description} -> 
-            case validate_field_attribute(?DESCRIPTION, Description, FieldName, SchemaName, SSG) of 
-                true -> [];
-                false -> [{field_description, invalid_type}]
-            end;
-        error -> [{field_description, map_element_missing}]
-    end,
-
-    LabelResult = case maps:find(?LABEL, FieldSpecifications) of
-        {ok, Label} -> 
-            case validate_field_attribute(?LABEL, Label, FieldName, SchemaName, SSG) of 
-                true -> [];
-                false -> [{field_label, invalid_type}]
-            end;
-        error -> [{field_label, map_element_missing}]
-    end,
-
-    RoleResult = case maps:find(?ROLE, FieldSpecifications) of
-        {ok, Role} -> 
-            case validate_field_attribute(?ROLE, Role, FieldName, SchemaName, SSG) of 
-                true -> [];
-                false -> [{field_role, invalid_type}]
-            end;
-        error -> [{field_role, map_element_missing}]
-    end,
-
-    PositionResult = case maps:find(?POSITION, FieldSpecifications) of
-        {ok, Position} -> 
-            case validate_field_attribute(?POSITION, Position, FieldName, SchemaName, SSG) of 
-                true -> [];
-                false -> [{field_position, invalid_type}]
-            end;
-        error -> [{field_position, map_element_missing}]
-    end,
-
-    PriorityResult = case maps:find(?PRIORITY, FieldSpecifications) of
-        {ok, Priority} -> 
-            case validate_field_attribute(?PRIORITY, Priority, FieldName, SchemaName, SSG) of 
-                true -> [];
-                false -> [{field_priority, invalid_type}]
-            end;
-        error -> [{field_priority, map_element_missing}]
-    end,
-
-     DefaultValueResult = case maps:find(?DEFAULT_VALUE, FieldSpecifications) of
-        {ok, DefaultValue} -> 
-            case validate_field_attribute(?DEFAULT_VALUE, DefaultValue, FieldName, SchemaName, SSG) of 
-                true -> [];
-                false -> [{field_default_value, invalid_type}]
-            end;
-        error -> [{field_default_value, map_element_missing}]
-    end,
-
-    
-
-    SizeResult = case maps:size(FieldSpecifications) of 
-        8 -> [];
-        _ -> [{field, invalid_element_count}]
-    end,
-
-    NameResult ++ TypeResult ++ DescriptionResult ++ LabelResult ++ RoleResult ++ PositionResult ++ PriorityResult ++ DefaultValueResult ++ SizeResult;
-
-
-validate_field_specifications(_, _, _, _) -> [{{field, not_a_map}}].
-
 
 %-------------------------------------------------------------
 % 
@@ -1759,9 +1440,339 @@ compare_fields_from_specs([Next1 | T1], [Next2 | T2]) ->
 %============================================================
 
 
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec validate_all_schema_specifications(mb_schema_spec_list()) -> list().
+%-------------------------------------------------------------
+validate_all_schema_specifications(SchemaSpecList) ->
+    validate_all_schema_specifications(SchemaSpecList, []).
+
+
+validate_all_schema_specifications([], Result) -> Result;
+validate_all_schema_specifications([{SchemaName, SchemaSpecifications} | T], Result) ->
+    
+    %io:format("...~p~n", [SchemaName]),
+
+    case validate_schema_specifications(SchemaName, SchemaSpecifications) of 
+        [] -> 
+            %io:format("schema errors: []~n"),
+            validate_all_schema_specifications(T, Result);
+        Errors -> 
+            %io:format("schema errors: ~p~n", [Errors]),
+            validate_all_schema_specifications(T, [{SchemaName, Errors}] ++ Result)
+    end;
+
+validate_all_schema_specifications([_ | T], Result) -> validate_all_schema_specifications(T, [{schema, not_a_name_map_pair}] ++ Result).
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec validate_all_field_specifications(mb_ssg()) -> list().
+%------------------------------------------------------------
+validate_all_field_specifications(SSG) ->
+    SchemaSpecList = schemas(SSG),
+    validate_all_field_specifications(SchemaSpecList, SSG, []).
+
+%-------------------------------------------------------------
+% Cycle through all the schemas and validate each of their field specifications.
+%-------------------------------------------------------------
+-spec validate_all_field_specifications(mb_schema_spec_list(), mb_ss, list()) -> list().
+%------------------------------------------------------------
+validate_all_field_specifications([], _, Result) -> Result;
+validate_all_field_specifications([{SchemaName, _} | T], SSG, Result) ->
+    case fields(SchemaName, SSG) of 
+        {error, _} -> NewResult = [{SchemaName, fields_not_found}];
+        FieldSpecifications -> NewResult = validate_all_field_specifications_in_schema(FieldSpecifications, SchemaName, SSG, Result)
+    end,
+
+    validate_all_field_specifications(T, SSG, NewResult ++ Result);
+
+validate_all_field_specifications([_ | T], SSG, Result) -> validate_all_field_specifications(T, SSG, [{schema, not_a_name_map_pair}] ++ Result).
+
+
+
+validate_all_field_specifications_in_schema([], _, _, Result) -> Result;
+validate_all_field_specifications_in_schema([{FieldName, FieldSpecifications} | T], SchemaName, SSG, Result) ->
+    
+    %io:format("...~p~n", [FieldName]),
+
+    case validate_field_specifications(FieldName, FieldSpecifications, SchemaName, SSG) of 
+        [] -> 
+            %io:format("field errors: []~n"),
+            validate_all_field_specifications_in_schema(T, SchemaName, SSG, Result);
+        Errors -> 
+            %io:format("field errors: ~p~n", [Errors]),
+            validate_all_field_specifications_in_schema(T, SchemaName, SSG, [{{SchemaName, FieldName}, Errors}] ++ Result)
+    end;
+
+validate_all_field_specifications_in_schema([_ | T], SchemaName, SSG, Result) -> validate_all_field_specifications_in_schema(T, SchemaName, SSG, [{{SchemaName, field}, not_a_name_map_pair}] ++ Result).
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec validate_ssg_specifications(mb_ssg()) -> list().
+%-------------------------------------------------------------
+validate_ssg_specifications(SSG) when is_map(SSG) ->
+
+    VersionResult = case maps:find(?VERSION, SSG) of
+        {ok, Version} ->
+            case mb_utilities:is_printable_string(Version) of 
+                true -> [];
+                false -> [{?VERSION, invalid_type}]
+            end;
+        error -> [{?VERSION, map_element_missing}]
+    end,
+    
+    NameResult = case maps:find(?NAME, SSG) of
+        {ok, Name} ->
+            case is_atom(Name) of 
+                true -> [];
+                false -> [{?NAME, invalid_type}]
+            end;
+        error -> [{?NAME, map_element_missing}]
+    end,
+
+    DescriptionResult = case maps:find(?DESCRIPTION, SSG) of
+        {ok, Description} -> 
+            case mb_utilities:is_printable_string(Description) of 
+                true -> [];
+                false -> [{?DESCRIPTION, invalid_type}]
+            end;
+        error -> [{?DESCRIPTION, map_element_missing}]
+    end,
+
+    CreatedResult = case maps:find(?CREATED, SSG) of
+        {ok, Created} -> 
+            case mb_utilities:is_timestamp(Created) of 
+                true -> [];
+                false -> [{?CREATED, invalid_type}]
+            end;
+        error -> [{?CREATED, map_element_missing}]
+    end,
+
+    OwnerResult = case maps:find(?OWNER, SSG) of
+        {ok, Owner} -> 
+            case mb_utilities:is_printable_string(Owner) of 
+                true -> [];
+                false -> [{?OWNER, invalid_type}]
+            end;
+        error -> [{?OWNER, map_element_missing}]
+    end,
+
+    EmailResult = case maps:find(?EMAIL, SSG) of
+        {ok, Email} -> 
+            case mb_utilities:is_printable_string(Email) of 
+                true -> [];
+                false -> [{?EMAIL, invalid_type}]
+            end;
+        error -> [{?EMAIL, map_element_missing}]
+    end,
+
+    SchemasResult = case maps:find(?SCHEMAS, SSG) of
+        {ok, Schemas} -> 
+            case is_schema_list(Schemas) of 
+                true -> [];
+                false -> [{?SCHEMAS, invalid_type}]
+            end;
+        error -> [{?SCHEMAS, map_element_missing}]
+    end,
+
+    SizeResult = case maps:size(SSG) of 
+        7 -> [];
+        _ -> [{ssg_specifications, invalid_element_count}]
+    end,
+
+    VersionResult ++ NameResult ++ DescriptionResult ++ CreatedResult ++ OwnerResult ++ EmailResult ++ SchemasResult ++ SizeResult;
+
+
+validate_ssg_specifications(_) -> [{{ssg, not_a_map}}].
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec validate_schema_specifications(mb_schema_name(), mb_schema_spec()) -> list().
+%-------------------------------------------------------------
+validate_schema_specifications(SchemaName, SchemaSpecifications) when is_map(SchemaSpecifications) ->
+
+    NameResult = case maps:find(?NAME, SchemaSpecifications) of
+        {ok, Name} ->
+            case validate_schema_attribute(?NAME, Name) of 
+                true -> 
+                    case Name == SchemaName of 
+                        true -> [];
+                        false -> [{?NAME, mismatch}]
+                    end;
+
+                false -> [{?NAME, invalid_type}]
+            end;
+        error -> [{?NAME, map_element_missing}]
+    end,
+    
+    TypeResult = case maps:find(?SCHEMA_TYPE, SchemaSpecifications) of
+        {ok, Type} ->
+            case validate_schema_attribute(?SCHEMA_TYPE, Type) of 
+                true -> [];
+                false -> [{?SCHEMA_TYPE, invalid_type}]
+            end;
+        error -> [{?SCHEMA_TYPE, map_element_missing}]
+    end,
+    
+    DescriptionResult = case maps:find(?DESCRIPTION, SchemaSpecifications) of
+        {ok, Description} -> 
+            case validate_schema_attribute(?DESCRIPTION, Description) of 
+                true -> [];
+                false -> [{?DESCRIPTION, invalid_type}]
+            end;
+        error -> [{?DESCRIPTION, map_element_missing}]
+    end,
+
+    RamCopiesResult = case maps:find(?RAM_COPIES, SchemaSpecifications) of
+        {ok, RamCopies} -> 
+            case validate_schema_attribute(?RAM_COPIES, RamCopies) of 
+                true -> [];
+                false -> [{?RAM_COPIES, invalid_type}]
+            end;
+        error -> [{?RAM_COPIES, map_element_missing}]
+    end,
+
+    DiscCopiesResult = case maps:find(?DISC_COPIES, SchemaSpecifications) of
+        {ok, DiscCopies} -> 
+            case validate_schema_attribute(?DISC_COPIES, DiscCopies) of 
+                true -> [];
+                false -> [{?DISC_COPIES, invalid_type}]
+            end;
+        error -> [{?DISC_COPIES, map_element_missing}]
+    end,
+
+    DiscOnlyCopiesResult = case maps:find(?DISC_ONLY_COPIES, SchemaSpecifications) of
+        {ok, DiscOnlyCopies} -> 
+            case validate_schema_attribute(?DISC_ONLY_COPIES, DiscOnlyCopies) of 
+                true -> [];
+                false -> [{?DISC_ONLY_COPIES, invalid_type}]
+            end;
+        error -> [{?DISC_ONLY_COPIES, map_element_missing}]
+    end,
+
+    FieldResult = case maps:find(?FIELDS, SchemaSpecifications) of
+        {ok, Fields} -> 
+            case validate_schema_attribute(?FIELDS, Fields) of 
+                true -> [];
+                false -> [{?FIELDS, invalid_type}]
+            end;
+        error -> [{?FIELDS, map_element_missing}]
+    end,
+
+    SizeResult = case maps:size(SchemaSpecifications) of 
+        7 -> [];
+        _ -> [{schem_specifications, invalid_element_count}]
+    end,
+
+    NameResult ++ TypeResult ++ DescriptionResult ++ RamCopiesResult ++ DiscCopiesResult ++ DiscOnlyCopiesResult ++ FieldResult ++ SizeResult;
+
+
+validate_schema_specifications(_,_) -> [{{schema, not_a_map}}].
+
+
+
+
+%-------------------------------------------------------------
+%   Attribute, Value, FieldName, SchemaName, SSG
+%-------------------------------------------------------------
+-spec validate_field_specifications(mb_field_name(), mb_field_spec(), mb_schema_name(), mb_ssg()) -> list().
+%-------------------------------------------------------------
+validate_field_specifications(FieldName, FieldSpecifications, SchemaName, SSG) when is_map(FieldSpecifications) ->
+
+    NameResult = case maps:find(?NAME, FieldSpecifications) of
+        {ok, Name} ->
+            case validate_field_attribute(?NAME, Name, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{?NAME, invalid_type}]
+            end;
+        error -> [{?NAME, map_element_missing}]
+    end,
+    
+    TypeResult = case maps:find(?FIELD_TYPE, FieldSpecifications) of
+        {ok, Type} ->
+            case validate_field_attribute(?FIELD_TYPE, Type, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{?FIELD_TYPE, invalid_type}]
+            end;
+        error -> [{?FIELD_TYPE, map_element_missing}]
+    end,
+    
+    DescriptionResult = case maps:find(?DESCRIPTION, FieldSpecifications) of
+        {ok, Description} -> 
+            case validate_field_attribute(?DESCRIPTION, Description, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{?DESCRIPTION, invalid_type}]
+            end;
+        error -> [{?DESCRIPTION, map_element_missing}]
+    end,
+
+    LabelResult = case maps:find(?LABEL, FieldSpecifications) of
+        {ok, Label} -> 
+            case validate_field_attribute(?LABEL, Label, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{?LABEL, invalid_type}]
+            end;
+        error -> [{?LABEL, map_element_missing}]
+    end,
+
+    RoleResult = case maps:find(?ROLE, FieldSpecifications) of
+        {ok, Role} -> 
+            case validate_field_attribute(?ROLE, Role, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{?ROLE, invalid_type}]
+            end;
+        error -> [{?ROLE, map_element_missing}]
+    end,
+
+    PositionResult = case maps:find(?POSITION, FieldSpecifications) of
+        {ok, Position} -> 
+            case validate_field_attribute(?POSITION, Position, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{?POSITION, invalid_type}]
+            end;
+        error -> [{?POSITION, map_element_missing}]
+    end,
+
+    PriorityResult = case maps:find(?PRIORITY, FieldSpecifications) of
+        {ok, Priority} -> 
+            case validate_field_attribute(?PRIORITY, Priority, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{?PRIORITY, invalid_type}]
+            end;
+        error -> [{?PRIORITY, map_element_missing}]
+    end,
+
+     DefaultValueResult = case maps:find(?DEFAULT_VALUE, FieldSpecifications) of
+        {ok, DefaultValue} -> 
+            case validate_field_attribute(?DEFAULT_VALUE, DefaultValue, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{?DEFAULT_VALUE, invalid_type}]
+            end;
+        error -> [{?DEFAULT_VALUE, map_element_missing}]
+    end,
+
+    SizeResult = case maps:size(FieldSpecifications) of 
+        8 -> [];
+        _ -> [{field_specifications, invalid_element_count}]
+    end,
+
+    NameResult ++ TypeResult ++ DescriptionResult ++ LabelResult ++ RoleResult ++ PositionResult ++ PriorityResult ++ DefaultValueResult ++ SizeResult;
+
+
+validate_field_specifications(_, _, _, _) -> [{{field, not_a_map}}].
+
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
+-spec create_schema(mb_schema_name()) -> mb_schema_spec() | mb_error().
 %-------------------------------------------------------------
 create_schema(SchemaName) when is_atom(SchemaName) -> 
 
@@ -1778,6 +1789,7 @@ create_schema(SchemaName) -> {error, {invalid_argument, SchemaName}}.
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
+-spec create_field(mb_field_name()) -> mb_field_spec() | mb_error().
 %-------------------------------------------------------------
 create_field(FieldName) when is_atom(FieldName) ->
 
@@ -1795,6 +1807,7 @@ create_field(SchemaName) -> {error, {invalid_argument, SchemaName}}.
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
+-spec add_field(mb_field_name(), mb_field_spec_list()) -> mb_field_spec_list() | mb_error().
 %-------------------------------------------------------------
 add_field(FieldName, FieldList) when is_atom(FieldName), is_list(FieldList) ->
 
@@ -1825,6 +1838,7 @@ add_field(FieldName, FieldList) -> {error, {invalid_argument, {FieldName, FieldL
 %-------------------------------------------------------------
 % Sets field attributes, does not do any validation.
 %-------------------------------------------------------------
+-spec update_field(mb_field_attribute(), term(), mb_field_name(), mb_field_spec_list()) -> mb_field_spec_list() | mb_error().
 %-------------------------------------------------------------
 update_field(Attribute, Value, FieldName, FieldList) when is_list(FieldList) ->
 
@@ -1845,9 +1859,10 @@ update_field(Attribute, Value, FieldName, FieldList) when is_list(FieldList) ->
 update_field(_, _, _, FieldList) -> {error, {invalid_argument, FieldList}}.
 
       
-    %-------------------------------------------------------------
+%-------------------------------------------------------------
 % 
-%------------------------------------------------------------- 
+%-------------------------------------------------------------
+-spec is_schema_list(mb_schema_spec_list()) -> boolean(). 
 %-------------------------------------------------------------
 is_schema_list([]) -> true;
 is_schema_list([{SchemaName, SchemaSpecifications} | T]) when is_map(SchemaSpecifications) ->
@@ -1863,6 +1878,7 @@ is_schema_list(_) -> false.
 %-------------------------------------------------------------
 % 
 %------------------------------------------------------------- 
+-spec is_field_list(mb_field_spec_list()) -> boolean(). 
 %-------------------------------------------------------------
 is_field_list([]) -> true;
 is_field_list([{FieldName, FieldSpecifications} | T]) when is_map(FieldSpecifications) ->

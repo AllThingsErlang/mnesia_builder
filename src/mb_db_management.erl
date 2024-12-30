@@ -27,7 +27,6 @@ install(SSG) ->
         {error, Reason1} -> {error, Reason1};
         [] -> {error, storage_nodes_not_defined};
         Nodes ->
-
             % 1. Is local node in the list? If not, add it.
             case lists:member(node(), Nodes) of 
                 true -> UpdatedNodes = Nodes;
@@ -151,10 +150,10 @@ get_storage_nodes([NextSchema | T], Aggregate, SSG) ->
     case mb_schemas:get_schema_attribute(ram_copies, NextSchema, SSG) of
         {error, Reason} -> {error, Reason};
         RamCopies ->
-            case mb_schema:get_schema_attribute(disc_copies, NextSchema, SSG) of
+            case mb_schemas:get_schema_attribute(disc_copies, NextSchema, SSG) of
                 {error, Reason} -> {error, Reason};
                 DiscCopies ->
-                    case mb_schema:get_schema_attribute(disc_only_copies, NextSchema, SSG) of
+                    case mb_schemas:get_schema_attribute(disc_only_copies, NextSchema, SSG) of
                         {error, Reason} -> {error, Reason};
                         DiscOnlyCopies ->
                             NodesList = RamCopies ++ DiscCopies ++ DiscOnlyCopies,

@@ -19,6 +19,7 @@
          upload_module/4,
          download_module/1,
          download_module/2,
+         validate_ssg/1,
          generate/1,
          install/1,
 
@@ -342,6 +343,16 @@ download_module(SessionId, Path) when is_list(Path) ->
 
         {error, Reason} -> {error, Reason}
     end.
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec validate_ssg(mb_session_id()) -> ok | mb_error().
+%-------------------------------------------------------------
+validate_ssg(SessionId) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_VALIDATE_SSG),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
 
 %-------------------------------------------------------------
 % 

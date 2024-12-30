@@ -9,6 +9,7 @@
 -define(REQUEST_SET_SSG_OWNER, set_ssg_owner).
 -define(REQUEST_SET_SSG_EMAIL, set_ssg_email).
 -define(REQUEST_SET_SSG_DESCRIPTION, set_ssg_description).
+-define(REQUEST_VALIDATE_SSG, validate_ssg).
 -define(REQUEST_GENERATE, generate).
 -define(REQUEST_USE_MODULE, use_module).
 -define(REQUEST_DOWNLOAD_MODULE, download_module).

@@ -9,10 +9,10 @@
 -export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).
 
 get_ssg() ->
-    #{name => schema_group_1,owner => "Test User",version => "0.2",
+    #{name => test_schema,owner => "Test User",version => "0.2",
       description => "Test module to validate the schema handling code",
+      created => {{2024,12,30},{13,44,27}},
       email => "nowhere@nowehre.com",
-      created => {{2024,12,30},{1,26,9}},
       schemas =>
           [{employees,
                #{name => employees,type => set,description => [],
@@ -32,7 +32,8 @@ get_ssg() ->
                             position => 3,priority => optional,type => string,
                             description => [],default_value => [],
                             role => field}}],
-                 ram_copies => [],disc_copies => [],disc_only_copies => []}},
+                 disc_copies => [nonode@nohost],
+                 disc_only_copies => [],ram_copies => []}},
            {departments,
                #{name => departments,type => set,description => [],
                  fields =>
@@ -51,7 +52,8 @@ get_ssg() ->
                             position => 3,priority => mandatory,
                             type => string,description => [],
                             default_value => [],role => field}}],
-                 ram_copies => [],disc_copies => [],disc_only_copies => []}}]}.
+                 disc_copies => [nonode@nohost],
+                 disc_only_copies => [],ram_copies => []}}]}.
 
 
 %-------------------------------------------------------

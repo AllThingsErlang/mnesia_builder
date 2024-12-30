@@ -166,10 +166,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, _SessionId}, {?MSG_TYPE_REQUE
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SSG}}, {}}}, State) ->
 
     NewSSG =  maps:update(?NAME, ?DEFAULT_SSG_NAME, mb_schemas:new()),
-    UpdatedStateInterim = maps:update(?STATE_SSG, NewSSG, State),
-    % The module name is always the SSG name
-    UpdatedState = maps:update(?STATE_MODULE, ?DEFAULT_SSG_NAME, UpdatedStateInterim), 
-
+    UpdatedState = update_state_new_ssg(State, NewSSG),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
     {reply, ReplyMessage, UpdatedState};
 
@@ -183,9 +180,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             UpdatedState = State,
             Result = {error, Reason};
         NewSSG ->
-            UpdatedStateInterim = maps:update(?STATE_SSG, NewSSG, State),
-            % The module name is always the SSG name
-            UpdatedState = maps:update(?STATE_MODULE, Name, UpdatedStateInterim), 
+            UpdatedState = update_state_new_ssg(State, NewSSG),
             Result = ok 
     end,
 
@@ -302,10 +297,11 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         true -> 
             SessionDir = maps:get(?STATE_SESSION_DIR, State),
             File = SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl",
+            code:add_pathz(SessionDir),
 
             case file:write_file(File, Binary) of
                 ok -> 
-                    case compile:file(File, [report_errors]) of
+                    case compile:file(File, [{outdir, SessionDir}, report_errors]) of
                         {ok, Module} -> 
                             case code:soft_purge(Module) of 
                                 true ->
@@ -397,6 +393,16 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_VALIDATE_SSG}}, {}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    Result = mb_schemas:validate_ssg(SSG),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_VALIDATE_SSG, Result),
+    {reply, ReplyMessage, State};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_GENERATE}}, {}}}, State) ->
 
     case maps:get(?STATE_MODULE, State) of  
@@ -407,7 +413,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
             case mb_schemas:generate(Module, SessionDir, SessionDir, SSG) of
                 ok -> 
-                    case compile:file(SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl", [report_errors]) of
+                    case compile:file(SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl", [{outdir, SessionDir}, report_errors]) of
                         {ok, Module} -> Result = ok;
                         {error, Errors} -> Result = {error, Errors}
                     end;
@@ -425,7 +431,10 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_INSTALL}}, {}}}, State) ->
 
     case use_module(State) of 
+
         {ok, Module} -> 
+            io:format("attempting to install using ~p~n", [Module]),
+
             case Module:install() of
                 {error, Reason} -> Result = {error, Reason};
                 Result -> ok
@@ -435,6 +444,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
+            io:format("attempting to install using mb_db_management~n"),
+
             case mb_db_management:install(SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Result -> ok
@@ -449,24 +460,16 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_USE_MODULE}}, {{use_module, true}}}}, State) ->
 
-    case maps:get(?STATE_MODULE, State) of
-        [] -> 
-            UpdatedState = State,
-            Result = {error, module_name_not_set};
+    case load_module(State) of 
+        {error, Reason} -> 
+            UpdatedState = maps:update(?STATE_USE_MODULE, false, State),
+            Result = {error, Reason};
 
-        Module ->
-            SessionDir = maps:get(?STATE_SESSION_DIR, State),
-            code:add_pathz(SessionDir),
-                            
-            case code:load_file(Module) of 
-                {module, Module} -> 
-                    UpdatedState = maps:update(?STATE_USE_MODULE, true, State),
-                    Result = ok;
-                {error, Reason} -> 
-                    UpdatedState = State,
-                    Result = {error, Reason}
-            end
+        _Module ->
+            UpdatedState = maps:update(?STATE_USE_MODULE, true, State),
+            Result = ok 
     end,
+
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_USE_MODULE, Result),
     {reply, ReplyMessage, UpdatedState};
@@ -1270,9 +1273,39 @@ use_module(State) ->
     case maps:get(?STATE_USE_MODULE, State) of
         true ->
             Module = maps:get(?STATE_MODULE, State),
-            case code:module_loaded(Module) of
-                true ->  {ok, Module};
-                false -> {error, module_not_loaded} 
+            case code:module_status(Module) of
+                not_loaded -> {error, module_not_loaded};
+                _ ->  {ok, Module}
             end;
         false -> false
     end.
+
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+load_module(State) ->
+
+    SessionDir = maps:get(?STATE_SESSION_DIR, State),
+    
+    case maps:get(?STATE_MODULE, State) of
+        [] -> {error, module_name_not_set};
+        Module ->
+            case code:soft_purge(Module) of 
+                true ->
+                    code:add_pathz(SessionDir),
+                    case code:load_file(Module) of 
+                        {module, Module} -> Module;
+                        {error, Reason} -> {error, Reason}
+                    end;
+                false -> {error, {cannot_purge_module, Module}}
+            end
+    end.
+
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+update_state_new_ssg(State, NewSSG) -> 
+    UpdatedStateInterim1 = maps:update(?STATE_SSG, NewSSG, State),
+    % The module name is always the SSG name
+    UpdatedStateInterim2 = maps:update(?STATE_MODULE, maps:get(?NAME, NewSSG), UpdatedStateInterim1), 
+    maps:update(?STATE_USE_MODULE, false, UpdatedStateInterim2).
