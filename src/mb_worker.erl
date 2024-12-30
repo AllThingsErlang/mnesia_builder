@@ -17,6 +17,8 @@
 -define(STATE_USE_MODULE, use_module).
 -define(STATE_SESSION_DIR, session_dir).
 
+-define(DEFAULT_SSG_NAME, not_defined).
+
 %-------------------------------------------------------------
 % Function: 
 % Purpose:  
@@ -163,7 +165,11 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, _SessionId}, {?MSG_TYPE_REQUE
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SSG}}, {}}}, State) ->
 
-    UpdatedState = maps:update(?STATE_SSG, mb_schemas:new(), State),
+    NewSSG =  maps:update(?NAME, ?DEFAULT_SSG_NAME, mb_schemas:new()),
+    UpdatedStateInterim = maps:update(?STATE_SSG, NewSSG, State),
+    % The module name is always the SSG name
+    UpdatedState = maps:update(?STATE_MODULE, ?DEFAULT_SSG_NAME, UpdatedStateInterim), 
+
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
     {reply, ReplyMessage, UpdatedState};
 
@@ -172,8 +178,18 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SSG}}, {{name, Name}, {owner, Owner}, {email, Email}, {description, Description}}}}, State) ->
 
-    UpdatedState = maps:update(?STATE_SSG, mb_schemas:new(Name, Owner, Email, Description), State),
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
+    case mb_schemas:new(Name, Owner, Email, Description) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+        NewSSG ->
+            UpdatedStateInterim = maps:update(?STATE_SSG, NewSSG, State),
+            % The module name is always the SSG name
+            UpdatedState = maps:update(?STATE_MODULE, Name, UpdatedStateInterim), 
+            Result = ok 
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
@@ -198,7 +214,9 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            UpdatedStateInterim = maps:update(?STATE_SSG, UpdatedSSG, State),
+            % The module name is always the SSG name
+            UpdatedState = maps:update(?STATE_MODULE, Name, UpdatedStateInterim),
             Result = ok
     end,
 
@@ -270,32 +288,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_MODULE_NAME}}, {{module_name, Module}}}}, State) ->
-
-    case is_atom(Module) of 
-        true -> 
-            UpdatedState = maps:update(?STATE_MODULE, Module, State),
-            Result = ok;
-
-        false -> 
-            UpdatedState = State,
-            Result = {error, {invalid_module_name, Module}}
-    end,
-
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_MODULE_NAME, Result),
-    {reply, ReplyMessage, UpdatedState};
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_UPLOAD_MODULE}}, {{module_name, Module}, {module, Binary}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_UPLOAD_MODULE}}, {{module_name, Module}, {module, Binary}, {force_load, ForceLoadFlag}}}}, State) ->
 
     % 1. Validate module name
     % 2. Create module file and write the source code to file
     % 3. Compile module
     % 4. Load module
-    % 5. Retrieve the new SSG
-    % 6. Update State
+    % 5. Validate callback and retrieve the new SSG
+    % 6. Update State and set the Module name to the new SSG name
     % 7. Reply
 
     case is_atom(Module) of 
@@ -309,10 +309,28 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
                         {ok, Module} -> 
                             case code:load_file(Module) of 
                                 {module, Module} -> 
-                                    NewSSG = Module:get_ssg(),
-                                    UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
-                                    Result = ok;
-
+                                    case erlang:function_exported(Module, get_ssg, 0) of
+                                        true ->
+                                            NewSSG = Module:get_ssg(),
+                                            case mb_schemas:validate_ssg(NewSSG) of 
+                                                [] ->
+                                                    UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
+                                                    Result = ok;
+                                                Errors -> 
+                                                    case ForceLoadFlag of 
+                                                        true -> 
+                                                            UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
+                                                            Result = ok;
+                                                        _ ->
+                                                            UpdatedState = State,
+                                                            Result = {error, {invalid_specifications, Errors}}
+                                                    end
+                                            end;
+                                        false -> 
+                                            UpdatedState = State,
+                                            Result = {error, invalid_module_callback}
+                                    end;
+                                
                                 {error, Reason} -> 
                                     UpdatedState = State,
                                     Result = {error, Reason}

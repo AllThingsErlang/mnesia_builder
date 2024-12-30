@@ -12,11 +12,10 @@
          set_ssg_owner/2,
          set_ssg_email/2,
          set_ssg_description/2,
-         set_module_name/2,
          use_module/1,
          use_ssg/1,
-         upload_module/2,
          upload_module/3,
+         upload_module/4,
          download_module/1,
          download_module/2,
          generate/1,
@@ -264,17 +263,6 @@ set_ssg_description(SessionId, Description) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec set_module_name(mb_session_id(), atom()) -> ok | mb_error().
-%-------------------------------------------------------------
-set_module_name(SessionId, Module) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_MODULE_NAME, {{module_name, Module}}),
-    Reply = mb_ipc:worker_call(SessionId, Message),
-    request_response_result(Reply).
-
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
 -spec use_module(mb_session_id()) -> ok | mb_error().
 %-------------------------------------------------------------
 use_module(SessionId) -> 
@@ -296,27 +284,27 @@ use_ssg(SessionId) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec upload_module(mb_session_id(), atom()) -> ok | mb_error().
+-spec upload_module(mb_session_id(), atom(), boolean()) -> ok | mb_error().
 %-------------------------------------------------------------
-upload_module(SessionId, Module) -> upload_module(SessionId, ".", Module).
+upload_module(SessionId, Module, ForceLoadFlag) -> upload_module(SessionId, ".", Module, ForceLoadFlag).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec upload_module(mb_session_id(), string(), atom()) -> ok | mb_error().
+-spec upload_module(mb_session_id(), string(), atom(), boolean()) -> ok | mb_error().
 %-------------------------------------------------------------
-upload_module(SessionId, Path, Module) when is_list(Path), is_atom(Module) -> 
+upload_module(SessionId, Path, Module, ForceLoadFlag) when is_list(Path), is_atom(Module), is_boolean(ForceLoadFlag) -> 
 
     case file:read_file(Path ++ "/" ++ atom_to_list(Module) ++ ".erl") of
         {ok, Binary} ->
-            Message = mb_ipc:build_request(SessionId, ?REQUEST_UPLOAD_MODULE, {{module_name, Module}, {module, Binary}}),
+            Message = mb_ipc:build_request(SessionId, ?REQUEST_UPLOAD_MODULE, {{module_name, Module}, {module, Binary}, {force_load, ForceLoadFlag}}),
             Reply = mb_ipc:worker_call(SessionId, Message),
             request_response_result(Reply);
 
         {error, Reason} -> {error, Reason}
     end;
 
-upload_module(_SessionId, Path, Module) -> {error, {invalid_argument, {Path, Module}}}.
+upload_module(_SessionId, Path, Module, _) -> {error, {invalid_argument, {Path, Module}}}.
 
 %-------------------------------------------------------------
 % 

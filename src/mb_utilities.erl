@@ -5,7 +5,7 @@
          string_to_float/1, string_to_integer/1, string_to_integer/2, 
          string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, 
          get_linked_processes/0, is_node_name/1, is_node_name_list/1, is_email/1,
-         move_element/3]).
+         move_element/3, is_timestamp/1]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -303,4 +303,23 @@ pop_at(List, N) ->
 insert_at(List, M, Element) ->
     {Prefix, Suffix} = lists:split(M - 1, List), % Split at M-1
     Prefix ++ [Element] ++ Suffix.
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec is_timestamp(tuple()) -> boolean().
+%-------------------------------------------------------------
+is_timestamp(TimeStamp) -> 
+    case TimeStamp of 
+        {{Year, Month, Day}, {Hour, Minutes, Seconds}} -> 
+            is_integer(Year) andalso 
+            is_integer(Month) andalso
+            is_integer(Day) andalso
+            is_integer(Hour) andalso
+            is_integer(Minutes) andalso
+            is_integer(Seconds);
+
+        _ -> io:format("no match~n"), false 
+    end.
 

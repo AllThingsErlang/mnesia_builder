@@ -86,7 +86,8 @@
          get_type/1, 
          compare_fields_from_specs/2,
          build_schema_record_from_specifications/2,
-         convert_schema_data_avp_list_into_record_tuple/2]).
+         convert_schema_data_avp_list_into_record_tuple/2,
+         validate_ssg/1]).
 
 
 
@@ -111,8 +112,14 @@ get_ssg(Module) -> {error, {invalid_argument, Module}}.
 %-------------------------------------------------------------
 -spec new() -> mb_ssg().
 %-------------------------------------------------------------
-new() -> new([], [], [], []).
-
+new() -> 
+    #{?VERSION=>?CURRENT_VERSION,
+      ?NAME=>not_defined,
+      ?CREATED=>calendar:local_time(),
+      ?OWNER=>"",
+      ?EMAIL=>"",
+      ?DESCRIPTION=>"",
+      ?SCHEMAS=>[]}.
 
 %-------------------------------------------------------------
 % Allocates a new schema specifications group.
@@ -120,14 +127,24 @@ new() -> new([], [], [], []).
 -spec new(mb_ssg_name(), string(), string(), string()) -> mb_ssg().
 %-------------------------------------------------------------
 new(Name, Owner, Email, Description) ->
-    #{?VERSION=>?CURRENT_VERSION,
-      ?NAME=>Name,
-      ?CREATED=>calendar:local_time(),
-      ?OWNER=>Owner,
-      ?EMAIL=>Email,
-      ?DESCRIPTION=>Description,
-      ?SCHEMAS=>[]}.
- 
+
+    case (validate_ssg_attribute(?NAME, Name) andalso 
+          validate_ssg_attribute(?OWNER, Owner) andalso
+          validate_ssg_attribute(?EMAIL, Email) andalso
+          validate_ssg_attribute(?DESCRIPTION, Description)) of 
+    
+            true -> 
+                #{?VERSION=>?CURRENT_VERSION,
+                ?NAME=>Name,
+                ?CREATED=>calendar:local_time(),
+                ?OWNER=>Owner,
+                ?EMAIL=>Email,
+                ?DESCRIPTION=>Description,
+                ?SCHEMAS=>[]};
+
+            false -> {error, {invalid_argument_types, {Name, Owner, Email, Description}}}
+    end.
+            
 %-------------------------------------------------------------
 %  
 %-------------------------------------------------------------
@@ -158,17 +175,7 @@ validate_ssg_attribute(Attribute, Value) ->
     case Attribute of 
         ?VERSION -> mb_utilities:is_printable_string(Value);
         ?NAME -> is_atom(Value);
-        ?CREATED -> 
-            case Value of 
-                {{YY, MM, DD}, {HH, MM, SS}} -> is_integer(YY) andalso 
-                                                is_integer(MM) andalso
-                                                is_integer(DD) andalso
-                                                is_integer(HH) andalso
-                                                is_integer(MM) andalso
-                                                is_integer(SS);
-                _ -> false 
-            end;
-
+        ?CREATED -> mb_utilities:is_timestamp(Value);
         ?OWNER -> mb_utilities:is_printable_string(Value);
         ?EMAIL -> mb_utilities:is_email(Value);
         ?DESCRIPTION -> mb_utilities:is_printable_string(Value);
@@ -181,7 +188,7 @@ validate_ssg_attribute(Attribute, Value) ->
 %-------------------------------------------------------------
 -spec set_ssg_name(mb_ssg_name(), mb_ssg()) -> mb_ssg() | mb_error().
 %-------------------------------------------------------------
-set_ssg_name(Name, SSG) when is_atom(Name), is_map(SSG) -> set_ssg_attribute(?NAME, Name, SSG).
+set_ssg_name(Name, SSG) -> set_ssg_attribute(?NAME, Name, SSG).
 
 %-------------------------------------------------------------
 %  
@@ -406,14 +413,7 @@ validate_schema_attribute(Attribute, Value) when is_atom(Attribute) ->
    case Attribute of 
         ?NAME -> is_atom(Value);
         ?DESCRIPTION -> mb_utilities:is_printable_string(Value);
-        ?SCHEMA_TYPE -> 
-            case Value of 
-                set -> true;
-                ordered_set -> true;
-                bag -> true;
-                _ -> false 
-            end;
-
+        ?SCHEMA_TYPE -> is_schema_type(Value);
         ?DISC_COPIES -> mb_utilities:is_node_name_list(Value);
         ?DISC_ONLY_COPIES -> mb_utilities:is_node_name_list(Value);
         ?RAM_COPIES -> mb_utilities:is_node_name_list(Value);
@@ -681,15 +681,8 @@ validate_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) ->
         ?NAME -> is_atom(Value);
         ?LABEL -> mb_utilities:is_printable_string(Value);
         ?DESCRIPTION -> mb_utilities:is_printable_string(Value);
-
-        ?ROLE -> 
-            case Value of 
-                key -> true;
-                field -> true;
-                _ -> false 
-            end;
-               
-        ?FIELD_TYPE -> is_type(Value);
+        ?ROLE -> is_field_role(Value);
+        ?FIELD_TYPE -> is_value_type(Value);
         ?POSITION   -> is_integer(Value) andalso Value > 0; 
         ?PRIORITY -> 
             case Value of 
@@ -704,6 +697,11 @@ validate_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) ->
                 {error, _} -> false;
                 term -> true;
                 Type ->
+                    io:format("--- fieldname: ~p~n", [FieldName]),
+                    io:format("--- type: ~p~n", [Type]),
+                    io:format("--- value: ~p~n", [Value]),
+                    io:format("--- type: ~p~n", [get_type(Value)]),
+
                     case get_type(Value) of 
                         Type -> true; 
                         _ -> false %% default value does not match field type
@@ -785,10 +783,9 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) when is_map(SS
                                             % If we made a mandatory field optional, the default value type must remain consistent.
                                             % If we changed the type of an optional field, the default value must remain consistent.
                                             % If the default value has a different type, select an appropriate default value.
-                                            FieldPriority = get_field_priority(FieldName, SchemaName, UpdatedSSG),
+                                            %FieldPriority = get_field_priority(FieldName, SchemaName, UpdatedSSG),
 
-                                            case (((Attribute == ?PRIORITY) andalso (Value == optional)) or 
-                                                ((Attribute == ?FIELD_TYPE) andalso (FieldPriority == optional))) of 
+                                            case (((Attribute == ?PRIORITY) andalso (Value == optional)) or (Attribute == ?FIELD_TYPE)) of 
                                                 true ->                                                
                                                     case get_field_type(FieldName, SchemaName, UpdatedSSG) of 
                                                         {error, Reason2} -> {error, Reason2};
@@ -799,15 +796,9 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) when is_map(SS
                                                                     case get_type(DefaultValue) of 
                                                                         NewType -> UpdatedSSG; % types are consistent
                                                                         _ -> % need to change the default value
-                                                                            case NewType  of
-                                                                                atom -> NewDefaultValue = not_defined;
-                                                                                integer -> NewDefaultValue = 0;
-                                                                                float -> NewDefaultValue = 0.0;
-                                                                                string -> NewDefaultValue = "";
-                                                                                list -> NewDefaultValue = [];
-                                                                                tuple -> NewDefaultValue = {};
-                                                                                map -> NewDefaultValue = #{};
-                                                                                term -> NewDefaultValue = DefaultValue % term is a catch all
+                                                                            case NewType  /= term of 
+                                                                                true -> NewDefaultValue = get_default_value(NewType);
+                                                                                false -> NewDefaultValue = DefaultValue % term is a catch all. keep current default value
                                                                             end,
 
                                                                             % Update the latest SSG and return it
@@ -1300,6 +1291,343 @@ generate(Module, SrcPath, HrlPath, SSG) ->
 %    UTILITY APIs
 %============================================================
 
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+validate_ssg(SSG) ->
+
+    case validate_ssg_specifications(SSG) of 
+        [] -> 
+            Schemas = schemas(SSG),
+            case validate_all_schema_specifications(Schemas) of 
+                [] -> validate_all_field_specifications(SSG);
+                Errors -> Errors 
+            end;
+        Errors -> Errors 
+    end.
+
+validate_ssg_specifications(SSG) when is_map(SSG) ->
+
+    VersionResult = case maps:find(?VERSION, SSG) of
+        {ok, Version} ->
+            case mb_utilities:is_printable_string(Version) of 
+                true -> [];
+                false -> [{ssg_version, invalid_type}]
+            end;
+        error -> [{ssg_version, map_element_missing}]
+    end,
+    
+    NameResult = case maps:find(?NAME, SSG) of
+        {ok, Name} ->
+            case is_atom(Name) of 
+                true -> [];
+                false -> [{ssg_name, invalid_type}]
+            end;
+        error -> [{ssg_name, map_element_missing}]
+    end,
+
+    DescriptionResult = case maps:find(?DESCRIPTION, SSG) of
+        {ok, Description} -> 
+            case mb_utilities:is_printable_string(Description) of 
+                true -> [];
+                false -> [{ssg_description, invalid_type}]
+            end;
+        error -> [{ssg_description, map_element_missing}]
+    end,
+
+    CreatedResult = case maps:find(?CREATED, SSG) of
+        {ok, Created} -> 
+            case mb_utilities:is_timestamp(Created) of 
+                true -> [];
+                false -> [{ssg_created, invalid_type}]
+            end;
+        error -> [{ssg_created, map_element_missing}]
+    end,
+
+    OwnerResult = case maps:find(?OWNER, SSG) of
+        {ok, Owner} -> 
+            case mb_utilities:is_printable_string(Owner) of 
+                true -> [];
+                false -> [{ssg_owner, invalid_type}]
+            end;
+        error -> [{ssg_owner, map_element_missing}]
+    end,
+
+    EmailResult = case maps:find(?EMAIL, SSG) of
+        {ok, Email} -> 
+            case mb_utilities:is_printable_string(Email) of 
+                true -> [];
+                false -> [{ssg_email, invalid_type}]
+            end;
+        error -> [{ssg_email, map_element_missing}]
+    end,
+
+    SchemasResult = case maps:find(?SCHEMAS, SSG) of
+        {ok, Schemas} -> 
+            case is_schema_list(Schemas) of 
+                true -> [];
+                false -> [{ssg_schemas, invalid_type}]
+            end;
+        error -> [{ssg_schemas, map_element_missing}]
+    end,
+
+    SizeResult = case maps:size(SSG) of 
+        7 -> [];
+        _ -> [{ssg, invalid_element_count}]
+    end,
+
+    VersionResult ++ NameResult ++ DescriptionResult ++ CreatedResult ++ OwnerResult ++ EmailResult ++ SchemasResult ++ SizeResult;
+
+
+validate_ssg_specifications(_) -> [{{ssg, not_a_map}}].
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+validate_all_schema_specifications(SchemaSpecList) ->
+    validate_all_schema_specifications(SchemaSpecList, []).
+
+
+validate_all_schema_specifications([], Result) -> Result;
+validate_all_schema_specifications([{SchemaName, SchemaSpecifications} | T], Result) ->
+    
+    %io:format("...~p~n", [SchemaName]),
+
+    case validate_schema_specifications(SchemaName, SchemaSpecifications) of 
+        [] -> 
+            %io:format("schema errors: []~n"),
+            validate_all_schema_specifications(T, Result);
+        Errors -> 
+            %io:format("schema errors: ~p~n", [Errors]),
+            validate_all_schema_specifications(T, [{SchemaName, Errors}] ++ Result)
+    end;
+
+validate_all_schema_specifications([_ | T], Result) -> validate_all_schema_specifications(T, [{schema, not_a_name_map_pair}] ++ Result).
+
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+validate_all_field_specifications(SSG) ->
+    SchemaSpecList = schemas(SSG),
+    validate_all_field_specifications(SchemaSpecList, SSG, []).
+
+
+% Cycle through all the schemas and validate each of their field specifications.
+validate_all_field_specifications([], _, Result) -> Result;
+validate_all_field_specifications([{SchemaName, _} | T], SSG, Result) ->
+    case fields(SchemaName, SSG) of 
+        {error, _} -> NewResult = [{SchemaName, fields_not_found}];
+        FieldSpecifications -> NewResult = validate_all_field_specifications_in_schema(FieldSpecifications, SchemaName, SSG, Result)
+    end,
+
+    validate_all_field_specifications(T, SSG, NewResult ++ Result);
+
+validate_all_field_specifications([_ | T], SSG, Result) -> validate_all_field_specifications(T, SSG, [{schema, not_a_name_map_pair}] ++ Result).
+
+
+
+validate_all_field_specifications_in_schema([], _, _, Result) -> Result;
+validate_all_field_specifications_in_schema([{FieldName, FieldSpecifications} | T], SchemaName, SSG, Result) ->
+    
+    %io:format("...~p~n", [FieldName]),
+
+    case validate_field_specifications(FieldName, FieldSpecifications, SchemaName, SSG) of 
+        [] -> 
+            %io:format("field errors: []~n"),
+            validate_all_field_specifications_in_schema(T, SchemaName, SSG, Result);
+        Errors -> 
+            %io:format("field errors: ~p~n", [Errors]),
+            validate_all_field_specifications_in_schema(T, SchemaName, SSG, [{{SchemaName, FieldName}, Errors}] ++ Result)
+    end;
+
+validate_all_field_specifications_in_schema([_ | T], SchemaName, SSG, Result) -> validate_all_field_specifications_in_schema(T, SchemaName, SSG, [{{SchemaName, field}, not_a_name_map_pair}] ++ Result).
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+validate_schema_specifications(SchemaName, SchemaSpecifications) when is_map(SchemaSpecifications) ->
+
+    NameResult = case maps:find(?NAME, SchemaSpecifications) of
+        {ok, Name} ->
+            case validate_schema_attribute(?NAME, Name) of 
+                true -> 
+                    case Name == SchemaName of 
+                        true -> [];
+                        false -> [{schema_name, mismatch}]
+                    end;
+
+                false -> [{schema_name, invalid_type}]
+            end;
+        error -> [{schema_name, map_element_missing}]
+    end,
+    
+    TypeResult = case maps:find(?SCHEMA_TYPE, SchemaSpecifications) of
+        {ok, Type} ->
+            case validate_schema_attribute(?SCHEMA_TYPE, Type) of 
+                true -> [];
+                false -> [{schema_type, invalid_type}]
+            end;
+        error -> [{schema_type, map_element_missing}]
+    end,
+    
+    DescriptionResult = case maps:find(?DESCRIPTION, SchemaSpecifications) of
+        {ok, Description} -> 
+            case validate_schema_attribute(?DESCRIPTION, Description) of 
+                true -> [];
+                false -> [{schema_description, invalid_type}]
+            end;
+        error -> [{schema_description, map_element_missing}]
+    end,
+
+    RamCopiesResult = case maps:find(?RAM_COPIES, SchemaSpecifications) of
+        {ok, RamCopies} -> 
+            case validate_schema_attribute(?RAM_COPIES, RamCopies) of 
+                true -> [];
+                false -> [{schema_ram_copies, invalid_type}]
+            end;
+        error -> [{schema_ram_copies, map_element_missing}]
+    end,
+
+    DiscCopiesResult = case maps:find(?RAM_COPIES, SchemaSpecifications) of
+        {ok, DiscCopies} -> 
+            case validate_schema_attribute(?DISC_COPIES, DiscCopies) of 
+                true -> [];
+                false -> [{schema_disc_copies, invalid_type}]
+            end;
+        error -> [{schema_disc_copies, map_element_missing}]
+    end,
+
+    DiscOnlyCopiesResult = case maps:find(?DISC_ONLY_COPIES, SchemaSpecifications) of
+        {ok, DiscOnlyCopies} -> 
+            case validate_schema_attribute(?DISC_ONLY_COPIES, DiscOnlyCopies) of 
+                true -> [];
+                false -> [{schema_disc_only_copies, invalid_type}]
+            end;
+        error -> [{schema_disc_only_copies, map_element_missing}]
+    end,
+
+    FieldResult = case maps:find(?FIELDS, SchemaSpecifications) of
+        {ok, Fields} -> 
+            case validate_schema_attribute(?FIELDS, Fields) of 
+                true -> [];
+                false -> [{schema_fields, invalid_type}]
+            end;
+        error -> [{schema_fields, map_element_missing}]
+    end,
+
+    SizeResult = case maps:size(SchemaSpecifications) of 
+        7 -> [];
+        _ -> [{schema, invalid_element_count}]
+    end,
+
+    NameResult ++ TypeResult ++ DescriptionResult ++ RamCopiesResult ++ DiscCopiesResult ++ DiscOnlyCopiesResult ++ FieldResult ++ SizeResult;
+
+
+validate_schema_specifications(_,_) -> [{{schema, not_a_map}}].
+
+
+
+
+%-------------------------------------------------------------
+%   Attribute, Value, FieldName, SchemaName, SSG
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+validate_field_specifications(FieldName, FieldSpecifications, SchemaName, SSG) when is_map(FieldSpecifications) ->
+
+    NameResult = case maps:find(?NAME, FieldSpecifications) of
+        {ok, Name} ->
+            case validate_field_attribute(?NAME, Name, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{field_name, invalid_type}]
+            end;
+        error -> [{field_name, map_element_missing}]
+    end,
+    
+    TypeResult = case maps:find(?FIELD_TYPE, FieldSpecifications) of
+        {ok, Type} ->
+            case validate_field_attribute(?FIELD_TYPE, Type, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{field_type, invalid_type}]
+            end;
+        error -> [{field_type, map_element_missing}]
+    end,
+    
+    DescriptionResult = case maps:find(?DESCRIPTION, FieldSpecifications) of
+        {ok, Description} -> 
+            case validate_field_attribute(?DESCRIPTION, Description, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{field_description, invalid_type}]
+            end;
+        error -> [{field_description, map_element_missing}]
+    end,
+
+    LabelResult = case maps:find(?LABEL, FieldSpecifications) of
+        {ok, Label} -> 
+            case validate_field_attribute(?LABEL, Label, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{field_label, invalid_type}]
+            end;
+        error -> [{field_label, map_element_missing}]
+    end,
+
+    RoleResult = case maps:find(?ROLE, FieldSpecifications) of
+        {ok, Role} -> 
+            case validate_field_attribute(?ROLE, Role, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{field_role, invalid_type}]
+            end;
+        error -> [{field_role, map_element_missing}]
+    end,
+
+    PositionResult = case maps:find(?POSITION, FieldSpecifications) of
+        {ok, Position} -> 
+            case validate_field_attribute(?POSITION, Position, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{field_position, invalid_type}]
+            end;
+        error -> [{field_position, map_element_missing}]
+    end,
+
+    PriorityResult = case maps:find(?PRIORITY, FieldSpecifications) of
+        {ok, Priority} -> 
+            case validate_field_attribute(?PRIORITY, Priority, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{field_priority, invalid_type}]
+            end;
+        error -> [{field_priority, map_element_missing}]
+    end,
+
+     DefaultValueResult = case maps:find(?DEFAULT_VALUE, FieldSpecifications) of
+        {ok, DefaultValue} -> 
+            case validate_field_attribute(?DEFAULT_VALUE, DefaultValue, FieldName, SchemaName, SSG) of 
+                true -> [];
+                false -> [{field_default_value, invalid_type}]
+            end;
+        error -> [{field_default_value, map_element_missing}]
+    end,
+
+    
+
+    SizeResult = case maps:size(FieldSpecifications) of 
+        8 -> [];
+        _ -> [{field, invalid_element_count}]
+    end,
+
+    NameResult ++ TypeResult ++ DescriptionResult ++ LabelResult ++ RoleResult ++ PositionResult ++ PriorityResult ++ DefaultValueResult ++ SizeResult;
+
+
+validate_field_specifications(_, _, _, _) -> [{{field, not_a_map}}].
+
+
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
@@ -1454,10 +1782,10 @@ create_schema(SchemaName) -> {error, {invalid_argument, SchemaName}}.
 create_field(FieldName) when is_atom(FieldName) ->
 
   maps:put(?DESCRIPTION, "", 
-    maps:put(?DEFAULT_VALUE, not_defined, 
+    maps:put(?DEFAULT_VALUE, get_default_value(term), 
         maps:put(?PRIORITY, mandatory, 
             maps:put(?POSITION, 0, 
-                maps:put(?SCHEMA_TYPE, term, 
+                maps:put(?FIELD_TYPE, term, 
                     maps:put(?ROLE, field, 
                         maps:put(?LABEL, "", 
                             maps:put(?NAME, FieldName, maps:new()))))))));
@@ -1517,6 +1845,21 @@ update_field(Attribute, Value, FieldName, FieldList) when is_list(FieldList) ->
 update_field(_, _, _, FieldList) -> {error, {invalid_argument, FieldList}}.
 
       
+    %-------------------------------------------------------------
+% 
+%------------------------------------------------------------- 
+%-------------------------------------------------------------
+is_schema_list([]) -> true;
+is_schema_list([{SchemaName, SchemaSpecifications} | T]) when is_map(SchemaSpecifications) ->
+
+    case maps:find(?NAME, SchemaSpecifications) of 
+        {ok, SchemaName} -> 
+            is_schema_list(T);
+        _ -> 
+            false 
+    end; 
+is_schema_list(_) -> false.
+
 %-------------------------------------------------------------
 % 
 %------------------------------------------------------------- 
@@ -1654,7 +1997,7 @@ generate_record_field([{FieldName, _FieldSpecifications} | T], HrlIoDevice) ->
 %-------------------------------------------------------------
 %   
 %-------------------------------------------------------------
-is_type(Type) ->
+is_value_type(Type) ->
 
   case Type of
     integer -> true;
@@ -1710,6 +2053,37 @@ get_type(Value) ->
           end 
       end 
   end.
+
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec is_schema_type(atom()) -> boolean().
+%-------------------------------------------------------------
+is_schema_type(SchemaType) -> 
+
+    case SchemaType of 
+        set -> true;
+        ordered_set -> true;
+        bag -> true;
+        _ -> false 
+    end.
+
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec is_field_role(atom()) -> boolean().
+%-------------------------------------------------------------
+is_field_role(Role) -> 
+
+    case Role of 
+        key -> true;
+        field -> true;
+        _ -> false 
+    end.
 
 
 %-------------------------------------------------------------
@@ -1849,6 +2223,24 @@ update_field_positions([{FieldName, FieldSpecifications}| Remainder], NextPos, A
     UpdatedFieldSpecifications = maps:update(?POSITION, NextPos, FieldSpecifications),
     update_field_positions(Remainder, NextPos+1, [{FieldName, UpdatedFieldSpecifications} | Aggregate]).
 
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec get_default_value(mb_value_type()) -> term().
+%-------------------------------------------------------------
+get_default_value(Type) -> 
+    case Type  of
+        atom -> not_defined;
+        integer -> 0;
+        float -> 0.0;
+        string -> "";
+        list -> [];
+        tuple -> {};
+        map -> #{};
+        term -> not_defined
+    end.
 
 
 %============================================================
