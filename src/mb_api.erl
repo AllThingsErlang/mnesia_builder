@@ -14,6 +14,7 @@
          set_ssg_description/2,
          use_module/1,
          use_ssg/1,
+         upload_module/2,
          upload_module/3,
          upload_module/4,
          download_module/1,
@@ -280,6 +281,13 @@ use_ssg(SessionId) ->
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec upload_module(mb_session_id(), atom()) -> ok | mb_error().
+%-------------------------------------------------------------
+upload_module(SessionId, Module) -> upload_module(SessionId, ".", Module, false).
 
 %-------------------------------------------------------------
 % 

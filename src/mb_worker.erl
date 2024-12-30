@@ -307,33 +307,39 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
                 ok -> 
                     case compile:file(File, [report_errors]) of
                         {ok, Module} -> 
-                            case code:load_file(Module) of 
-                                {module, Module} -> 
-                                    case erlang:function_exported(Module, get_ssg, 0) of
-                                        true ->
-                                            NewSSG = Module:get_ssg(),
-                                            case mb_schemas:validate_ssg(NewSSG) of 
-                                                [] ->
-                                                    UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
-                                                    Result = ok;
-                                                Errors -> 
-                                                    case ForceLoadFlag of 
-                                                        true -> 
+                            case code:soft_purge(Module) of 
+                                true ->
+                                    case code:load_file(Module) of 
+                                        {module, Module} -> 
+                                            case erlang:function_exported(Module, get_ssg, 0) of
+                                                true ->
+                                                    NewSSG = Module:get_ssg(),
+                                                    case mb_schemas:validate_ssg(NewSSG) of 
+                                                        [] ->
                                                             UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
                                                             Result = ok;
-                                                        _ ->
-                                                            UpdatedState = State,
-                                                            Result = {error, {invalid_specifications, Errors}}
-                                                    end
+                                                        Errors -> 
+                                                            case ForceLoadFlag of 
+                                                                true -> 
+                                                                    UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
+                                                                    Result = ok;
+                                                                _ ->
+                                                                    UpdatedState = State,
+                                                                    Result = {error, {invalid_specifications, Errors}}
+                                                            end
+                                                    end;
+                                                false -> 
+                                                    UpdatedState = State,
+                                                    Result = {error, invalid_module_callback}
                                             end;
-                                        false -> 
+                                        
+                                        {error, Reason} -> 
                                             UpdatedState = State,
-                                            Result = {error, invalid_module_callback}
+                                            Result = {error, Reason}
                                     end;
-                                
-                                {error, Reason} -> 
+                                false -> 
                                     UpdatedState = State,
-                                    Result = {error, Reason}
+                                    Result = {error, {cannot_purge_module, Module}}
                             end;
 
                         {error, Errors} -> 
