@@ -557,7 +557,6 @@ set_schema_attribute(_ , _, _, SSG) -> {error, {invalid_argument, SSG}}.
 -spec get_schema_attribute(mb_schema_attribute(), mb_schema_name(), mb_ssg()) -> term() | mb_error().
 %------------------------------------------------------------- 
 get_schema_attribute(Attribute, SchemaName, SSG) when is_map(SSG) -> 
-    % io:format("~nattribute: ~p~n", [Attribute]),
 
     case is_schema_attribute(Attribute) of
         true ->
@@ -641,8 +640,10 @@ fields(SchemaName, SSG) when is_map(SSG) ->
     
     case lists:keyfind(SchemaName, 1, Schemas) of 
         {SchemaName, SchemaSpecifications} ->
-            {ok, Fields} = maps:find(?FIELDS, SchemaSpecifications),
-            Fields;
+            case maps:find(?FIELDS, SchemaSpecifications) of
+                {ok, Fields} -> Fields;
+                _ -> {error, {invalid_specifications, SSG}}
+            end;
         false -> {error, {schema_name_not_found, SchemaName}}
     end;
 
@@ -774,58 +775,59 @@ set_field_attribute(Attribute, Value, FieldName, SchemaName, SSG) when is_map(SS
                             case maps:find(?FIELDS, SchemaSpecifications) of
 
                                 {ok, FieldList} ->
-                                    UpdatedFieldList = update_field(Attribute, Value, FieldName, FieldList),
-                                    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-                                    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-                                    UpdatedSSG = maps:update(?SCHEMAS, UpdatedSchemas, SSG),
+                                    case update_field(Attribute, Value, FieldName, FieldList) of
+                                        {error, Reason1} -> {error, Reason1};
+                                        UpdatedFieldList ->
+                                            UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
+                                            UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
+                                            UpdatedSSG = maps:update(?SCHEMAS, UpdatedSchemas, SSG),
 
-                                    % If we made a mandatory field optional, the default value type must remain consistent.
-                                    % If we changed the type of an optional field, the default value must remain consistent.
-                                    % If the default value has a different type, select an appropriate default value.
-                                    FieldPriority = get_field_priority(FieldName, SchemaName, UpdatedSSG),
+                                            % If we made a mandatory field optional, the default value type must remain consistent.
+                                            % If we changed the type of an optional field, the default value must remain consistent.
+                                            % If the default value has a different type, select an appropriate default value.
+                                            FieldPriority = get_field_priority(FieldName, SchemaName, UpdatedSSG),
 
-                                    case (((Attribute == ?PRIORITY) andalso (Value == optional)) or 
-                                          ((Attribute == ?FIELD_TYPE) andalso (FieldPriority == optional))) of 
-                                        true ->                                                
-                                            case get_field_type(FieldName, SchemaName, UpdatedSSG) of 
-                                                {error, Reason2} -> {error, Reason2};
-                                                NewType ->  
-                                                    case get_field_default_value(FieldName, SchemaName, UpdatedSSG) of 
+                                            case (((Attribute == ?PRIORITY) andalso (Value == optional)) or 
+                                                ((Attribute == ?FIELD_TYPE) andalso (FieldPriority == optional))) of 
+                                                true ->                                                
+                                                    case get_field_type(FieldName, SchemaName, UpdatedSSG) of 
                                                         {error, Reason2} -> {error, Reason2};
-                                                        DefaultValue -> 
-                                                            case get_type(DefaultValue) of 
-                                                                NewType -> UpdatedSSG; % types are consistent
-                                                                _ -> % need to change the default value
-                                                                    io:format("default value needs to be updated~n"),
-                                                                    case NewType  of
-                                                                        atom -> NewDefaultValue = not_defined;
-                                                                        integer -> NewDefaultValue = 0;
-                                                                        float -> NewDefaultValue = 0.0;
-                                                                        string -> NewDefaultValue = "";
-                                                                        list -> NewDefaultValue = [];
-                                                                        tuple -> NewDefaultValue = {};
-                                                                        map -> NewDefaultValue = #{};
-                                                                        term -> NewDefaultValue = DefaultValue % term is a catch all
-                                                                    end,
+                                                        NewType ->  
+                                                            case get_field_default_value(FieldName, SchemaName, UpdatedSSG) of 
+                                                                {error, Reason2} -> {error, Reason2};
+                                                                DefaultValue -> 
+                                                                    case get_type(DefaultValue) of 
+                                                                        NewType -> UpdatedSSG; % types are consistent
+                                                                        _ -> % need to change the default value
+                                                                            case NewType  of
+                                                                                atom -> NewDefaultValue = not_defined;
+                                                                                integer -> NewDefaultValue = 0;
+                                                                                float -> NewDefaultValue = 0.0;
+                                                                                string -> NewDefaultValue = "";
+                                                                                list -> NewDefaultValue = [];
+                                                                                tuple -> NewDefaultValue = {};
+                                                                                map -> NewDefaultValue = #{};
+                                                                                term -> NewDefaultValue = DefaultValue % term is a catch all
+                                                                            end,
 
-                                                                    % Update the latest SSG and return it
-                                                                    set_field_attribute(?DEFAULT_VALUE, NewDefaultValue, FieldName, SchemaName, UpdatedSSG)
+                                                                            % Update the latest SSG and return it
+                                                                            set_field_attribute(?DEFAULT_VALUE, NewDefaultValue, FieldName, SchemaName, UpdatedSSG)
+                                                                    end
                                                             end
-                                                    end
-                                            end;
-                                        false -> UpdatedSSG 
+                                                    end;
+                                                false -> UpdatedSSG 
+                                            end
                                     end;
                                 error -> {error, {invalid_field_attribute, Attribute}}
                             end;
-
                         false -> {error, {schema_name_not_found, SchemaName}}
                     end
             end;
-
         Error -> Error
     end;
 
 set_field_attribute(_, _, _, _, SSG) -> {error, {invalid_argument, SSG}}.
+
 
 %-------------------------------------------------------------
 %   
@@ -835,43 +837,12 @@ set_field_attribute(_, _, _, _, SSG) -> {error, {invalid_argument, SSG}}.
 move_field(FieldName, ToPosition, SchemaName, SSG) when is_integer(ToPosition), ToPosition > 0, is_map(SSG) ->
 
     case ToPosition > 1 of 
-        true -> 
-            Schemas = schemas(SSG),
-
-            case lists:keyfind(SchemaName, 1, Schemas) of
-
-            {SchemaName, SchemaSpecifications} -> 
-                case maps:find(?FIELDS, SchemaSpecifications) of
-
-                    {ok, FieldList} ->
-
-                        FieldCount = length(FieldList),
-
-                        case ToPosition =< FieldCount of 
-                            true ->
-                                case lists:keyfind(FieldName, 1, FieldList) of 
-                                    {FieldName, FieldSpecifications} -> 
-
-                                        CurrentPosition = maps:get(?POSITION, FieldSpecifications),
-                                        UpdatedFieldList1 = mb_utilities:move_element(FieldList, CurrentPosition, ToPosition),
-                                        UpdatedFieldList2 = update_field_positions(UpdatedFieldList1),
-
-                                        update_schema_fields(UpdatedFieldList2, SchemaName, SSG);
-                                    false -> {error, {field_name_not_found, FieldName}}
-                                end;
-                            false -> {error, {position_greater_than_field_count, ToPosition}}
-                        end;
-
-                    _ -> {error, {invalid_specifications, SSG}}
-                end;
-            false -> {error, {schema_name_not_found, SchemaName}}
-        end;
-
-        false -> {error, {not_permitted, make_key}} 
+        true -> move_any_field(FieldName, ToPosition, SchemaName, SSG);
+        false -> {error, move_to_key_position}
     end;
 
-move_field(_FieldName, ToPosition, _SchemaName, SSG) -> {error, {invalid_argument, {ToPosition, SSG}}}.
-                        
+move_field(_, ToPosition, _, SSG) -> {error, {invalid_argument, {ToPosition, SSG}}}.
+
 
 %-------------------------------------------------------------
 %   
@@ -880,45 +851,45 @@ move_field(_FieldName, ToPosition, _SchemaName, SSG) -> {error, {invalid_argumen
 %-------------------------------------------------------------
 make_key(FieldName, SchemaName, SSG) when is_map(SSG) ->
 
-    Schemas = schemas(SSG),
+    case is_field(FieldName, SchemaName, SSG) of 
+        {error, Reason} -> {error, Reason};
+        true -> 
+            case key_name(SchemaName, SSG) of 
+                {error, Reason} -> {error, Reason};
+                FieldName -> SSG; % Field is already key
+                OldKey -> 
+                    % Move the field to the first position and renumber
+                    % all the fields.
+                    case move_any_field(FieldName, 1, SchemaName, SSG) of 
+                        {error, Reason} -> {error, Reason};
+                        UpdatedSSG1 -> 
+                            % Make the new key mandatory in case it is not.
+                            case set_field_priority(mandatory, FieldName, SchemaName, UpdatedSSG1) of 
+                                {error, Reason} -> {error, Reason};
+                                UpdatedSSG2 ->
+                                    % Now what is left is set the role of the new key to key
+                                    % and the old key to field. 
+                                    Schemas = schemas(UpdatedSSG2),
 
-    case lists:keyfind(SchemaName, 1, Schemas) of
+                                    case lists:keyfind(SchemaName, 1, Schemas) of % No escape clause, by now the specification must be valid
+                                        {SchemaName, SchemaSpecifications} ->                         
+                                            case maps:find(?FIELDS, SchemaSpecifications) of 
 
-        {SchemaName, SchemaSpecifications} -> 
-            case maps:find(?FIELDS, SchemaSpecifications) of
-
-                {ok, FieldList} ->
-
-                    case lists:keyfind(FieldName, 1, FieldList) of 
-                        {FieldName, FieldSpecifications} -> 
-                            case maps:get(?ROLE, FieldSpecifications) of 
-                                key -> SSG; % It is already the key, nothing to do
-                                field ->
-                                    % Extract the current key which is the header of the list
-                                    [{Key, KeySpecifications} | Remainder] = FieldList,
-
-                                    % Change the key and make it a regular field
-                                    NewFieldSpecifications = maps:update(?ROLE, field, KeySpecifications),
-
-                                    % Now change the selected field specifications to be a key and delete its entry
-                                    % from the list
-                                    NewKeySpecifications = maps:update(?ROLE, key, FieldSpecifications),
-                                    UpdatedRemainder = lists:keydelete(FieldName, 1, Remainder),
-
-                                    % Put the new key at the front followed by the old key and then the rest of the fields
-                                    UpdatedFieldList = [{FieldName, NewKeySpecifications}] ++ ([{Key, NewFieldSpecifications}] ++ UpdatedRemainder),
-
-                                    % Update the SSG
-                                    update_schema_fields(UpdatedFieldList, SchemaName, SSG)
-                            end;
-
-                        false -> {error, {field_not_found, FieldName}} 
-                    end;
-
-                _ -> {error, {invalid_specifications, SSG}}
+                                                {ok, FieldList} ->
+                                                    case update_field(?ROLE, key, FieldName, FieldList) of
+                                                        {error, Reason} -> {error, Reason};
+                                                        UpdatedFieldList1 ->
+                                                            case update_field(?ROLE, field, OldKey, UpdatedFieldList1) of 
+                                                                {error, Reason} -> {error, Reason};
+                                                                UpdatedFieldList2 -> update_schema_fields(UpdatedFieldList2, SchemaName, UpdatedSSG2)
+                                                            end
+                                                    end
+                                            end
+                                    end                                                
+                            end
+                    end
             end;
-
-        _ -> {error, {invalid_specifications, SSG}}
+        false -> {error, {field_name_not_found, FieldName}}
     end;
 
 make_key(_, _, SSG) -> {error, {invalid_argument, SSG}}.
@@ -1162,7 +1133,7 @@ key_name(SchemaName, SSG) when is_map(SSG) ->
     case fields(SchemaName, SSG) of 
         {error, Reason} -> {error, Reason};
         [] -> {error, fields_not_defined};
-        [Key|_] -> Key
+        [{Key, _}|_] -> Key
     end;
 
 key_name(_, SSG) -> {error, {invalid_argument, SSG}}.
@@ -1211,9 +1182,7 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
     case mb_utilities:is_unquoted_atom(Module) of 
 
         
-        true ->
-            io:format("generate::is_unquoted_atom: true~n"),
-            
+        true ->            
             case file:open(HrlPath ++ "/" ++ atom_to_list(Module) ++ ".hrl", [write]) of 
                 {ok, HrlIoDevice} ->
 
@@ -1371,9 +1340,7 @@ convert_from_stirng(Value, Type) ->
 %-------------------------------------------------------------
 %-------------------------------------------------------------
 convert_schema_data_avp_list_into_record_tuple(AvpList, SSG) when is_list(AvpList), is_map(SSG) -> 
-    
-    % io:format("~nAvp list: ~p~n", [AvpList]),
-    
+        
     case lists:keyfind(schema, 1, AvpList) of
         {schema, SchemaName} -> 
             % Get the ordered list of fields, [{FieldName, FieldSpecMap}]
@@ -1427,7 +1394,6 @@ validate_schema_data_avp_list_next([{FieldName, FieldSpecMap} | F], AvpList, Int
 %-------------------------------------------------------------
 %-------------------------------------------------------------
 schema_data_avp_list_to_record_tuple(SchemaDataAvpList) -> 
-    %io:format("~nconverting to tuple: ~p~n", [SchemaDataAvpList]),
     schema_data_avp_list_to_record_tuple_next(SchemaDataAvpList, []).
 
 schema_data_avp_list_to_record_tuple_next([], FinalList) -> list_to_tuple(FinalList);
@@ -1537,7 +1503,13 @@ update_field(Attribute, Value, FieldName, FieldList) when is_list(FieldList) ->
     case lists:keyfind(FieldName, 1, FieldList) of 
         {FieldName, FieldSpecifications} ->
             UpdatedFieldSpecifications = maps:update(Attribute, Value, FieldSpecifications),
-            lists:keyreplace(FieldName, 1, FieldList, {FieldName, UpdatedFieldSpecifications});
+
+            case Attribute == ?NAME of 
+                true -> UpdatedFieldName = Value;
+                false -> UpdatedFieldName = FieldName 
+            end,
+
+            lists:keyreplace(FieldName, 1, FieldList, {UpdatedFieldName, UpdatedFieldSpecifications});
 
         false -> {error, {field_name_not_found, {FieldName, FieldList}}}
     end;
@@ -1553,8 +1525,10 @@ is_field_list([]) -> true;
 is_field_list([{FieldName, FieldSpecifications} | T]) when is_map(FieldSpecifications) ->
 
     case maps:find(?NAME, FieldSpecifications) of 
-        FieldName -> is_field_list(T);
-        _ -> false 
+        {ok, FieldName} -> 
+            is_field_list(T);
+        _ -> 
+            false 
     end; 
 is_field_list(_) -> false.
 
@@ -1791,21 +1765,62 @@ rename_field(NewName, OldName, SchemaName, SSG) ->
                                 
                             case maps:find(?FIELDS, SchemaSpecifications) of 
                                 {ok, FieldList} ->
-                                    UpdatedFieldList = update_field(?NAME, NewName, OldName, FieldList),
-                                    UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
-                                    UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
-                                    maps:update(?SCHEMAS, UpdatedSchemas, SSG);
-                                {error, Reason} -> {error, Reason}
-                            end;
 
-                        {error, Reason} -> {error, Reason}
+                                    case update_field(?NAME, NewName, OldName, FieldList) of 
+                                        {error, Error} -> {error, Error};
+                                        UpdatedFieldList ->
+                                            UpdatedSchemaSpecifications = maps:update(?FIELDS, UpdatedFieldList, SchemaSpecifications),
+                                            UpdatedSchemas = lists:keyreplace(SchemaName, 1, Schemas, {SchemaName, UpdatedSchemaSpecifications}),
+                                            maps:update(?SCHEMAS, UpdatedSchemas, SSG)
+                                    end;
+                                error -> {error, {invalid_specifications, SSG}}
+                            end;
+                        false -> {error, {schema_name_not_found, SchemaName}}
                     end;
                 false -> {error, {field_not_found, OldName}}
             end;
         true -> {error, {field_exists, NewName}}
     end.
 
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec move_any_field(mb_field_name(), integer(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+move_any_field(FieldName, ToPosition, SchemaName, SSG) when is_integer(ToPosition), ToPosition > 0, is_map(SSG) ->
 
+    Schemas = schemas(SSG),
+
+    case lists:keyfind(SchemaName, 1, Schemas) of
+
+        {SchemaName, SchemaSpecifications} -> 
+            case maps:find(?FIELDS, SchemaSpecifications) of
+
+                {ok, FieldList} ->
+
+                    FieldCount = length(FieldList),
+
+                    case ToPosition =< FieldCount of 
+                        true ->
+                            case lists:keyfind(FieldName, 1, FieldList) of 
+                                {FieldName, FieldSpecifications} -> 
+
+                                    CurrentPosition = maps:get(?POSITION, FieldSpecifications),
+                                    UpdatedFieldList1 = mb_utilities:move_element(FieldList, CurrentPosition, ToPosition),
+                                    UpdatedFieldList2 = update_field_positions(UpdatedFieldList1),
+                                    update_schema_fields(UpdatedFieldList2, SchemaName, SSG);
+                                false -> {error, {field_name_not_found, FieldName}}
+                            end;
+                        false -> {error, {position_greater_than_field_count, ToPosition}}
+                    end;
+
+                _ -> {error, {invalid_specifications, SSG}}
+            end;
+        false -> {error, {schema_name_not_found, SchemaName}}
+    end;    
+
+move_any_field(_FieldName, ToPosition, _SchemaName, SSG) -> {error, {invalid_argument, {ToPosition, SSG}}}.
+                        
 %-------------------------------------------------------------
 %   
 %-------------------------------------------------------------
