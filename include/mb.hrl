@@ -28,6 +28,9 @@
 
 -define(NAME, name).                            % SSG / Schema / Field Attribute
 -define(DESCRIPTION, description).              % SSG / Schema / Field Attribute
+
+
+-define(MNESIA_DIR, "../data").
 %-------------------------------------------------------------
 
 

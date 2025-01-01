@@ -1,11 +1,12 @@
 -module(mb_utilities).
+-include("../include/mb.hrl").
 
 -export([find_list_pos/2, create_timestamped_file/1, 
          is_printable_string/1, identify_type_in_string/1, 
          string_to_float/1, string_to_integer/1, string_to_integer/2, 
          string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, 
          get_linked_processes/0, is_node_name/1, is_node_name_list/1, is_email/1,
-         move_element/3, is_timestamp/1]).
+         move_element/3, is_timestamp/1, start_mnesia/0, is_subset/2, ping_nodes/1]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -323,3 +324,32 @@ is_timestamp(TimeStamp) ->
         _ -> io:format("no match~n"), false 
     end.
 
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec start_mnesia() -> ok | mb_error().
+%-------------------------------------------------------------
+start_mnesia() ->
+    case application:start(mnesia) of 
+        ok -> ok;
+        {error,{already_started,mnesia}} -> ok;
+        {error, Reason} -> {error, Reason}
+    end.
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec is_subset(list(), list()) -> ok | mb_error().
+%-------------------------------------------------------------
+is_subset(List1, List2) ->
+    lists:all(fun(Elem) -> lists:member(Elem, List2) end, List1).
+
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec ping_nodes(list()) -> boolean().
+%-------------------------------------------------------------
+ping_nodes(NodesList) ->
+    lists:all(fun(Node) -> net_adm:ping(Node) == pong end, NodesList).

@@ -32,7 +32,7 @@ get_ssg() ->
                             position => 3,priority => optional,type => string,
                             description => [],default_value => [],
                             role => field}}],
-                 disc_copies => ['n1@LAPTOP-6B8AG7F5', 'n2@LAPTOP-6B8AG7F5', 'n3@LAPTOP-6B8AG7F5'],
+                 disc_copies => [nonode@nohost],
                  disc_only_copies => [],ram_copies => []}},
            {departments,
                #{name => departments,type => set,description => [],
@@ -52,7 +52,7 @@ get_ssg() ->
                             position => 3,priority => mandatory,
                             type => string,description => [],
                             default_value => [],role => field}}],
-                 disc_copies => [],
+                 disc_copies => [nonode@nohost],
                  disc_only_copies => [],ram_copies => []}}]}.
 
 

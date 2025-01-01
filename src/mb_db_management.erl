@@ -23,46 +23,53 @@
 -spec install(map()) -> ok | mb_error().
 %-------------------------------------------------------------
 install(SSG) -> 
-    case get_storage_nodes(SSG) of
-        {error, Reason1} -> {error, Reason1};
-        [] -> {error, storage_nodes_not_defined};
-        Nodes ->
-            % 1. Is local node in the list? If not, add it.
-            case lists:member(node(), Nodes) of 
-                true -> UpdatedNodes = Nodes;
-                false -> UpdatedNodes = [node() | Nodes] 
-            end,
+    case filelib:ensure_path(?MNESIA_DIR) of 
+        ok -> 
+            
+            application:set_env(mnesia, dir, ?MNESIA_DIR),
 
-            % 2. Is mnesia schema created? If not, create one.
-            CreateSchema = case mnesia:table_info(schema, storage_type) of
-                undefined -> 
-                    % Schema not created
-                    case mnesia:create_schema([node()]) of
-                        {error, Reason2} -> {error, Reason2};
-                        _ -> ok
-                    end;
-
-                _ -> ok
-            end,
-
-            case CreateSchema of 
+            case mb_utilities:start_mnesia() of
                 ok ->
-                    % 3. Add remaining nodes not already in the schema 
-                    %    and start mnesia.
-                    CurrentNodes = mnesia:system_info(db_nodes),
+                    case get_storage_nodes(SSG) of
+                        {error, Reason1} -> {error, Reason1};
+                        [] -> {error, storage_nodes_not_defined};
+                        Nodes ->
+                            % 1. Are the nodes part of the cluster?
+                            ClusterNodes = [node()] ++ nodes(),
 
-                    case lists:subtract(UpdatedNodes, CurrentNodes) of 
-                        [] -> application:start(mnesia);
-                        ExtraNodes ->
-                            % TODO: this may be dangerous ...
-                            case mnesia:change_config(extra_db_nodes, ExtraNodes) of
-                                {ok, _} -> application:start(mnesia);
-                                {error, Reason3} -> {error, Reason3}
-                            end
-                    end;
+                            case mb_utilities:is_subset(Nodes, ClusterNodes) of 
+                                true ->
+                                    % Excellent, we have a valid list of nodes
+                                    % Now we need to check if the current schema
+                                    % has these nodes included, otherwise, we need
+                                    % to do some schema configuraiton changes.
+                                    MnesiaSchemaNodes = mnesia:system_info(db_nodes),
 
-                _ -> CreateSchema
-            end
+                                    DeltaNodes = lists:subtract(Nodes, MnesiaSchemaNodes),
+
+                                    case DeltaNodes of 
+                                        [] -> ok;
+                                        _ -> 
+                                            case mnesia:change_config(extra_db_nodes, DeltaNodes) of
+                                                {ok, _} -> ok;
+                                                {error, Reason} -> {error, Reason}
+                                            end 
+                                    end;
+
+                                false -> 
+                                    % Maybe if we ping the nodes we could add them to the cluster.
+                                    case mb_utilities:ping_nodes(Nodes) of 
+                                        true -> 
+                                            % Okay, added to the cluster, let us try the installation
+                                            % again.
+                                            install(SSG);
+                                        false -> {error, {nodes_not_in_cluster, lists:subtract(Nodes, ClusterNodes)}}
+                                    end 
+                            end 
+                    end; 
+                {error, Reason} -> {error, Reason}
+            end;
+        {error, Reason} -> {error, Reason}
     end.
 
 %-------------------------------------------------------------
