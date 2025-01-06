@@ -20,9 +20,5 @@ init([]) ->
 
 
 terminate(Reason, _State) -> 
-    try io:format("mb_supervisor: terminated, reason: ~p.~n", [Reason]) of
-        ok -> ok
-    catch
-        _:_ -> ok
-    end.
-    
+    io:format("[mb::supervisor::~p]: terminated, reason: ~p.~n", [self(), Reason]),
+    ok.
