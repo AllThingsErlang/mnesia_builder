@@ -84,7 +84,7 @@ install(NodeList, SSG) ->
 
     mnesia:start(),
     
-    SchemaNames = mb_schemas:schema_names(SSG),
+    SchemaNames = mb_ssg:schema_names(SSG),
 
     install_next(SchemaNames, SSG).
 
@@ -92,11 +92,11 @@ install(NodeList, SSG) ->
 install_next([], _) -> ok;
 install_next([NextSchemaName | T], SSG) ->
 
-    case mnesia:create_table(NextSchemaName, [{attributes, mb_schemas:field_names(NextSchemaName, SSG)},
-                             {type, mb_schemas:get_schema_attribute(type, NextSchemaName,SSG)},
-                             {disc_copies, mb_schemas:get_schema_attribute(disc_copies, NextSchemaName,SSG)},
-                             {disc_only_copies, mb_schemas:get_schema_attribute(disc_only_copies, NextSchemaName, SSG)},
-                             {ram_copies, mb_schemas:get_schema_attribute(ram_copies, NextSchemaName, SSG)}]) of
+    case mnesia:create_table(NextSchemaName, [{attributes, mb_ssg:field_names(NextSchemaName, SSG)},
+                             {type, mb_ssg:get_schema_attribute(type, NextSchemaName,SSG)},
+                             {disc_copies, mb_ssg:get_schema_attribute(disc_copies, NextSchemaName,SSG)},
+                             {disc_only_copies, mb_ssg:get_schema_attribute(disc_only_copies, NextSchemaName, SSG)},
+                             {ram_copies, mb_ssg:get_schema_attribute(ram_copies, NextSchemaName, SSG)}]) of
 
         {atomic, _} -> install_next(T, SSG);
         {aborted, Reason2} -> io:format("failed to create table ~p~n", [Reason2])
@@ -108,7 +108,7 @@ install_next([NextSchemaName | T], SSG) ->
 %-------------------------------------------------------------
 start(SSG) ->
     mnesia:start(),
-    mnesia:wait_for_tables(mb_schemas:schema_names(SSG), 10000).
+    mnesia:wait_for_tables(mb_ssg:schema_names(SSG), 10000).
  
 stop() -> mnesia:stop().
 
@@ -121,7 +121,7 @@ stop() -> mnesia:stop().
 %-------------------------------------------------------------
 table_size(SchemaName, SSG) -> 
     
-    case mb_schemas:is_schema(SchemaName, SSG) of 
+    case mb_ssg:is_schema(SchemaName, SSG) of 
         true -> mnesia:table_info(SchemaName, size);
         false -> {error, {invalid_schema_name, SchemaName}}
     end.
@@ -132,7 +132,7 @@ table_size(SchemaName, SSG) ->
 %-------------------------------------------------------------
 -spec table_sizes(mb_ssg()) -> list().
 %-------------------------------------------------------------
-table_sizes(SSG) -> table_sizes_next(mb_schemas:schema_names(SSG)).
+table_sizes(SSG) -> table_sizes_next(mb_ssg:schema_names(SSG)).
 
 table_sizes_next([]) -> [];
 table_sizes_next(Tables) -> table_sizes_next(Tables, []).
@@ -147,23 +147,23 @@ table_sizes_next([H|T], Sizes) -> table_sizes_next(T, [{H, mnesia:table_info(H, 
 -spec get_storage_nodes(mb_ssg()) -> list() | mb_error().
 %-------------------------------------------------------------
 get_storage_nodes(SSG) ->
-    case mb_schemas:schema_names(SSG) of 
+    case mb_ssg:schema_names(SSG) of 
         {error, Reason} -> {error, Reason};
         SchemaNames -> get_storage_nodes(SchemaNames, [], SSG) 
     end.
 
 get_storage_nodes([], Aggregate, _) -> lists:uniq(Aggregate);
 get_storage_nodes([NextSchema | T], Aggregate, SSG) ->
-    case mb_schemas:get_schema_attribute(ram_copies, NextSchema, SSG) of
+    case mb_ssg:get_schema_attribute(ram_copies, NextSchema, SSG) of
         {error, Reason} -> {error, Reason};
         RamCopies ->
-            case mb_schemas:get_schema_attribute(disc_copies, NextSchema, SSG) of
+            case mb_ssg:get_schema_attribute(disc_copies, NextSchema, SSG) of
                 {error, Reason} -> {error, Reason};
                 DiscCopies ->
-                    case mb_schemas:get_schema_attribute(disc_only_copies, NextSchema, SSG) of
+                    case mb_ssg:get_schema_attribute(disc_only_copies, NextSchema, SSG) of
                         {error, Reason} -> {error, Reason};
                         DiscOnlyCopies ->
-                            NodesList = RamCopies ++ DiscCopies ++ DiscOnlyCopies,
+                            NodesList = mb_utilities:replace_list_member(RamCopies ++ DiscCopies ++ DiscOnlyCopies, ?KEYWORD_LOCAL_NODE, node()),
                             get_storage_nodes(T, Aggregate ++ NodesList, SSG)
                     end 
             end

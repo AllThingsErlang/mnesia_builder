@@ -16,7 +16,7 @@
 %-------------------------------------------------------------
 read(SchemaName, Key, SSG) ->
 
-    case mb_schemas:is_schema(SchemaName, SSG) of 
+    case mb_ssg:is_schema(SchemaName, SSG) of 
         true -> 
             Fun = fun() -> mnesia:read({SchemaName, Key}) end,
 
@@ -47,7 +47,7 @@ select(SchemaName, FieldName, Operator, Value, SSG) ->
 
     Fun = fun() -> 
 
-        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SSG),
+        FieldPos = mb_ssg:field_position(FieldName, SchemaName, SSG),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -78,7 +78,7 @@ select_or(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) ->
     MatchHead = build_matchhead(SchemaName, SSG),
 
     Fun = fun() -> 
-        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SSG),
+        FieldPos = mb_ssg:field_position(FieldName, SchemaName, SSG),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -113,7 +113,7 @@ select_and(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) ->
     MatchHead = build_matchhead(SchemaName, SSG),
 
     Fun = fun() -> 
-        FieldPos = mb_schemas:field_position(FieldName, SchemaName, SSG),
+        FieldPos = mb_ssg:field_position(FieldName, SchemaName, SSG),
 
         % we increment the position by 1 since the matchhead
         % contains the table get_schema name, so everything has
@@ -141,7 +141,7 @@ build_matchhead(SchemaName, SSG) -> list_to_tuple([SchemaName | build_matchhead_
 
 build_matchhead_list(SchemaName, SSG) ->
 
-    FieldCount = mb_schemas:field_count(SchemaName, SSG),
+    FieldCount = mb_ssg:field_count(SchemaName, SSG),
     build_matchhead_list_next(FieldCount, []).
 
 build_matchhead_list_next(0, MatchHeadList) -> MatchHeadList;

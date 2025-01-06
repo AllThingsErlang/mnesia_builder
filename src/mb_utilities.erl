@@ -6,7 +6,7 @@
          string_to_float/1, string_to_integer/1, string_to_integer/2, 
          string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, 
          get_linked_processes/0, is_node_name/1, is_node_name_list/1, is_email/1,
-         move_element/3, is_timestamp/1, start_mnesia/0, is_subset/2, ping_nodes/1]).
+         move_element/3, is_timestamp/1, start_mnesia/0, is_subset/2, ping_nodes/1, replace_list_member/3]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -353,3 +353,17 @@ is_subset(List1, List2) ->
 %-------------------------------------------------------------
 ping_nodes(NodesList) ->
     lists:all(fun(Node) -> net_adm:ping(Node) == pong end, NodesList).
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec replace_list_member(list(), term(), term()) -> list().
+%-------------------------------------------------------------
+replace_list_member(List, OldValue, NewValue) ->
+    lists:map(fun(Elem) ->
+        if Elem == OldValue -> NewValue;
+            true -> Elem
+        end
+    end, List).
+

@@ -1,4 +1,4 @@
--module(mb_schemas).
+-module(mb_ssg).
 -include("../include/mb.hrl").
 
 
@@ -1283,7 +1283,7 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
     end;
 
 generate(Module, SrcPath, HrlPath, SSG) -> 
-    io:format("mb_schemas::error, match guard failed~n"),
+    io:format("mb_ssg::error, match guard failed~n"),
     {error, {invalid_argument, {Module, SrcPath, HrlPath, SSG}}}.
 
 

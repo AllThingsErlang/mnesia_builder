@@ -52,7 +52,7 @@ init({ServerPid, ClientPid, Token, SessionRootDir}) ->
                 ?STATE_MODULE=>[],
                 ?STATE_USE_MODULE=>false,
                 ?STATE_SESSION_DIR=>SessionDir,
-                ?STATE_SSG=>mb_schemas:new()},
+                ?STATE_SSG=>mb_ssg:new()},
 
     case file:make_dir(SessionDir) of
         ok -> {ok, State};
@@ -165,7 +165,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, _SessionId}, {?MSG_TYPE_REQUE
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SSG}}, {}}}, State) ->
 
-    NewSSG =  maps:update(?NAME, ?DEFAULT_SSG_NAME, mb_schemas:new()),
+    NewSSG =  maps:update(?NAME, ?DEFAULT_SSG_NAME, mb_ssg:new()),
     UpdatedState = update_state_new_ssg(State, NewSSG),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
     {reply, ReplyMessage, UpdatedState};
@@ -175,7 +175,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SSG}}, {{name, Name}, {owner, Owner}, {email, Email}, {description, Description}}}}, State) ->
 
-    case mb_schemas:new(Name, Owner, Email, Description) of 
+    case mb_ssg:new(Name, Owner, Email, Description) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -203,7 +203,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG =  maps:get(?STATE_SSG, State),
 
-    case mb_schemas:set_ssg_name(Name, SSG) of 
+    case mb_ssg:set_ssg_name(Name, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -225,7 +225,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG =  maps:get(?STATE_SSG, State),
 
-    case mb_schemas:set_ssg_owner(Owner, SSG) of 
+    case mb_ssg:set_ssg_owner(Owner, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -245,7 +245,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG =  maps:get(?STATE_SSG, State),
 
-    case mb_schemas:set_ssg_email(Email, SSG) of 
+    case mb_ssg:set_ssg_email(Email, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -266,7 +266,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG =  maps:get(?STATE_SSG, State),
 
-    case mb_schemas:set_ssg_description(Description, SSG) of 
+    case mb_ssg:set_ssg_description(Description, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -310,7 +310,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
                                             case erlang:function_exported(Module, get_ssg, 0) of
                                                 true ->
                                                     NewSSG = Module:get_ssg(),
-                                                    case mb_schemas:validate_ssg(NewSSG) of 
+                                                    case mb_ssg:validate_ssg(NewSSG) of 
                                                         [] ->
                                                             UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
                                                             Result = ok;
@@ -371,7 +371,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
             % Generate to make sure that the source and header files are in place.
             SSG = maps:get(?STATE_SSG, State),
-            case mb_schemas:generate(Module, SessionDir, SessionDir, SSG) of
+            case mb_ssg:generate(Module, SessionDir, SessionDir, SSG) of
                 ok -> 
                     case file:read_file(SrcFile) of
                         {ok, SrcBinary} -> 
@@ -396,7 +396,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_VALIDATE_SSG}}, {}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
-    Result = mb_schemas:validate_ssg(SSG),
+    Result = mb_ssg:validate_ssg(SSG),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_VALIDATE_SSG, Result),
     {reply, ReplyMessage, State};
 
@@ -411,7 +411,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             SessionDir = maps:get(?STATE_SESSION_DIR, State),
             SSG =  maps:get(?STATE_SSG, State),
 
-            case mb_schemas:generate(Module, SessionDir, SessionDir, SSG) of
+            case mb_ssg:generate(Module, SessionDir, SessionDir, SSG) of
                 ok -> 
                     case compile:file(SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl", [{outdir, SessionDir}, report_errors]) of
                         {ok, Module} -> Result = ok;
@@ -490,7 +490,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_SCHEMA}}, {{schema_name, SchemaName}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
-    case mb_schemas:add_schema(SchemaName, SSG) of 
+    case mb_ssg:add_schema(SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -510,7 +510,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_SCHEMA}}, {{schema_name, SchemaName}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
-    UpdatedSSG = mb_schemas:delete_schema(SchemaName, SSG),
+    UpdatedSSG = mb_ssg:delete_schema(SchemaName, SSG),
     UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SCHEMA, ok),
     {reply, ReplyMessage, UpdatedState};
@@ -522,7 +522,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:get_schema(SchemaName, SSG) of 
+    case mb_ssg:get_schema(SchemaName, SSG) of 
         {error, Reason} -> Result = {error, Reason};
         Schema -> Result = {ok, Schema}
     end,
@@ -537,7 +537,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:schemas(SSG) of 
+    case mb_ssg:schemas(SSG) of 
         {error, Reason} -> Result = {error, Reason};
         SchemasList -> Result = {ok, SchemasList}
     end,
@@ -552,7 +552,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_ram_copies(NodesList, SchemaName, SSG) of 
+    UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),
+    case mb_ssg:set_schema_ram_copies(UpdatedNodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -572,7 +573,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_disc_copies(NodesList, SchemaName, SSG) of 
+    UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),    
+    case mb_ssg:set_schema_disc_copies(UpdatedNodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -592,7 +594,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_disc_only_copies(NodesList, SchemaName, SSG) of 
+    UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),
+    case mb_ssg:set_schema_disc_only_copies(UpdatedNodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -613,7 +616,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_schema_type(SchemaType, SchemaName, SSG) of 
+    case mb_ssg:set_schema_type(SchemaType, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -633,7 +636,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:get_schema_attribute(Attribute, SchemaName, SSG) of 
+    case mb_ssg:get_schema_attribute(Attribute, SchemaName, SSG) of 
         {error, Reason} -> Result = {error, Reason};
         Value -> Result = {ok, Value}
     end,
@@ -652,7 +655,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         {error, Reason} -> Result = {error, Reason};
         false -> 
             SSG = maps:get(?STATE_SSG, State),
-            Result = {ok, mb_schemas:schema_names(SSG)}
+            Result = {ok, mb_ssg:schema_names(SSG)}
     end,
     
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_GET_SCHEMA_NAMES, Result),
@@ -666,7 +669,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:add_field(FieldName, SchemaName, SSG) of 
+    case mb_ssg:add_field(FieldName, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -687,7 +690,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:make_key(FieldName, SchemaName, SSG) of 
+    case mb_ssg:make_key(FieldName, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -707,7 +710,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:move_field(FieldName, ToPosition, SchemaName, SSG) of 
+    case mb_ssg:move_field(FieldName, ToPosition, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -728,7 +731,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_field_description(NewDescription, FieldName, SchemaName, SSG) of 
+    case mb_ssg:set_field_description(NewDescription, FieldName, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -748,7 +751,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_field_label(NewLabel, FieldName, SchemaName, SSG) of 
+    case mb_ssg:set_field_label(NewLabel, FieldName, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -768,7 +771,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_field_priority(NewPriority, FieldName, SchemaName, SSG) of 
+    case mb_ssg:set_field_priority(NewPriority, FieldName, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -788,7 +791,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     
-    case mb_schemas:set_field_default_value(NewDefaultValue, FieldName, SchemaName, SSG) of 
+    case mb_ssg:set_field_default_value(NewDefaultValue, FieldName, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -818,7 +821,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:get_field_attribute(Attribute, FieldName, SchemaName, SSG) of 
+            case mb_ssg:get_field_attribute(Attribute, FieldName, SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Value -> Result = {ok, Value}
             end
@@ -843,7 +846,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:fields(SchemaName, SSG) of 
+            case mb_ssg:fields(SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Fields -> Result = {ok, Fields}
             end
@@ -868,7 +871,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:get_field(FieldName, SchemaName, SSG) of 
+            case mb_ssg:get_field(FieldName, SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 FieldSpec -> Result = {ok, FieldSpec}
             end
@@ -893,7 +896,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:field_count(SchemaName, SSG) of 
+            case mb_ssg:field_count(SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Count -> Result = {ok, Count}
             end
@@ -918,7 +921,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:mandatory_field_count(SchemaName, SSG) of 
+            case mb_ssg:mandatory_field_count(SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Count -> Result = {ok, Count}
             end
@@ -944,7 +947,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:field_names(SchemaName, SSG) of 
+            case mb_ssg:field_names(SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 FieldNames -> Result = {ok, FieldNames}
             end
@@ -969,7 +972,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:field_position(FieldName, SchemaName, SSG) of 
+            case mb_ssg:field_position(FieldName, SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Position -> Result = {ok, Position}
             end
@@ -996,7 +999,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false ->
             SSG = maps:get(?STATE_SSG, State),
 
-            case mb_schemas:read(Key, SchemaName, SSG) of 
+            case mb_ssg:read(Key, SchemaName, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 RecordList -> Result = {ok, RecordList}
             end
@@ -1023,7 +1026,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:select(SchemaName, Field, Oper, Value, SSG) of 
+            case mb_ssg:select(SchemaName, Field, Oper, Value, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 RecordList -> Result = {ok, RecordList}
             end
@@ -1050,7 +1053,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:select_or(SchemaName, Field, Oper1, Value1, Oper2, Value2, SSG) of 
+            case mb_ssg:select_or(SchemaName, Field, Oper1, Value1, Oper2, Value2, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 RecordList -> Result = {ok, RecordList}
             end
@@ -1077,7 +1080,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:select_and(SchemaName, Field, Oper1, Value1, Oper2, Value2, SSG) of 
+            case mb_ssg:select_and(SchemaName, Field, Oper1, Value1, Oper2, Value2, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 RecordList -> Result = {ok, RecordList}
             end
@@ -1104,7 +1107,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:add(Record, SSG) of 
+            case mb_ssg:add(Record, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Result -> ok
             end
@@ -1131,7 +1134,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:add(SchemaName, Record, SSG) of 
+            case mb_ssg:add(SchemaName, Record, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Result -> ok
             end
@@ -1158,7 +1161,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            case mb_schemas:add(SchemaName, Key, Data, SSG) of 
+            case mb_ssg:add(SchemaName, Key, Data, SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Result -> ok
             end

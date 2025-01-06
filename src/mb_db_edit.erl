@@ -64,7 +64,7 @@ add(SchemaName, Key, Data, SSG) when (is_atom(SchemaName) and
                                     is_map (SSG)) ->
 
     % 1. Validate that SchemaName is in SSG
-    case mb_schemas:is_schema(SchemaName, SSG) of 
+    case mb_ssg:is_schema(SchemaName, SSG) of 
         true -> 
             % 2. Execute type checks (TODO)
 
@@ -99,7 +99,7 @@ delete(TableKey, SSG) -> {error, {invalid_argument, {TableKey, SSG}}}.
 %-------------------------------------------------------------
 delete(SchemaName, Key, SSG) when (is_atom(SchemaName) and is_map(SSG)) -> 
     
-   case mb_schemas:is_schema(SchemaName, SSG) of 
+   case mb_ssg:is_schema(SchemaName, SSG) of 
         true -> 
             
             Fun = fun() -> mnesia:delete({SchemaName, Key}) end,
@@ -125,7 +125,7 @@ delete(SchemaName, Key, SSG) -> {error, {invalid_argument, {SchemaName, Key, SSG
 %-------------------------------------------------------------
 clear_all_tables(SSG) ->
 
-    Tables = mb_schemas:schema_names(SSG),
+    Tables = mb_ssg:schema_names(SSG),
     clear_all_tables_next(Tables).
 
 clear_all_tables_next(Tables) -> clear_all_tables_next(Tables, 0, 0).

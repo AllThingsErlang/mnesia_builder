@@ -77,33 +77,33 @@ table_sizes() -> mb_db_management:table_sizes(get_ssg()).
 %                     Schema Functions
 %-------------------------------------------------------
 
-schema_names() -> mb_schemas:schema_names(get_ssg()).
+schema_names() -> mb_ssg:schema_names(get_ssg()).
 
-is_schema(SchemaName) -> mb_schemas:is_schema(SchemaName, get_ssg()).
+is_schema(SchemaName) -> mb_ssg:is_schema(SchemaName, get_ssg()).
 
-is_field(FieldName, SchemaName) -> mb_schemas:is_field(FieldName, SchemaName, get_ssg()).
+is_field(FieldName, SchemaName) -> mb_ssg:is_field(FieldName, SchemaName, get_ssg()).
 
-schemas() -> mb_schemas:schemas(get_ssg()).
+schemas() -> mb_ssg:schemas(get_ssg()).
 
-get_schema(SchemaName) -> mb_schemas:get_schema(SchemaName, get_ssg()).
+get_schema(SchemaName) -> mb_ssg:get_schema(SchemaName, get_ssg()).
 
-get_schema_attribute(Attribute, SchemaName) -> mb_schemas:get_schema_attribute(Attribute, SchemaName, get_ssg()).
+get_schema_attribute(Attribute, SchemaName) -> mb_ssg:get_schema_attribute(Attribute, SchemaName, get_ssg()).
 
-fields(SchemaName) -> mb_schemas:fields(SchemaName, get_ssg()).
+fields(SchemaName) -> mb_ssg:fields(SchemaName, get_ssg()).
 
-field_count(SchemaName) -> mb_schemas:field_count(SchemaName, get_ssg()).
+field_count(SchemaName) -> mb_ssg:field_count(SchemaName, get_ssg()).
 
-mandatory_field_count(SchemaName) -> mb_schemas:mandatory_field_count(SchemaName, get_ssg()).
+mandatory_field_count(SchemaName) -> mb_ssg:mandatory_field_count(SchemaName, get_ssg()).
 
-field_names(SchemaName) -> mb_schemas:field_names(SchemaName, get_ssg()).
+field_names(SchemaName) -> mb_ssg:field_names(SchemaName, get_ssg()).
 
-key_name(SchemaName) -> mb_schemas:key_name(SchemaName, get_ssg()).
+key_name(SchemaName) -> mb_ssg:key_name(SchemaName, get_ssg()).
 
-key_type(SchemaName) -> mb_schemas:key_type(SchemaName, get_ssg()).
+key_type(SchemaName) -> mb_ssg:key_type(SchemaName, get_ssg()).
 
-field_position(FieldName, SchemaName) -> mb_schemas:field_position(FieldName, SchemaName, get_ssg()).
+field_position(FieldName, SchemaName) -> mb_ssg:field_position(FieldName, SchemaName, get_ssg()).
 
-get_field_attribute(Attribute, FieldName, SchemaName) -> mb_schemas:get_field_attribute(Attribute, FieldName, SchemaName, get_ssg()).
+get_field_attribute(Attribute, FieldName, SchemaName) -> mb_ssg:get_field_attribute(Attribute, FieldName, SchemaName, get_ssg()).
 
 
 %-------------------------------------------------------
@@ -142,6 +142,6 @@ clear_all_tables() -> mb_db_edit:clear_all_tables(get_ssg()).
 %                     Utility Functions
 %-------------------------------------------------------
 
-build_schema_record_from_specifications(SchemaName) -> mb_schemas:build_schema_record_from_specifications(SchemaName, get_ssg()).
+build_schema_record_from_specifications(SchemaName) -> mb_ssg:build_schema_record_from_specifications(SchemaName, get_ssg()).
 
-convert_schema_data_avp_list_into_record_tuple(AvpList) -> mb_schemas:convert_schema_data_avp_list_into_record_tuple(AvpList, get_ssg()).
+convert_schema_data_avp_list_into_record_tuple(AvpList) -> mb_ssg:convert_schema_data_avp_list_into_record_tuple(AvpList, get_ssg()).
