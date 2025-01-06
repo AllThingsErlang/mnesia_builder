@@ -545,15 +545,17 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_GET_ALL_SCHEMAS, Result),
     {reply, ReplyMessage, State};
 
+
+
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_RAM_COPIES}}, {{schema_name, SchemaName}, {?RAM_COPIES, NodesList}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_NODES}}, {{schema_name, SchemaName}, {?RAM_COPIES, NodesList}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
     UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),
-    case mb_ssg:set_schema_ram_copies(UpdatedNodesList, SchemaName, SSG) of 
+    case mb_ssg:add_schema_ram_copies(UpdatedNodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -563,18 +565,18 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_RAM_COPIES, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_NODES, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_DISC_COPIES}}, {{schema_name, SchemaName}, {?DISC_COPIES, NodesList}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_NODES}}, {{schema_name, SchemaName}, {?DISC_COPIES, NodesList}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
     UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),    
-    case mb_ssg:set_schema_disc_copies(UpdatedNodesList, SchemaName, SSG) of 
+    case mb_ssg:add_schema_disc_copies(UpdatedNodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -584,18 +586,18 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_DISC_COPIES, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_NODES, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES}}, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, NodesList}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_NODES}}, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, NodesList}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
     UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),
-    case mb_ssg:set_schema_disc_only_copies(UpdatedNodesList, SchemaName, SSG) of 
+    case mb_ssg:add_schema_disc_only_copies(UpdatedNodesList, SchemaName, SSG) of 
         {error, Reason} -> 
             UpdatedState = State,
             Result = {error, Reason};
@@ -605,7 +607,74 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_NODES, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_NODES}}, {{schema_name, SchemaName}, {?RAM_COPIES, NodesList}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),
+    case mb_ssg:delete_schema_ram_copies(UpdatedNodesList, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_NODES, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_NODES}}, {{schema_name, SchemaName}, {?DISC_COPIES, NodesList}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),
+    case mb_ssg:delete_schema_disc_copies(UpdatedNodesList, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_NODES, Result),
+    {reply, ReplyMessage, UpdatedState};
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_NODES}}, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, NodesList}}}}, State) ->
+
+    SSG = maps:get(?STATE_SSG, State),
+    
+    UpdatedNodesList = mb_utilities:replace_list_member(NodesList, ?KEYWORD_LOCAL_NODE, node()),
+    case mb_ssg:delete_schema_disc_only_copies(UpdatedNodesList, SchemaName, SSG) of 
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason};
+
+        UpdatedSSG -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_NODES, Result),
     {reply, ReplyMessage, UpdatedState};
 
 
@@ -626,7 +695,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_NODES, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------

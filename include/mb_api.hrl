@@ -24,9 +24,9 @@
 -define(REQUEST_GET_ALL_SCHEMAS, get_all_schemas).
 -define(REQUEST_SET_SCHEMA_NAME, set_schema_name).
 -define(REQUEST_SET_SCHEMA_TYPE, set_schema_type).
--define(REQUEST_SET_SCHEMA_RAM_COPIES, set_schema_ram_copies).
--define(REQUEST_SET_SCHEMA_DISC_COPIES, set_schema_ram_copies).
--define(REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, set_schema_ram_copies).
+-define(REQUEST_ADD_NODES, add_nodes).
+-define(REQUEST_DELETE_NODES, delete_nodes).
+
 
 -define(REQUEST_GET_SCHEMA_TYPE, get_schema_type).
 -define(REQUEST_GET_SCHEMA_RAM_COPIES, get_schema_ram_copies).

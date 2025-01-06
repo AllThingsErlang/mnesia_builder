@@ -23,10 +23,15 @@
 
          set_schema_name/3,
          set_schema_type/3,
-         set_schema_ram_copies/3,
-         set_schema_disc_copies/3,
-         set_schema_disc_only_copies/3,
          set_schema_description/3,
+
+         add_schema_ram_copies/3,
+         add_schema_disc_copies/3,
+         add_schema_disc_only_copies/3,
+
+         delete_schema_ram_copies/3,
+         delete_schema_disc_copies/3,
+         delete_schema_disc_only_copies/3,
 
          get_schema_type/2,
          get_schema_ram_copies/2,
@@ -441,23 +446,82 @@ set_schema_type(Type, SchemaName, SSG) -> set_schema_attribute(?SCHEMA_TYPE, Typ
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec set_schema_ram_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+-spec add_schema_ram_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
 %-------------------------------------------------------------
-set_schema_ram_copies(NodesList, SchemaName, SSG) -> set_schema_attribute(?RAM_COPIES, NodesList, SchemaName, SSG).
+add_schema_ram_copies(NewNodesList, SchemaName, SSG) -> 
+    case get_schema_attribute(?RAM_COPIES, SchemaName, SSG) of
+        {error, Reason} -> {error, Reason};
+        CurrentNodesList ->
+            UpdatedNodesList = lists:uniq(CurrentNodesList ++ NewNodesList),
+            set_schema_attribute(?RAM_COPIES, UpdatedNodesList, SchemaName, SSG)
+    end.
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec set_schema_disc_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+-spec add_schema_disc_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
 %-------------------------------------------------------------
-set_schema_disc_copies(NodesList, SchemaName, SSG) -> set_schema_attribute(?DISC_COPIES, NodesList, SchemaName, SSG).
+add_schema_disc_copies(NewNodesList, SchemaName, SSG) -> 
+    case get_schema_attribute(?DISC_COPIES, SchemaName, SSG) of
+        {error, Reason} -> {error, Reason};
+        CurrentNodesList ->
+            UpdatedNodesList = lists:uniq(CurrentNodesList ++ NewNodesList),
+            set_schema_attribute(?DISC_COPIES, UpdatedNodesList, SchemaName, SSG)
+    end.
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec set_schema_disc_only_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+-spec add_schema_disc_only_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
 %-------------------------------------------------------------
-set_schema_disc_only_copies(NodesList, SchemaName, SSG) -> set_schema_attribute(?DISC_ONLY_COPIES, NodesList, SchemaName, SSG).
+add_schema_disc_only_copies(NewNodesList, SchemaName, SSG) -> 
+    case get_schema_attribute(?DISC_ONLY_COPIES, SchemaName, SSG) of
+        {error, Reason} -> {error, Reason};
+        CurrentNodesList ->
+            UpdatedNodesList = lists:uniq(CurrentNodesList ++ NewNodesList),
+            set_schema_attribute(?DISC_ONLY_COPIES, UpdatedNodesList, SchemaName, SSG)
+    end.
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_ram_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+delete_schema_ram_copies(NewNodesList, SchemaName, SSG) -> 
+    case get_schema_attribute(?RAM_COPIES, SchemaName, SSG) of
+        {error, Reason} -> {error, Reason};
+        CurrentNodesList ->
+            UpdatedNodesList = lists:uniq(lists:subtract(CurrentNodesList, NewNodesList)),
+            set_schema_attribute(?RAM_COPIES, UpdatedNodesList, SchemaName, SSG)
+    end.
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_disc_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+delete_schema_disc_copies(NewNodesList, SchemaName, SSG) -> 
+    case get_schema_attribute(?DISC_COPIES, SchemaName, SSG) of
+        {error, Reason} -> {error, Reason};
+        CurrentNodesList ->
+            UpdatedNodesList = lists:uniq(lists:subtract(CurrentNodesList, NewNodesList)),
+            set_schema_attribute(?DISC_COPIES, UpdatedNodesList, SchemaName, SSG)
+    end.
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_disc_only_copies(list(), mb_schema_name(), mb_ssg()) -> mb_ssg() | mb_error().
+%-------------------------------------------------------------
+delete_schema_disc_only_copies(NewNodesList, SchemaName, SSG) -> 
+    case get_schema_attribute(?DISC_ONLY_COPIES, SchemaName, SSG) of
+        {error, Reason} -> {error, Reason};
+        CurrentNodesList ->
+            UpdatedNodesList = lists:uniq(lists:subtract(CurrentNodesList, NewNodesList)),
+            set_schema_attribute(?DISC_ONLY_COPIES, UpdatedNodesList, SchemaName, SSG)
+    end.
 
 %-------------------------------------------------------------
 % 

@@ -30,14 +30,22 @@
 
          set_schema_name/3,
          set_schema_type/3,
-         set_schema_ram_copies_local/2,
-         set_schema_ram_copies/3,
 
-         set_schema_disc_copies_local/2,
-         set_schema_disc_copies/3,
+         add_schema_ram_copies_local/2,
+         add_schema_disc_copies_local/2,
+         add_schema_disc_only_copies_local/2,
 
-         set_schema_disc_only_copies_local/2,
-         set_schema_disc_only_copies/3,
+         add_schema_ram_copies/3,
+         add_schema_disc_copies/3,
+         add_schema_disc_only_copies/3,
+
+         delete_schema_ram_copies_local/2,
+         delete_schema_disc_copies_local/2,
+         delete_schema_disc_only_copies_local/2,
+         
+         delete_schema_ram_copies/3,
+         delete_schema_disc_copies/3,
+         delete_schema_disc_only_copies/3,
 
          get_schema_type/2,
          get_schema_ram_copies/2,
@@ -446,55 +454,43 @@ set_schema_type(SessionId, SchemaName, SchemaType) ->
     request_response_result(Reply).
 
 
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
--spec set_schema_ram_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
-%-------------------------------------------------------------
-set_schema_ram_copies_local(SessionId, SchemaName) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_RAM_COPIES, {{schema_name, SchemaName}, {?RAM_COPIES, [?KEYWORD_LOCAL_NODE]}}),
-    Reply = mb_ipc:worker_call(SessionId, Message),
-    request_response_result(Reply).
 
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
--spec set_schema_ram_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
-%-------------------------------------------------------------
-set_schema_ram_copies(SessionId, SchemaName, NodesList) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_RAM_COPIES, {{schema_name, SchemaName}, {?RAM_COPIES, NodesList}}),
-    Reply = mb_ipc:worker_call(SessionId, Message),
-    request_response_result(Reply).
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec set_schema_disc_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+-spec add_schema_ram_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
 %-------------------------------------------------------------
-set_schema_disc_copies_local(SessionId, SchemaName) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_DISC_COPIES, {{schema_name, SchemaName}, {?DISC_COPIES, [?KEYWORD_LOCAL_NODE]}}),
-    Reply = mb_ipc:worker_call(SessionId, Message),
-    request_response_result(Reply).
+add_schema_ram_copies_local(SessionId, SchemaName) -> add_schema_ram_copies(SessionId, SchemaName, [?KEYWORD_LOCAL_NODE]).
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec set_schema_disc_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
+-spec add_schema_disc_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
 %-------------------------------------------------------------
-set_schema_disc_copies(SessionId, SchemaName, NodesList) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_DISC_COPIES, {{schema_name, SchemaName}, {?DISC_COPIES, NodesList}}),
-    Reply = mb_ipc:worker_call(SessionId, Message),
-    request_response_result(Reply).
+add_schema_disc_copies_local(SessionId, SchemaName) -> add_schema_disc_copies(SessionId, SchemaName, [?KEYWORD_LOCAL_NODE]).
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec set_schema_disc_only_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+-spec add_schema_disc_only_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
 %-------------------------------------------------------------
-set_schema_disc_only_copies_local(SessionId, SchemaName) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, [?KEYWORD_LOCAL_NODE]}}),
+add_schema_disc_only_copies_local(SessionId, SchemaName) -> add_schema_disc_only_copies(SessionId, SchemaName, [?KEYWORD_LOCAL_NODE]).
+
+
+
+
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec add_schema_ram_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
+%-------------------------------------------------------------
+add_schema_ram_copies(SessionId, SchemaName, NodesList) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_NODES, {{schema_name, SchemaName}, {?RAM_COPIES, NodesList}}),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
@@ -502,12 +498,89 @@ set_schema_disc_only_copies_local(SessionId, SchemaName) ->
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
--spec set_schema_disc_only_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
+-spec add_schema_disc_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
 %-------------------------------------------------------------
-set_schema_disc_only_copies(SessionId, SchemaName, NodesList) -> 
-    Message = mb_ipc:build_request(SessionId, ?REQUEST_SET_SCHEMA_DISC_ONLY_COPIES, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, NodesList}}),
+add_schema_disc_copies(SessionId, SchemaName, NodesList) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_NODES, {{schema_name, SchemaName}, {?DISC_COPIES, NodesList}}),
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec add_schema_disc_only_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
+%-------------------------------------------------------------
+add_schema_disc_only_copies(SessionId, SchemaName, NodesList) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_ADD_NODES, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, NodesList}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_ram_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+delete_schema_ram_copies_local(SessionId, SchemaName) -> delete_schema_ram_copies(SessionId, SchemaName, [?KEYWORD_LOCAL_NODE]).
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_disc_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+delete_schema_disc_copies_local(SessionId, SchemaName) -> delete_schema_disc_copies(SessionId, SchemaName, [?KEYWORD_LOCAL_NODE]).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_disc_only_copies_local(mb_session_id(), mb_schema_name()) -> ok | mb_error().
+%-------------------------------------------------------------
+delete_schema_disc_only_copies_local(SessionId, SchemaName) -> delete_schema_disc_only_copies(SessionId, SchemaName, [?KEYWORD_LOCAL_NODE]).
+
+
+
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_ram_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
+%-------------------------------------------------------------
+delete_schema_ram_copies(SessionId, SchemaName, NodesList) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_DELETE_NODES, {{schema_name, SchemaName}, {?RAM_COPIES, NodesList}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_disc_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
+%-------------------------------------------------------------
+delete_schema_disc_copies(SessionId, SchemaName, NodesList) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_DELETE_NODES, {{schema_name, SchemaName}, {?DISC_COPIES, NodesList}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+-spec delete_schema_disc_only_copies(mb_session_id(), mb_schema_name(), list()) -> ok | mb_error().
+%-------------------------------------------------------------
+delete_schema_disc_only_copies(SessionId, SchemaName, NodesList) -> 
+    Message = mb_ipc:build_request(SessionId, ?REQUEST_DELETE_NODES, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, NodesList}}),
+    Reply = mb_ipc:worker_call(SessionId, Message),
+    request_response_result(Reply).
+
+
+
+
 
  
 
