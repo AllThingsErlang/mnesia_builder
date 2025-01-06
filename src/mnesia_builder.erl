@@ -1,5 +1,6 @@
 -module(mnesia_builder).
 -behaviour(application).
+-include("../include/mb.hrl").
 
 -export([start/2, stop/1]).
 
@@ -8,9 +9,22 @@ start(_StartType, _StartArgs) ->
 
     case mb_supervisor:start_link() of
         {ok, SupervisorPid} -> 
-            {ok, SupervisorPid}; % Set initial state as a tuple 
-        {error, Reason} ->
-            {error, {supervisor_start_failed, Reason}}
+
+            MnesiaDir = mb_db_management:get_mnesia_dir(),
+
+             case filelib:ensure_path(MnesiaDir) of 
+                ok -> 
+                    
+                    application:set_env(mnesia, dir, MnesiaDir),
+
+                    case mb_utilities:start_mnesia() of
+                        ok -> {ok, SupervisorPid}; % Set initial state as a tuple 
+                        {error, Reason} -> {error, {application_start_failed, Reason}}
+                    end;
+                {error, Reason} -> {error, {application_start_failed, Reason}}
+            end;
+
+        {error, Reason} -> {error, {application_start_failed, Reason}}
     end.
 
 

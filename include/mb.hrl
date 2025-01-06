@@ -30,7 +30,7 @@
 -define(DESCRIPTION, description).              % SSG / Schema / Field Attribute
 
 
--define(MNESIA_DIR, "../data").
+-define(MNESIA_ROOT_DIR, "../mnesia").
 %-------------------------------------------------------------
 
 

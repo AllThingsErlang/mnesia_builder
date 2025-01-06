@@ -1,7 +1,7 @@
 -module(mb_db_management).
 -include("../include/mb.hrl").
 
--export([install/1, install/2, start/1, stop/0, table_sizes/1, table_size/2]).
+-export([install/1, install/2, start/1, stop/0, table_sizes/1, table_size/2, get_mnesia_dir/0]).
 
 
 %-------------------------------------------------------------
@@ -23,10 +23,10 @@
 -spec install(map()) -> ok | mb_error().
 %-------------------------------------------------------------
 install(SSG) -> 
-    case filelib:ensure_path(?MNESIA_DIR) of 
+    case filelib:ensure_path(?MNESIA_ROOT_DIR) of 
         ok -> 
             
-            application:set_env(mnesia, dir, ?MNESIA_DIR),
+            application:set_env(mnesia, dir, ?MNESIA_ROOT_DIR),
 
             case mb_utilities:start_mnesia() of
                 ok ->
@@ -168,3 +168,9 @@ get_storage_nodes([NextSchema | T], Aggregate, SSG) ->
                     end 
             end
     end.
+
+
+
+get_mnesia_dir() -> ?MNESIA_ROOT_DIR ++ "/" ++ atom_to_list(node()).
+
+
