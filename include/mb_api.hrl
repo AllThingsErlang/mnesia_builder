@@ -24,8 +24,15 @@
 -define(REQUEST_GET_ALL_SCHEMAS, get_all_schemas).
 -define(REQUEST_SET_SCHEMA_NAME, set_schema_name).
 -define(REQUEST_SET_SCHEMA_TYPE, set_schema_type).
--define(REQUEST_ADD_NODES, add_nodes).
+
+-define(REQUEST_ADD_NODES, add_nodes).  
 -define(REQUEST_DELETE_NODES, delete_nodes).
+
+-define(REQUEST_ADD_LOCAL_NODE, add_local_node).
+-define(REAUEST_DELETE_LOCAL_NODE, delete_local_node).
+
+-define(REQUEST_ADD_REST_OF_CLUSTER, add_rest_of_cluster).
+-define(REQUEST_DELETE_REST_OF_CLUSTER, delete_rest_of_cluster).
 
 
 -define(REQUEST_GET_SCHEMA_TYPE, get_schema_type).

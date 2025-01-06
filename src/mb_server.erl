@@ -198,5 +198,5 @@ random_10_digit_number() ->
 %-------------------------------------------------------------
 shutdown_workers([]) -> ok;
 shutdown_workers([{WorkerPid, _, _} | T]) -> 
-    supervisor:cast(WorkerPid, shutdown),
+    gen_server:cast(WorkerPid, shutdown),
     shutdown_workers(T).

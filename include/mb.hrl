@@ -32,8 +32,6 @@
 
 -define(MNESIA_ROOT_DIR, "../mnesia").
 
--define(KEYWORD_LOCAL_NODE, local_node).
-
 %-------------------------------------------------------------
 
 
