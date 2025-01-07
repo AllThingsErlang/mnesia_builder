@@ -1,6 +1,6 @@
 # mnesia_builder
 
-mnesia_builder is an experimental project designed for fun and exploration of the possibilities with Mnesia, the distributed database in Erlang/OTP. It enables users to model, test, and dynamically interact with Mnesia table schemas. While it’s not intended for production use, it offers a unique way to learn and experiment with Mnesia's capabilities.
+mnesia_builder is an experimental project designed for fun and exploration of the possibilities with Mnesia, the distributed database in Erlang/OTP. It enables users to model, test, and dynamically interact with Mnesia table schemas. Programs can create tables dynamically without a pre-conceived understanding of the table schemas. It offers a unique way to learn and experiment with Mnesia's capabilities.
 
 Features
 
