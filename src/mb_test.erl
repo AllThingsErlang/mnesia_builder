@@ -114,9 +114,10 @@ test_api() ->
 
 
 
-    mb_api:get_ssg(S),
+    io:format("SSG: ~n~p~n~n", [mb_api:get_ssg(S)]),
+    io:format("deploy result: ~p~n", [mb_api:deploy(S)]),
 
-    mb_api:deploy(S).
+    mb_api:disconnect(S).
 
 
 

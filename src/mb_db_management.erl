@@ -50,7 +50,9 @@ create_tables([NextSchemaName | T], SSG) ->
                              {ram_copies, mb_ssg:get_schema_attribute(ram_copies, NextSchemaName, SSG)}]) of
 
         {atomic, _} -> create_tables(T, SSG);
-        {aborted, Reason} -> io:format("failed to create table ~p~n", [Reason])
+        {aborted, Reason} -> 
+            io:format("failed to create table ~p~n", [Reason]),
+            {aborted, Reason}
     end.
 
 %-------------------------------------------------------------
