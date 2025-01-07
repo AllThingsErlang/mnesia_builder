@@ -92,15 +92,11 @@ test_api() ->
     Result = mb_api:add_schema(S, ssg_table),
     Result = mb_api:set_schema_type(S, ssg_table, bag),
 
-    Result = mb_api:add_schema_ram_copies_local(S, ssg_table),
-    Result = mb_api:add_schema_disc_copies_local(S, ssg_table),
-    Result = mb_api:add_schema_disc_only_copies_local(S, ssg_table),
-
-    Result = mb_api:add_schema_ram_copies_cluster(S, ssg_table),
+    Result = mb_api:add_schema_ram_copies_server(S, ssg_table),
     Result = mb_api:add_schema_disc_copies_cluster(S, ssg_table),
-    Result = mb_api:add_schema_disc_only_copies_cluster(S, ssg_table),
+    %Result = mb_api:add_schema_disc_only_copies(S, ssg_table, [fakenode@nowhere]),
 
-    Result = mb_api:add_schema_ram_copies(S, ssg_table, ['n1@a.com', 'n2@a.com']),
+    %Result = mb_api:add_schema_ram_copies(S, ssg_table, ['n1@a.com', 'n2@a.com']),
     %Result = mb_api:add_schema_disc_copies(S, ssg_table, ['n3@a.com', 'n4@a.com']),
     %Result = mb_api:add_schema_disc_only_copies(S, ssg_table, ['n5@a.com', 'n6@a.com']),
 
@@ -108,9 +104,9 @@ test_api() ->
     %Result = mb_api:delete_schema_disc_copies(S, ssg_table, ['n3@a.com', 'n10@a.com']),
     %Result = mb_api:delete_schema_disc_only_copies(S, ssg_table, ['n5@a.com', 'n26@a.com']),
 
-    %Result = mb_api:delete_schema_ram_copies_local(S, ssg_table),
-    %Result = mb_api:delete_schema_disc_copies_local(S, ssg_table),
-    %Result = mb_api:delete_schema_disc_only_copies_local(S, ssg_table),
+    %Result = mb_api:delete_schema_ram_copies_server(S, ssg_table),
+    %Result = mb_api:delete_schema_disc_copies_server(S, ssg_table),
+    %Result = mb_api:delete_schema_disc_only_copies_server(S, ssg_table),
 
     %Result = mb_api:delete_schema_ram_copies_cluster(S, ssg_table),
     %Result = mb_api:delete_schema_disc_copies_cluster(S, ssg_table),
@@ -118,7 +114,9 @@ test_api() ->
 
 
 
-    mb_api:get_ssg(S).
+    mb_api:get_ssg(S),
+
+    mb_api:deploy(S).
 
 
 

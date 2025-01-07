@@ -1,7 +1,7 @@
 -module(mb_db_management).
 -include("../include/mb.hrl").
 
--export([install/1, install/2, start/1, stop/0, table_sizes/1, table_size/2, get_mnesia_dir/0]).
+-export([deploy/1, table_sizes/1, table_size/2, get_mnesia_dir/0]).
 
 
 %-------------------------------------------------------------
@@ -10,87 +10,38 @@
 % completed in the schema specifications.
 %
 % Two variants:
-%    install/1: installs mnesia schema on the local node only.
-%    install/2: installs mnesia schema on the nodes provided in NodeList.
+%    deploy/1: installs mnesia schema on the local node only.
+%    deploy/2: installs mnesia schema on the nodes provided in NodeList.
 %
 % TODO: 
-%     - Make the install intelligent by extracting all the nodes
+%     - Make the deploy intelligent by extracting all the nodes
 %       from SSG and then installing the schema on them.
-%     - Validate the SSG before starting the install.
+%     - Validate the SSG before starting the deploy.
 %     - If there is an mnesia schema installed, change its config
 %       to support the expanded nodes list.
 %-------------------------------------------------------------
--spec install(map()) -> ok | mb_error().
+-spec deploy(mb_ssg()) -> ok | mb_error().
 %-------------------------------------------------------------
-install(SSG) -> 
-    case filelib:ensure_path(?MNESIA_ROOT_DIR) of 
-        ok -> 
-            
-            application:set_env(mnesia, dir, ?MNESIA_ROOT_DIR),
-
-            case mb_utilities:start_mnesia() of
-                ok ->
-                    case get_storage_nodes(SSG) of
-                        {error, Reason1} -> {error, Reason1};
-                        [] -> {error, storage_nodes_not_defined};
-                        Nodes ->
-                            % 1. Are the nodes part of the cluster?
-                            ClusterNodes = [node()] ++ nodes(),
-
-                            case mb_utilities:is_subset(Nodes, ClusterNodes) of 
-                                true ->
-                                    % Excellent, we have a valid list of nodes
-                                    % Now we need to check if the current schema
-                                    % has these nodes included, otherwise, we need
-                                    % to do some schema configuraiton changes.
-                                    MnesiaSchemaNodes = mnesia:system_info(db_nodes),
-
-                                    DeltaNodes = lists:subtract(Nodes, MnesiaSchemaNodes),
-
-                                    case DeltaNodes of 
-                                        [] -> ok;
-                                        _ -> 
-                                            case mnesia:change_config(extra_db_nodes, DeltaNodes) of
-                                                {ok, _} -> ok;
-                                                {error, Reason} -> {error, Reason}
-                                            end 
-                                    end;
-
-                                false -> 
-                                    % Maybe if we ping the nodes we could add them to the cluster.
-                                    case mb_utilities:ping_nodes(Nodes) of 
-                                        true -> 
-                                            % Okay, added to the cluster, let us try the installation
-                                            % again.
-                                            install(SSG);
-                                        false -> {error, {nodes_not_in_cluster, lists:subtract(Nodes, ClusterNodes)}}
-                                    end 
-                            end 
-                    end; 
-                {error, Reason} -> {error, Reason}
-            end;
-        {error, Reason} -> {error, Reason}
+deploy(SSG) -> 
+    case install_schema(SSG) of 
+        ok -> create_tables(SSG);
+        {error, Reason} -> {error, Reason} 
     end.
 
-%-------------------------------------------------------------
--spec install(list(), map()) -> ok | mb_error().
-%-------------------------------------------------------------
-install(NodeList, SSG) ->
-    
-    case mnesia:create_schema(NodeList) of
-        ok -> ok;
-        {error, Reason1} -> io:format("failed to create get_schema: ~w~n", [Reason1])
-    end,
 
-    mnesia:start(),
+
+%-------------------------------------------------------------
+-spec create_tables(mb_ssg()) -> ok | mb_error().
+%-------------------------------------------------------------
+create_tables(SSG) ->
     
     SchemaNames = mb_ssg:schema_names(SSG),
 
-    install_next(SchemaNames, SSG).
+    create_tables(SchemaNames, SSG).
 
 
-install_next([], _) -> ok;
-install_next([NextSchemaName | T], SSG) ->
+create_tables([], _) -> ok;
+create_tables([NextSchemaName | T], SSG) ->
 
     case mnesia:create_table(NextSchemaName, [{attributes, mb_ssg:field_names(NextSchemaName, SSG)},
                              {type, mb_ssg:get_schema_attribute(type, NextSchemaName,SSG)},
@@ -98,21 +49,9 @@ install_next([NextSchemaName | T], SSG) ->
                              {disc_only_copies, mb_ssg:get_schema_attribute(disc_only_copies, NextSchemaName, SSG)},
                              {ram_copies, mb_ssg:get_schema_attribute(ram_copies, NextSchemaName, SSG)}]) of
 
-        {atomic, _} -> install_next(T, SSG);
-        {aborted, Reason2} -> io:format("failed to create table ~p~n", [Reason2])
+        {atomic, _} -> create_tables(T, SSG);
+        {aborted, Reason} -> io:format("failed to create table ~p~n", [Reason])
     end.
-
-
-%-------------------------------------------------------------
--spec start(map()) -> ok | {error, term()} | {timeout, [atom()]}.
-%-------------------------------------------------------------
-start(SSG) ->
-    mnesia:start(),
-    mnesia:wait_for_tables(mb_ssg:schema_names(SSG), 10000).
- 
-stop() -> mnesia:stop().
-
-
 
 %-------------------------------------------------------------
 % Returns the number of records in the specified table. 
@@ -163,7 +102,7 @@ get_storage_nodes([NextSchema | T], Aggregate, SSG) ->
                     case mb_ssg:get_schema_attribute(disc_only_copies, NextSchema, SSG) of
                         {error, Reason} -> {error, Reason};
                         DiscOnlyCopies ->
-                            NodesList = mb_utilities:replace_list_member(RamCopies ++ DiscCopies ++ DiscOnlyCopies, ?KEYWORD_LOCAL_NODE, node()),
+                            NodesList = lists:uniq(RamCopies ++ DiscCopies ++ DiscOnlyCopies),
                             get_storage_nodes(T, Aggregate ++ NodesList, SSG)
                     end 
             end
@@ -174,3 +113,59 @@ get_storage_nodes([NextSchema | T], Aggregate, SSG) ->
 get_mnesia_dir() -> ?MNESIA_ROOT_DIR ++ "/" ++ atom_to_list(node()).
 
 
+
+%-------------------------------------------------------------
+% Installs the mnesia schema on the specified nodes for all
+% SSG tables. 
+%-------------------------------------------------------------
+-spec install_schema(mb_ssg()) -> ok | mb_error().
+%-------------------------------------------------------------
+install_schema(SSG) -> 
+    case filelib:ensure_path(?MNESIA_ROOT_DIR) of 
+        ok -> 
+            
+            application:set_env(mnesia, dir, ?MNESIA_ROOT_DIR),
+
+            case mb_utilities:start_mnesia() of
+                ok ->
+                    case get_storage_nodes(SSG) of
+                        {error, Reason1} -> {error, Reason1};
+                        [] -> {error, storage_nodes_not_defined};
+                        Nodes ->
+                            % 1. Are the nodes part of the cluster?
+                            ClusterNodes = [node()] ++ nodes(),
+
+                            case mb_utilities:is_subset(Nodes, ClusterNodes) of 
+                                true ->
+                                    % Excellent, we have a valid list of nodes
+                                    % Now we need to check if the current schema
+                                    % has these nodes included, otherwise, we need
+                                    % to do some schema configuraiton changes.
+                                    MnesiaSchemaNodes = mnesia:system_info(db_nodes),
+
+                                    DeltaNodes = lists:subtract(Nodes, MnesiaSchemaNodes),
+
+                                    case DeltaNodes of 
+                                        [] -> ok;
+                                        _ -> 
+                                            case mnesia:change_config(extra_db_nodes, DeltaNodes) of
+                                                {ok, _} -> ok;
+                                                {error, Reason} -> {error, Reason}
+                                            end 
+                                    end;
+
+                                false -> 
+                                    % Maybe if we ping the nodes we could add them to the cluster.
+                                    case mb_utilities:ping_nodes(Nodes) of 
+                                        true -> 
+                                            % Okay, added to the cluster, let us try the installation
+                                            % again.
+                                            deploy(SSG);
+                                        false -> {error, {nodes_not_in_cluster, lists:subtract(Nodes, ClusterNodes)}}
+                                    end 
+                            end 
+                    end; 
+                {error, Reason} -> {error, Reason}
+            end;
+        {error, Reason} -> {error, Reason}
+    end.

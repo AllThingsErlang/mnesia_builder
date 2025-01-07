@@ -602,7 +602,15 @@ set_schema_attribute(Attribute, Value, SchemaName, SSG) when is_map(SSG) ->
                         false ->
                             case get_schema(SchemaName, SSG) of
                                 {error, Reason} -> {error, Reason};
-                                Schema -> update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG)
+                                Schema -> 
+                                    case ((Attribute == ?RAM_COPIES) orelse (Attribute == ?DISC_COPIES) orelse (Attribute == ?DISC_ONLY_COPIES)) of
+                                        true ->
+                                            case validate_node_list(Attribute, Value, Schema) of 
+                                                ok -> update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG);
+                                                {error, Reason} -> {error, Reason}
+                                            end;
+                                        false -> update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG)
+                                    end
                             end
                     end;
 
@@ -1257,7 +1265,7 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
                             io:format(SrcIoDevice, "~n", []),
                             io:format(SrcIoDevice, "-export([get_ssg/0]).~n", []),
 
-                            io:format(SrcIoDevice, "-export([install/0, install/1, start/0, stop/0, table_size/1, table_sizes/0]).~n", []),
+                            io:format(SrcIoDevice, "-export([deploy/0, table_size/1, table_sizes/0]).~n", []),
                             io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
                             io:format(SrcIoDevice, "-export([fields/1, field_count/1, mandatory_field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
                             io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
@@ -1272,11 +1280,7 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
                             io:format(SrcIoDevice, "%                DB Management Functions~n",[]),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
-                            generate_spec_function(install, ?MANAGE_DB_MODULE, SrcIoDevice),
-                            generate_spec_function(install, "NodeList", ?MANAGE_DB_MODULE, SrcIoDevice),
-                            generate_spec_function(start, ?MANAGE_DB_MODULE, SrcIoDevice),
-                            generate_function(stop, ?MANAGE_DB_MODULE, SrcIoDevice),
-
+                            generate_spec_function(deploy, ?MANAGE_DB_MODULE, SrcIoDevice),
                             generate_spec_function(table_size, "SchemaName", ?MANAGE_DB_MODULE, SrcIoDevice),
                             generate_spec_function(table_sizes, ?MANAGE_DB_MODULE, SrcIoDevice),
 
@@ -1958,9 +1962,9 @@ is_field_list(_) -> false.
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-generate_function(FunctionName, BaseModule, IoDevice) ->
-    io:format(IoDevice, "~n~p() -> ~p:~p().~n", 
-        [FunctionName, BaseModule, FunctionName]).
+%generate_function(FunctionName, BaseModule, IoDevice) ->
+%    io:format(IoDevice, "~n~p() -> ~p:~p().~n", 
+%        [FunctionName, BaseModule, FunctionName]).
 
 %-------------------------------------------------------------
 % 
@@ -2321,6 +2325,37 @@ get_default_value(Type) ->
         map -> #{};
         term -> not_defined
     end.
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+-spec validate_node_list(mb_schema_attribute, list(), mb_schema_spec()) -> ok | mb_error().
+%-------------------------------------------------------------
+validate_node_list(Attribute, NodesList, Schema) ->
+
+    AltAttributes = lists:subtract([?RAM_COPIES, ?DISC_COPIES, ?DISC_ONLY_COPIES], [Attribute]),
+    [AltAtt1 | [AltAtt2]] = AltAttributes,
+    
+    case maps:find(AltAtt1, Schema) of 
+        {ok, NodesList1} -> 
+            case maps:find(AltAtt2, Schema) of 
+                {ok, NodesList2} ->
+
+                    Result1 = length(lists:subtract(NodesList1, NodesList)) == length(NodesList1),
+                    Result2 = length(lists:subtract(NodesList2, NodesList)) == length(NodesList2),
+
+                    case (Result1 and Result2) of 
+                        true -> ok;
+                        false -> {error, duplicated_nodes} 
+                    end;
+
+                error -> {error, {invalid_specifications, Schema}}
+            end
+    end.
+
+    
+
 
 
 %============================================================

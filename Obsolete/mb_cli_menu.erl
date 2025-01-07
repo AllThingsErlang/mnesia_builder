@@ -2,7 +2,7 @@
 -export([start/1]).
 
 -define(N, 10).
--define(CMD_INSTALL, "install").
+-define(CMD_DEPLOY, "deploy").
 -define(CMD_START, "start").
 -define(CMD_STOP, "stop").
 -define(CMD_TABLES, "tables").
@@ -54,7 +54,7 @@ process_help() ->
     io:format("~n"),
     io:format("-------------------------------------~n"),
     io:format("admin commands:~n"),
-    io:format("   - ~-10s ... ~s~n", [?CMD_INSTALL, command_info(?CMD_INSTALL, description)]),
+    io:format("   - ~-10s ... ~s~n", [?CMD_DEPLOY, command_info(?CMD_DEPLOY, description)]),
     io:format("   - ~-10s ... ~s~n", [?CMD_START, command_info(?CMD_START, description)]),
     io:format("   - ~-10s ... ~s~n", [?CMD_STOP, command_info(?CMD_STOP, description)]),
     io:format("   - ~-10s ... ~s~n", [?CMD_TABLES, command_info(?CMD_TABLES, description)]),
@@ -99,10 +99,10 @@ command_info(Command, Info) ->
 
     case Command of
 
-        ?CMD_INSTALL ->
+        ?CMD_DEPLOY ->
             case Info of
-                description -> "install schemas";
-                syntax -> ?CMD_INSTALL
+                description -> "deploy schemas";
+                syntax -> ?CMD_DEPLOY
             end;
 
         ?CMD_START   ->
@@ -242,8 +242,8 @@ process_user_input(Input, LoadedModules) ->
                 [Command] ->
 
                     case Command of
-                        ?CMD_INSTALL ->
-                            SchemaModule:install(),
+                        ?CMD_DEPLOY ->
+                            SchemaModule:deploy(),
                             prompt(LoadedModules);
                         
                         ?CMD_TABLES ->

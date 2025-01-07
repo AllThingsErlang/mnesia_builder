@@ -428,14 +428,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_INSTALL}}, {}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DEPLOY}}, {}}}, State) ->
 
     case use_module(State) of 
 
         {ok, Module} -> 
-            io:format("attempting to install using ~p~n", [Module]),
+            io:format("attempting to deploy using ~p~n", [Module]),
 
-            case Module:install() of
+            case Module:deploy() of
                 {error, Reason} -> Result = {error, Reason};
                 Result -> ok
             end;
@@ -444,15 +444,15 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         false -> 
             SSG = maps:get(?STATE_SSG, State),
     
-            io:format("attempting to install using mb_db_management~n"),
+            io:format("attempting to deploy using mb_db_management~n"),
 
-            case mb_db_management:install(SSG) of 
+            case mb_db_management:deploy(SSG) of 
                 {error, Reason} -> Result = {error, Reason};
                 Result -> ok
             end
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_INSTALL, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DEPLOY, Result),
     {reply, ReplyMessage, State};
 
 %-------------------------------------------------------------
@@ -553,7 +553,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_LOCAL_NODE}}, {{schema_name, SchemaName}, {?RAM_COPIES, []}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_SERVER_NODE}}, {{schema_name, SchemaName}, {?RAM_COPIES, []}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
@@ -567,13 +567,13 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_LOCAL_NODE, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_SERVER_NODE, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_LOCAL_NODE}}, {{schema_name, SchemaName}, {?DISC_COPIES, []}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_SERVER_NODE}}, {{schema_name, SchemaName}, {?DISC_COPIES, []}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
@@ -587,13 +587,13 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_LOCAL_NODE, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_SERVER_NODE, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_LOCAL_NODE}}, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, []}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_ADD_SERVER_NODE}}, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, []}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
@@ -607,7 +607,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_LOCAL_NODE, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_SERVER_NODE, Result),
     {reply, ReplyMessage, UpdatedState};
 
 
@@ -747,7 +747,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REAUEST_DELETE_LOCAL_NODE}}, {{schema_name, SchemaName}, {?RAM_COPIES, []}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_SERVER_NODE}}, {{schema_name, SchemaName}, {?RAM_COPIES, []}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
@@ -761,14 +761,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REAUEST_DELETE_LOCAL_NODE, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SERVER_NODE, Result),
     {reply, ReplyMessage, UpdatedState};
 
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REAUEST_DELETE_LOCAL_NODE}}, {{schema_name, SchemaName}, {?DISC_COPIES, []}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_SERVER_NODE}}, {{schema_name, SchemaName}, {?DISC_COPIES, []}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
@@ -782,13 +782,13 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REAUEST_DELETE_LOCAL_NODE, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SERVER_NODE, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
-handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REAUEST_DELETE_LOCAL_NODE}}, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, []}}}}, State) ->
+handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_DELETE_SERVER_NODE}}, {{schema_name, SchemaName}, {?DISC_ONLY_COPIES, []}}}}, State) ->
 
     SSG = maps:get(?STATE_SSG, State),
     
@@ -802,7 +802,7 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = ok
     end,
 
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REAUEST_DELETE_LOCAL_NODE, Result),
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SERVER_NODE, Result),
     {reply, ReplyMessage, UpdatedState};
 
 

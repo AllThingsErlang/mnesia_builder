@@ -14,7 +14,7 @@
 -define(REQUEST_USE_MODULE, use_module).
 -define(REQUEST_DOWNLOAD_MODULE, download_module).
 -define(REQUEST_UPLOAD_MODULE, upload_module).
--define(REQUEST_INSTALL, install).
+-define(REQUEST_DEPLOY, deploy).
 
 
 % Schema management
@@ -28,8 +28,8 @@
 -define(REQUEST_ADD_NODES, add_nodes).  
 -define(REQUEST_DELETE_NODES, delete_nodes).
 
--define(REQUEST_ADD_LOCAL_NODE, add_local_node).
--define(REAUEST_DELETE_LOCAL_NODE, delete_local_node).
+-define(REQUEST_ADD_SERVER_NODE, add_server_node).
+-define(REQUEST_DELETE_SERVER_NODE, delete_server_node).
 
 -define(REQUEST_ADD_REST_OF_CLUSTER, add_rest_of_cluster).
 -define(REQUEST_DELETE_REST_OF_CLUSTER, delete_rest_of_cluster).

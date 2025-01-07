@@ -1,7 +1,7 @@
 -module(test_schema).
 
 -export([get_ssg/0]).
--export([install/0, install/1, start/0, stop/0, table_size/1, table_sizes/0]).
+-export([deploy/0, deploy/1, start/0, stop/0, table_size/1, table_sizes/0]).
 -export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).
 -export([fields/1, field_count/1, mandatory_field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).
 -export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).
@@ -60,9 +60,9 @@ get_ssg() ->
 %                DB Management Functions
 %-------------------------------------------------------
 
-install() -> mb_db_management:install(get_ssg()).
+deploy() -> mb_db_management:deploy(get_ssg()).
 
-install(NodeList) -> mb_db_management:install(NodeList, get_ssg()).
+deploy(NodeList) -> mb_db_management:deploy(NodeList, get_ssg()).
 
 start() -> mb_db_management:start(get_ssg()).
 
