@@ -6,7 +6,8 @@
          string_to_float/1, string_to_integer/1, string_to_integer/2, 
          string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, 
          get_linked_processes/0, is_node_name/1, is_node_name_list/1, is_email/1,
-         move_element/3, is_timestamp/1, start_mnesia/0, is_subset/2, ping_nodes/1, replace_list_member/3]).
+         move_element/3, is_timestamp/1, start_mnesia/0, is_subset/2, ping_nodes/1, replace_list_member/3,
+         chain_execution/1]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -367,3 +368,27 @@ replace_list_member(List, OldValue, NewValue) ->
         end
     end, List).
 
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+chain_execution(Steps) -> chain_execution(Steps, ok).
+
+chain_execution([], ok) -> ok;
+chain_execution([], {ok, Result}) -> {ok, Result};
+chain_execution([], {error, Reason}) -> {error, Reason};
+chain_execution([Step | Rest], ok) -> 
+    case Step() of 
+        {ok, NewResult} -> chain_execution(Rest, {ok, NewResult});
+        {error, Reason} -> {error, Reason};
+        NewResult -> chain_execution(Rest, {ok, NewResult})
+    end;
+
+chain_execution([Step | Rest], {ok, Result}) ->
+    case Step(Result) of
+        {ok, NewResult} -> chain_execution(Rest, {ok, NewResult});
+        {error, Reason} -> {error, Reason};
+        NewResult -> chain_execution(Rest, {ok, NewResult})
+    end;
+
+chain_execution(_, {error, Reason}) -> {error, Reason}.
