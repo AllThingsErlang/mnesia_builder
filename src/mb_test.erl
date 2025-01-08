@@ -1,8 +1,11 @@
 -module(mb_test).
--export([generate/0, test_api/0]).
+-export([generate/0, c/0, delete_beam/0, test_api/0]).
 
 -define(SSG_NAME, test_schema).
 
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
 generate() ->
 
     %io:format("test::allocating a new schema map~n"),
@@ -80,8 +83,58 @@ generate() ->
 
     mb_ssg:generate(?SSG_NAME, SS16).
 
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+c() -> compile().
+
+compile() ->
+    %% Get all .erl files in ../src directory
+    {ok, Files} = file:list_dir("../src"),
+    ErlFiles = [Filename || Filename <- Files, filename:extension(Filename) =:= ".erl"],
+
+    delete_beam(),
+
+    %% Compile each .erl file
+    lists:foreach(fun(Filename) ->
+        compile_file(Filename)
+    end, ErlFiles).
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+compile_file(Filename) ->
+    %% Generate the full path to the file
+    FilePath = filename:join("../src", Filename),
+    
+    case compile:file(FilePath, [{outdir, "./"}, report_errors]) of
+        {ok, Module} -> 
+            case code:soft_purge(Module) of 
+                true ->
+                    case code:load_file(Module) of 
+                        {module, Module} -> Result = "ok";
+                        _ -> Result = "load failed" 
+                    end;
+                false -> Result = "purge failed" 
+            end;
+        _ -> Result = "compile failed" 
+    end,
+
+    ModuleName = lists:sublist(Filename, length(Filename) - 4),
+    io:format("~-30s~s~n", [ModuleName, Result]).
 
 
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+delete_beam() ->
+    %% Get all .erl files in ../src directory
+    {ok, Files} = file:list_dir("../ebin"),
+    ErlFiles = [Filename || Filename <- Files, filename:extension(Filename) =:= ".beam"],
+
+    %% Delete each .beam file
+    lists:foreach(fun(Filename) -> file:delete("../ebin/" ++ Filename) end, ErlFiles).
+
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
 test_api() -> 
 
     {ok, S} = mb_api:connect(),
