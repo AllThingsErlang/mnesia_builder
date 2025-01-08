@@ -630,13 +630,18 @@ set_schema_attribute(_ , _, _, SSG) -> {error, {invalid_argument, SSG}}.
 %------------------------------------------------------------- 
 get_schema_attribute(Attribute, SchemaName, SSG) when is_map(SSG) -> 
 
+    io:format("[mb::mb_ssg::get_schema_attribute]: (...)~n"),
+    io:format("[mb::mb_ssg::get_schema_attribute]: attribute ~p~n", [Attribute]),
+
     case is_schema_attribute(Attribute) of
         true ->
             case get_schema(SchemaName, SSG) of 
                 {error, Reason} -> {error, Reason};
                 Schema -> 
                     case maps:find(Attribute, Schema) of 
-                        {ok, Value} -> Value;
+                        {ok, Value} -> 
+                            io:format("[mb::mb_ssg::get_schema_attribute]: value ~p~n", [Value]),
+                            Value;
                         error -> {error, {invalid_argument, SSG}}
                     end
             end;
@@ -2285,6 +2290,9 @@ move_any_field(_FieldName, ToPosition, _SchemaName, SSG) -> {error, {invalid_arg
 -spec update_schema_attribute(mb_schema_attribute(), term(), mb_schema_name(), mb_schema_spec(), mb_ssg()) -> mb_ssg().
 %-------------------------------------------------------------
 update_schema_attribute(Attribute, Value, SchemaName, Schema, SSG) ->
+    io:format("[mb::ssg::update_schema_attribute]: (...)"),
+    io:format("[mb::ssg::update_schema_attribute]: setting ~p = ~p~n", [Attribute, Value]),
+
     UpdatedSchemaSpecifications = maps:update(Attribute, Value, Schema),
     SchemasList = schemas(SSG),
     UpdatedSchemasList = lists:keyreplace(SchemaName, 1, SchemasList, {SchemaName, UpdatedSchemaSpecifications}),

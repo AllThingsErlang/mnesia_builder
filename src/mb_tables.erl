@@ -1,14 +1,14 @@
 -module(mb_tables).
--export([deploy_schema/0]).
+-export([deploy_mb_ssg/0]).
 -include("../include/mb.hrl").
 
 
 %-------------------------------------------------------------
 %   
 %-------------------------------------------------------------
--spec deploy_schema() -> ok | mb_error().
+-spec deploy_mb_ssg() -> ok | mb_error().
 %-------------------------------------------------------------
-deploy_schema() ->
+deploy_mb_ssg() ->
     
     Result =
         mb_utilities:chain_execution([
