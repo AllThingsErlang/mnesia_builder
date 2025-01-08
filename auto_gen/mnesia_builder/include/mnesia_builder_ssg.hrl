@@ -1,0 +1,1 @@
+-record(ssg_table, {name,ssg,worker_pid}).

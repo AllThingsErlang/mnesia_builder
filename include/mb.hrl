@@ -31,7 +31,20 @@
 
 
 -define(MNESIA_ROOT_DIR, "../mnesia").
--define(MB_SSG_TABLE, mb_ssg_table).
+
+-define(AUTO_GEN_ROOT_DIR, "../auto_gen").
+
+-define(AUTO_GEN_CLIENT_SRC_DIR, ?AUTO_GEN_ROOT_DIR ++ "/clients/src").
+-define(AUTO_GEN_CLIENT_EBIN_DIR, ?AUTO_GEN_ROOT_DIR ++ "/clients/ebin").
+-define(AUTO_GEN_CLIENT_INCLUDE_DIR, ?AUTO_GEN_ROOT_DIR ++ "/clients/include").
+
+-define(AUTO_GEN_MB_SRC_DIR, ?AUTO_GEN_ROOT_DIR ++ "/mnesia_builder/src").
+-define(AUTO_GEN_MB_EBIN_DIR, ?AUTO_GEN_ROOT_DIR ++ "/mnesia_builder/ebin").
+-define(AUTO_GEN_MB_INCLUDE_DIR, ?AUTO_GEN_ROOT_DIR ++ "/mnesia_builder/include").
+
+-define(INTERNAL_SSG_TABLE, ssg_table).
+-define(MB_SSG_NAME, mnesia_builder_ssg).
+-define(MB_SSG_MODULE, ?MB_SSG_NAME).
 
 %-------------------------------------------------------------
 

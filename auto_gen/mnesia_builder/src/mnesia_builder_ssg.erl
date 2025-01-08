@@ -1,4 +1,4 @@
--module(mb_ssg_table).
+-module(mnesia_builder_ssg).
 
 -export([get_ssg/0]).
 -export([deploy/0, table_size/1, table_sizes/0]).
@@ -11,28 +11,28 @@
 get_ssg() ->
     #{name => mnesia_builder_ssg,owner => "AllThingsErlang",version => "0.2",
       description => "MnesiaBuilder internal database",
-      created => {{2025,1,8},{2,37,35}},
+      created => {{2025,1,8},{11,29,48}},
       email => "haitham.bouzeineddine@gmail.com",
       schemas =>
-          [{mb_ssg_table,
-               #{name => mb_ssg_table,type => bag,description => [],
+          [{ssg_table,
+               #{name => ssg_table,type => bag,description => [],
                  fields =>
                      [{name,
                           #{label => [],name => name,position => 1,
                             priority => mandatory,type => atom,
-                            description => [],default_value => not_defined,
-                            role => key}},
+                            description => [],role => key,
+                            default_value => not_defined}},
                       {ssg,
                           #{label => [],name => ssg,position => 2,
                             priority => mandatory,type => map,
-                            description => [],default_value => #{},
-                            role => field}},
+                            description => [],role => field,
+                            default_value => #{}}},
                       {worker_pid,
                           #{label => [],name => worker_pid,position => 3,
                             priority => mandatory,type => term,
-                            description => [],default_value => not_defined,
-                            role => field}}],
-                 disc_copies => [nonode@nohost],
+                            description => [],role => field,
+                            default_value => not_defined}}],
+                 disc_copies => ['blue@LAPTOP-6B8AG7F5'],
                  disc_only_copies => [],ram_copies => []}}]}.
 
 

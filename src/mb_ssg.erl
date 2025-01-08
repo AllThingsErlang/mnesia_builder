@@ -1245,11 +1245,9 @@ generate(Module, SSG) -> generate(Module, ".", ".", SSG).
 %-------------------------------------------------------------
 generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), is_list(HrlPath), is_map(SSG) ->
 
-    io:format("generate::started~n"),
+    io:format("[mb::ssg::generate]: (...)~n"),
 
     case mb_utilities:is_unquoted_atom(Module) of 
-
-        
         true ->            
             case file:open(HrlPath ++ "/" ++ atom_to_list(Module) ++ ".hrl", [write]) of 
                 {ok, HrlIoDevice} ->
@@ -1261,7 +1259,7 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
                     case file:open(SrcPath ++ "/" ++ atom_to_list(Module) ++ ".erl", [write]) of
                         {ok, SrcIoDevice}  -> 
                             
-                            io:format("generate::source file opened for writing~n"),
+                            io:format("[mb::ssg::generate]: source file opened for writing~n"),
                             
                             io:format(SrcIoDevice, "-module(~p).~n", [Module]),
 

@@ -370,22 +370,42 @@ replace_list_member(List, OldValue, NewValue) ->
 
 
 %-------------------------------------------------------------
-%   
+% It will execute the functions in the chain. 
+%
+% If the return from the function is anything other than ok or a boolean,
+% the result is passed to the next function. 
+%
+% If the result is ok or true, the next function is called without
+% passing the result to it.
+% 
+% If the result is false or {error, Reason}, execution is aborted.
 %-------------------------------------------------------------
 chain_execution(Steps) -> chain_execution(Steps, ok).
 
+chain_execution([], []) -> ok;
+chain_execution([], true) -> ok;
+chain_execution([], false) -> {error, execution_failed};
 chain_execution([], ok) -> ok;
 chain_execution([], {ok, Result}) -> {ok, Result};
 chain_execution([], {error, Reason}) -> {error, Reason};
-chain_execution([Step | Rest], ok) -> 
+
+chain_execution([Step | Rest], Result) when (is_boolean(Result) orelse (Result == ok) orelse (Result == []) orelse (Result == {ok, ok})) -> 
+    io:format("...Result: remaining functions: ~p~n", [length(Rest)]),
+
     case Step() of 
+        true -> chain_execution(Rest, true);
+        false -> {error, execution_failed};
         {ok, NewResult} -> chain_execution(Rest, {ok, NewResult});
         {error, Reason} -> {error, Reason};
         NewResult -> chain_execution(Rest, {ok, NewResult})
     end;
 
 chain_execution([Step | Rest], {ok, Result}) ->
+    io:format("...{ok, Result}: remaining functions: ~p~n", [length(Rest)]),
+    
     case Step(Result) of
+        true -> chain_execution(Rest, true);
+        false -> {error, execution_failed};
         {ok, NewResult} -> chain_execution(Rest, {ok, NewResult});
         {error, Reason} -> {error, Reason};
         NewResult -> chain_execution(Rest, {ok, NewResult})
@@ -426,3 +446,5 @@ compile_and_load(Module, File, OutDirectory) ->
             end;
         {error, Errors} -> {error, Errors}
     end.
+
+ 

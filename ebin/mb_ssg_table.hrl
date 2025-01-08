@@ -1,1 +1,0 @@
--record(mb_ssg_table, {name,ssg,worker_pid}).
