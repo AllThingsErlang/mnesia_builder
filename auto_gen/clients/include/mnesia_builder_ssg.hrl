@@ -1,0 +1,1 @@
+-record(ssg_table, {}).

@@ -295,13 +295,12 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     case is_atom(Module) of 
         true -> 
-            SessionDir = maps:get(?STATE_SESSION_DIR, State),
-            File = SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl",
-            code:add_pathz(SessionDir),
+            {SrcDir, _IncDir, EbinDir} = get_client_directories(),
+            File = SrcDir ++ "/" ++ atom_to_list(Module) ++ ".erl",
 
             case file:write_file(File, Binary) of
                 ok -> 
-                    case mb_utilities:compile_and_load(Module, File, SessionDir) of 
+                    case mb_utilities:compile_and_load(Module, File, EbinDir) of 
                         ok -> 
                             case erlang:function_exported(Module, get_ssg, 0) of
                                 true ->
@@ -350,17 +349,17 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
         [] -> Result = {error, module_not_defined};
         Module ->
 
-            SessionDir = maps:get(?STATE_SESSION_DIR, State),
-            SrcFile = SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl",
-            HrlFile = SessionDir ++ "/" ++ atom_to_list(Module) ++ ".hrl",
+            {SrcDir, IncDir, _EbinDir} = get_client_directories(),
+
+            SrcFile = SrcDir ++ "/" ++ atom_to_list(Module) ++ ".erl",
+            HrlFile = IncDir ++ "/" ++ atom_to_list(Module) ++ ".hrl",
 
             % Generate to make sure that the source and header files are in place.
             SSG = maps:get(?STATE_SSG, State),
-            case mb_ssg:generate(Module, SessionDir, SessionDir, SSG) of
+            case mb_ssg:generate(Module, SrcDir, IncDir, SSG) of
                 ok -> 
                     case file:read_file(SrcFile) of
                         {ok, SrcBinary} -> 
-                            
                             case file:read_file(HrlFile) of
                                 {ok, HrlBinary} -> Result = {ok, {Module, SrcBinary, HrlBinary}};
                                 {error, Reason} -> Result = {error, {Reason, HrlFile}}
@@ -393,12 +392,13 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
     case maps:get(?STATE_MODULE, State) of  
         [] -> Result = {error, module_name_not_defined};
         Module ->
-            SessionDir = maps:get(?STATE_SESSION_DIR, State),
             SSG =  maps:get(?STATE_SSG, State),
 
-            case mb_ssg:generate(Module, SessionDir, SessionDir, SSG) of
+            {SrcDir, IncDir, EbinDir} = get_client_directories(),
+
+            case mb_ssg:generate(Module, SrcDir, IncDir, SSG) of
                 ok -> 
-                    case compile:file(SessionDir ++ "/" ++ atom_to_list(Module) ++ ".erl", [{outdir, SessionDir}, report_errors]) of
+                    case compile:file(SrcDir ++ "/" ++ atom_to_list(Module) ++ ".erl", [{outdir, EbinDir}, report_errors]) of
                         {ok, Module} -> Result = ok;
                         {error, Errors} -> Result = {error, Errors}
                     end;
@@ -1605,15 +1605,12 @@ use_module(State) ->
 %-------------------------------------------------------------
 %-------------------------------------------------------------
 load_module(State) ->
-
-    SessionDir = maps:get(?STATE_SESSION_DIR, State),
     
     case maps:get(?STATE_MODULE, State) of
         [] -> {error, module_name_not_set};
         Module ->
             case code:soft_purge(Module) of 
                 true ->
-                    code:add_pathz(SessionDir),
                     case code:load_file(Module) of 
                         {module, Module} -> Module;
                         {error, Reason} -> {error, Reason}
@@ -1630,3 +1627,9 @@ update_state_new_ssg(State, NewSSG) ->
     % The module name is always the SSG name
     UpdatedStateInterim2 = maps:update(?STATE_MODULE, maps:get(?NAME, NewSSG), UpdatedStateInterim1), 
     maps:update(?STATE_USE_MODULE, false, UpdatedStateInterim2).
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+get_client_directories() -> {filename:absname(?AUTO_GEN_CLIENT_SRC_DIR),
+                             filename:absname(?AUTO_GEN_CLIENT_INCLUDE_DIR),
+                             filename:absname(?AUTO_GEN_CLIENT_EBIN_DIR)}.
