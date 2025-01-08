@@ -125,9 +125,23 @@ get_mnesia_dir() -> ?MNESIA_ROOT_DIR ++ "/" ++ atom_to_list(node()).
 %-------------------------------------------------------------
 setup_mnesia_schema() -> 
 
-    case mnesia:change_table_copy_type(schema, node(), ?DISC_COPIES) of 
-        {atomic, _} -> 
+    Result = case mb_utilities:table_exists(schema) of 
+        true -> 
+            DiscCopies = mnesia:table_info(schema, disc_copies),
+            case lists:member(node(), DiscCopies) of 
+                true -> ok;
+                false ->
+                    case mnesia:change_table_copy_type(schema, node(), ?DISC_COPIES) of 
+                        {atomic, _} -> ok;
+                        {aborted, Reason} -> {error, Reason} 
+                    end 
+            end;
 
+        false -> {error, {table_not_found, schema}}
+    end,
+
+    case Result of 
+        ok ->
             MnesiaSchemaNodes = mnesia:system_info(db_nodes),
             ClusterNodes = [node()] ++ nodes(),
 
@@ -138,11 +152,11 @@ setup_mnesia_schema() ->
                 _ -> 
                     case mnesia:change_config(extra_db_nodes, DeltaNodes) of
                         {ok, _} -> ok;
-                        {error, Reason} -> {error, Reason}
+                        {error, Reason2} -> {error, Reason2}
                     end 
             end;
 
-        {aborted, Reason} -> {error, Reason} 
+        Result -> Result
     end.
 
 

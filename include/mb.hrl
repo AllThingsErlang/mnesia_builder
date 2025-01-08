@@ -31,6 +31,7 @@
 
 
 -define(MNESIA_ROOT_DIR, "../mnesia").
+-define(MB_SSG_TABLE, mb_ssg_table).
 
 %-------------------------------------------------------------
 

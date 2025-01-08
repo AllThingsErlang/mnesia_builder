@@ -7,7 +7,7 @@
          string_to_tuple/1, is_comparison/1, is_unquoted_atom/1, parse_input_erlang_terms/1, 
          get_linked_processes/0, is_node_name/1, is_node_name_list/1, is_email/1,
          move_element/3, is_timestamp/1, start_mnesia/0, is_subset/2, ping_nodes/1, replace_list_member/3,
-         chain_execution/1]).
+         chain_execution/1, table_exists/1, file_exists/1, compile_and_load/3]).
 
 
 find_list_pos(_Field, []) -> 0;
@@ -392,3 +392,37 @@ chain_execution([Step | Rest], {ok, Result}) ->
     end;
 
 chain_execution(_, {error, Reason}) -> {error, Reason}.
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+table_exists(TableName) -> lists:member(TableName, mnesia:system_info(tables)).
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+file_exists(FilePath) ->
+    case file:read_file_info(FilePath) of
+        {ok, _FileInfo} -> true; 
+        {error, _Reason} -> false 
+    end.
+
+
+%-------------------------------------------------------------
+%   
+%-------------------------------------------------------------
+compile_and_load(Module, File, OutDirectory) -> 
+    case compile:file(File, [{outdir, OutDirectory}, report_errors]) of
+        {ok, Module} -> 
+            case code:soft_purge(Module) of 
+                true ->
+                    case code:load_file(Module) of 
+                        {module, Module} -> ok;
+                        {error, Reason} -> {error, Reason}
+                    end;
+                false -> {error, {cannot_purge_module, Module}}
+            end;
+        {error, Errors} -> {error, Errors}
+    end.

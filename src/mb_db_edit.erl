@@ -2,7 +2,7 @@
 -include("../include/mb.hrl").
 
 -import(mnesia, [transaction/1]).
--export([add/2, add/3, add/4, delete/2, delete/3, clear_all_tables/1]).
+-export([write/2, write/3, write/4, delete/2, delete/3, clear_all_tables/1]).
 
 
 
@@ -12,16 +12,16 @@
 % does validate against the schema to ensure that edit operations
 % are in compliance with schema specifications.
 %
-% Three formats for the add ....
+% Three formats for the write ....
 %
-%    (1) add({SchemaName, Key, ...}, SSG)
-%    (2) add(SchemaName, {Key, ...}, SSG)
-%    (3) add(SchemaName, Key, Data, SSG) 
+%    (1) write({SchemaName, Key, ...}, SSG)
+%    (2) write(SchemaName, {Key, ...}, SSG)
+%    (3) write(SchemaName, Key, Data, SSG) 
 %
 %-------------------------------------------------------------
--spec add(tuple(), map()) -> ok | mb_error().
+-spec write(tuple(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
-add(Record, SSG) when (is_tuple(Record) and is_map(SSG)) ->
+write(Record, SSG) when (is_tuple(Record) and is_map(SSG)) ->
 
     List = tuple_to_list(Record),
     
@@ -31,35 +31,35 @@ add(Record, SSG) when (is_tuple(Record) and is_map(SSG)) ->
             [SchemaName | RestOfRecord] = Record,
             [Key | Data] = RestOfRecord,
 
-            add(SchemaName, Key, Data, SSG);
+            write(SchemaName, Key, Data, SSG);
 
         false -> {error, {invalid_record, Record}}
     end;
 
-add(Record, SSG) -> {error, {invalid_argument, {Record, SSG}}}.
+write(Record, SSG) -> {error, {invalid_argument, {Record, SSG}}}.
 
 
 %-------------------------------------------------------------
--spec add(atom(), tuple(), map()) -> ok | mb_error().
+-spec write(atom(), tuple(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
-add(SchemaName, Record, SSG) when (is_atom(SchemaName) and is_tuple(Record) and is_map(SSG)) ->
+write(SchemaName, Record, SSG) when (is_atom(SchemaName) and is_tuple(Record) and is_map(SSG)) ->
 
     List = tuple_to_list(Record),
     
     case length(List) > 1 of
         true ->
             [Key | Data] = Record,
-            add(SchemaName, Key, Data, SSG);
+            write(SchemaName, Key, Data, SSG);
 
         false -> {error, {invalid_record, Record}}
     end;
 
-add(SchemaName, Record, SSG) -> {error, {invalid_argument, {SchemaName, Record, SSG}}}.
+write(SchemaName, Record, SSG) -> {error, {invalid_argument, {SchemaName, Record, SSG}}}.
 
 %-------------------------------------------------------------
--spec add(atom(), term(), term(), map()) -> ok | mb_error().
+-spec write(atom(), term(), term(), map()) -> ok | mb_error().
 %-------------------------------------------------------------
-add(SchemaName, Key, Data, SSG) when (is_atom(SchemaName) and 
+write(SchemaName, Key, Data, SSG) when (is_atom(SchemaName) and 
                                     is_tuple(Data) and 
                                     is_map (SSG)) ->
 
@@ -79,7 +79,7 @@ add(SchemaName, Key, Data, SSG) when (is_atom(SchemaName) and
         false -> {error, {invalid_schema_name, SchemaName}}
     end;
 
-add(SchemaName, Key, Data, SSG) -> {error, {invalid_argument, {SchemaName, Key, Data, SSG}}}.
+write(SchemaName, Key, Data, SSG) -> {error, {invalid_argument, {SchemaName, Key, Data, SSG}}}.
 
 
 %-------------------------------------------------------------
