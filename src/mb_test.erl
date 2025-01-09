@@ -138,38 +138,41 @@ delete_beam() ->
 test_api() -> 
 
     {ok, S} = mb_api:connect(),
+    TableName = my_table,
+    SsgName = test_ssg,
 
     Result = ok,
 
-    Result = mb_api:new_ssg(S, mnesia_builder_ssg, "All Things Erlang", "haitham@gmail.com", "SSG used by mnesia_builder"),
-    Result = mb_api:add_schema(S, ssg_table),
-    Result = mb_api:set_schema_type(S, ssg_table, bag),
+    Result = mb_api:set_ssg_name(S, SsgName),
+    %Result = mb_api:new_ssg(S, SsgName, "All Things Erlang", "haitham@gmail.com", "SSG used by SsgName"),
+    Result = mb_api:add_schema(S, TableName),
+    Result = mb_api:set_schema_type(S, TableName, bag),
 
-    Result = mb_api:add_schema_ram_copies_server(S, ssg_table),
-    Result = mb_api:add_schema_disc_copies_cluster(S, ssg_table),
-    %Result = mb_api:add_schema_disc_only_copies(S, ssg_table, [fakenode@nowhere]),
+    Result = mb_api:add_schema_ram_copies_server(S, TableName),
+    Result = mb_api:add_schema_disc_copies_cluster(S, TableName),
+    %Result = mb_api:add_schema_disc_only_copies(S, TableName, [fakenode@nowhere]),
 
-    %Result = mb_api:add_schema_ram_copies(S, ssg_table, ['n1@a.com', 'n2@a.com']),
-    %Result = mb_api:add_schema_disc_copies(S, ssg_table, ['n3@a.com', 'n4@a.com']),
-    %Result = mb_api:add_schema_disc_only_copies(S, ssg_table, ['n5@a.com', 'n6@a.com']),
+    %Result = mb_api:add_schema_ram_copies(S, TableName, ['n1@a.com', 'n2@a.com']),
+    %Result = mb_api:add_schema_disc_copies(S, TableName, ['n3@a.com', 'n4@a.com']),
+    %Result = mb_api:add_schema_disc_only_copies(S, TableName, ['n5@a.com', 'n6@a.com']),
 
-    %Result = mb_api:delete_schema_ram_copies(S, ssg_table, ['n1@a.com']),
-    %Result = mb_api:delete_schema_disc_copies(S, ssg_table, ['n3@a.com', 'n10@a.com']),
-    %Result = mb_api:delete_schema_disc_only_copies(S, ssg_table, ['n5@a.com', 'n26@a.com']),
+    %Result = mb_api:delete_schema_ram_copies(S, TableName, ['n1@a.com']),
+    %Result = mb_api:delete_schema_disc_copies(S, TableName, ['n3@a.com', 'n10@a.com']),
+    %Result = mb_api:delete_schema_disc_only_copies(S, TableName, ['n5@a.com', 'n26@a.com']),
 
-    %Result = mb_api:delete_schema_ram_copies_server(S, ssg_table),
-    %Result = mb_api:delete_schema_disc_copies_server(S, ssg_table),
-    %Result = mb_api:delete_schema_disc_only_copies_server(S, ssg_table),
+    %Result = mb_api:delete_schema_ram_copies_server(S, TableName),
+    %Result = mb_api:delete_schema_disc_copies_server(S, TableName),
+    %Result = mb_api:delete_schema_disc_only_copies_server(S, TableName),
 
-    %Result = mb_api:delete_schema_ram_copies_cluster(S, ssg_table),
-    %Result = mb_api:delete_schema_disc_copies_cluster(S, ssg_table),
-    %Result = mb_api:delete_schema_disc_only_copies_cluster(S, ssg_table),
+    %Result = mb_api:delete_schema_ram_copies_cluster(S, TableName),
+    %Result = mb_api:delete_schema_disc_copies_cluster(S, TableName),
+    %Result = mb_api:delete_schema_disc_only_copies_cluster(S, TableName),
 
 
 
     io:format("SSG: ~n~p~n~n", [mb_api:get_ssg(S)]),
     io:format("generate result: ~p~n", [mb_api:generate(S)]),
-    io:format("  deploy result: ~p~n", [mb_api:deploy(S)]),
+    %io:format("  deploy result: ~p~n", [mb_api:deploy(S)]),
 
     mb_api:disconnect(S).
 

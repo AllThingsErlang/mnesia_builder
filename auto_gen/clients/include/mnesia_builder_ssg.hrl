@@ -1,1 +1,0 @@
--record(ssg_table, {}).

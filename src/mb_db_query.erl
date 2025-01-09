@@ -5,7 +5,7 @@
 -import(utilities, [find_list_pos/2]).
 
 
--export([read/3, select/5, select_or/7, select_and/7, build_matchhead/2]).
+-export([read/3, read_no_trans/3, select/5, select_or/7, select_and/7, build_matchhead/2]).
 
 
 %-------------------------------------------------------------
@@ -22,11 +22,31 @@ read(SchemaName, Key, SSG) ->
 
             case mnesia:transaction(Fun) of
                 {atomic, Result} -> Result;
-                {aborted, Reason} -> {error, Reason}
+                {_, Reason} -> {error, Reason}
             end;
 
         false -> {error, {invalid_schema_name, SchemaName}}
     end.
+
+
+%-------------------------------------------------------------
+% Same as read but has no transaction call. 
+% 
+% The calling procedure must wrap this function in a transaction. 
+% This function is NOT a dirty read. 
+%
+% You can use this function with write_if(...). 
+%-------------------------------------------------------------
+-spec read_no_trans(mb_schema_name(), term(), mb_ssg()) -> list() | mb_error().
+%-------------------------------------------------------------
+read_no_trans(SchemaName, Key, SSG) ->
+
+    io:format("[mb::mb_db_query::read_no_trans]: ~p ~p~n", [SchemaName, Key]),
+    case mb_ssg:is_schema(SchemaName, SSG) of 
+        true -> mnesia:read({SchemaName, Key});
+        false -> {error, {invalid_schema_name, SchemaName}}
+    end.
+
 
 %-------------------------------------------------------------
 % Selects all tuples that satisfy the criteria: 
@@ -58,7 +78,7 @@ select(SchemaName, FieldName, Operator, Value, SSG) ->
 
     case mnesia:transaction(Fun) of
         {atomic, Result} -> Result;
-        {aborted, Reason} -> {error, Reason}
+        {_, Reason} -> {error, Reason}
     end.
 
 %-------------------------------------------------------------
@@ -93,7 +113,7 @@ select_or(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) ->
     case mnesia:transaction(Fun) of
         {atomic, []} -> {error, not_found};
         {atomic, List} -> {ok, List};
-        {aborted, Reason} -> {error, Reason}
+        {_, Reason} -> {error, Reason}
     end.
 
 
@@ -126,7 +146,7 @@ select_and(SchemaName, FieldName, Operator1, Value1, Operator2, Value2, SSG) ->
 
     case mnesia:transaction(Fun) of
         {atomic, Result} -> {ok, Result};
-        {aborted, Reason} -> {error, Reason}
+        {_, Reason} -> {error, Reason}
     end.
 
 

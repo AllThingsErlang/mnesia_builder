@@ -61,53 +61,48 @@ deploy_mb_ssg() ->
     MnesiaBuilderSsgModuleBeamDir = filename:absname(?AUTO_GEN_MB_EBIN_DIR),
     
     MnesiaBuilderSsgModuleSrc = MnesiaBuilderSsgModuleSrcDir ++ "/" ++ atom_to_list(?MB_SSG_MODULE) ++ ".erl",
-    MnesiaBuilderSsgModuleBeam = MnesiaBuilderSsgModuleBeamDir ++ "/" ++ atom_to_list(?MB_SSG_MODULE) ++ ".beam",
+    %MnesiaBuilderSsgModuleBeam = MnesiaBuilderSsgModuleBeamDir ++ "/" ++ atom_to_list(?MB_SSG_MODULE) ++ ".beam",
 
-    case (mb_utilities:file_exists(MnesiaBuilderSsgModuleSrc) andalso mb_utilities:file_exists(MnesiaBuilderSsgModuleBeam)) of 
-        false -> 
-            Result =
-                mb_utilities:chain_execution([
-                    fun() -> mb_ssg:new(?MB_SSG_NAME, "AllThingsErlang", "haitham.bouzeineddine@gmail.com", "MnesiaBuilder internal database") end,
-                    fun(SSG) -> mb_ssg:add_schema(?INTERNAL_SSG_TABLE, SSG) end,
-                    fun(SSG) -> mb_ssg:set_schema_type(bag, ?INTERNAL_SSG_TABLE, SSG) end,
-                    fun(SSG) -> mb_ssg:add_schema_disc_copies([node()] ++ nodes(), ?INTERNAL_SSG_TABLE, SSG) end,
+    Result =
+        mb_utilities:chain_execution([
+            fun() -> mb_ssg:new(?MB_SSG_NAME, "AllThingsErlang", "haitham.bouzeineddine@gmail.com", "MnesiaBuilder internal database") end,
+            fun(SSG) -> mb_ssg:add_schema(?INTERNAL_SSG_TABLE, SSG) end,
+            fun(SSG) -> mb_ssg:set_schema_type(set, ?INTERNAL_SSG_TABLE, SSG) end,
+            fun(SSG) -> mb_ssg:add_schema_disc_copies([node()] ++ nodes(), ?INTERNAL_SSG_TABLE, SSG) end,
 
-                    fun(SSG) -> mb_ssg:add_field(name, ?INTERNAL_SSG_TABLE, SSG) end,
-                    fun(SSG) -> mb_ssg:set_field_type(atom, name, ?INTERNAL_SSG_TABLE, SSG) end,
+            fun(SSG) -> mb_ssg:add_field(name, ?INTERNAL_SSG_TABLE, SSG) end,
+            fun(SSG) -> mb_ssg:set_field_type(atom, name, ?INTERNAL_SSG_TABLE, SSG) end,
 
-                    %fun(SSG) -> mb_ssg:add_field(state, ?INTERNAL_SSG_TABLE, SSG) end,
-                    %fun(SSG) -> mb_ssg:set_field_type(atom, state, ?INTERNAL_SSG_TABLE, SSG) end,
+            %fun(SSG) -> mb_ssg:add_field(state, ?INTERNAL_SSG_TABLE, SSG) end,
+            %fun(SSG) -> mb_ssg:set_field_type(atom, state, ?INTERNAL_SSG_TABLE, SSG) end,
 
-                    fun(SSG) -> mb_ssg:add_field(ssg, ?INTERNAL_SSG_TABLE, SSG) end,
-                    fun(SSG) -> mb_ssg:set_field_type(map, ssg, ?INTERNAL_SSG_TABLE, SSG) end,
+            fun(SSG) -> mb_ssg:add_field(ssg, ?INTERNAL_SSG_TABLE, SSG) end,
+            fun(SSG) -> mb_ssg:set_field_type(map, ssg, ?INTERNAL_SSG_TABLE, SSG) end,
 
-                    fun(SSG) -> mb_ssg:add_field(worker_pid, ?INTERNAL_SSG_TABLE, SSG) end,
-                    fun(SSG) -> mb_ssg:set_field_type(term, worker_pid, ?INTERNAL_SSG_TABLE, SSG) end,
+            fun(SSG) -> mb_ssg:add_field(worker_pid, ?INTERNAL_SSG_TABLE, SSG) end,
+            fun(SSG) -> mb_ssg:set_field_type(term, worker_pid, ?INTERNAL_SSG_TABLE, SSG) end,
 
-                    fun(SSG) -> mb_ssg:generate(?MB_SSG_MODULE, MnesiaBuilderSsgModuleSrcDir, MnesiaBuilderSsgModuleIncludeDir, SSG) end,
-                    fun() -> mb_utilities:compile_and_load(?MB_SSG_MODULE, MnesiaBuilderSsgModuleSrc, MnesiaBuilderSsgModuleBeamDir) end
-                ]),
+            fun(SSG) -> mb_ssg:generate(?MB_SSG_MODULE, MnesiaBuilderSsgModuleSrcDir, MnesiaBuilderSsgModuleIncludeDir, SSG) end,
+            fun() -> mb_utilities:compile_and_load(?MB_SSG_MODULE, MnesiaBuilderSsgModuleSrc, MnesiaBuilderSsgModuleBeamDir) end
+        ]),
 
-                case Result of
-                    {ok, _FinalResult} ->
-                        io:format("[mb::mnesia_builder]: module ~p ready, checking table deployment~n", [?INTERNAL_SSG_TABLE]),
-                     
-                        case mb_utilities:table_exists(?INTERNAL_SSG_TABLE) of 
-                            true -> 
-                                io:format("[mb::mnesia_builder]: table ~p already deployed~n", [?INTERNAL_SSG_TABLE]),
-                                ok;
-                            false ->
-                                io:format("[mb::mnesia_builder]: deploying table ~p~n", [?INTERNAL_SSG_TABLE]),
-                                Module = ?MB_SSG_MODULE,
-                                Module:deploy()
-                        end;
-                    
-                    {error, Reason} ->
-                        io:format("[mb::mnesia_builder]: deployment failed ~p~n", [Reason]),
-                        {error, Reason}
-                end;
-
-            true -> ok 
+    case Result of
+        {ok, _FinalResult} ->
+            io:format("[mb::mnesia_builder]: module ~p ready, checking table deployment~n", [?INTERNAL_SSG_TABLE]),
+            
+            case mb_utilities:table_exists(?INTERNAL_SSG_TABLE) of 
+                true -> 
+                    io:format("[mb::mnesia_builder]: table ~p already deployed~n", [?INTERNAL_SSG_TABLE]),
+                    ok;
+                false ->
+                    io:format("[mb::mnesia_builder]: deploying table ~p~n", [?INTERNAL_SSG_TABLE]),
+                    Module = ?MB_SSG_MODULE,
+                    Module:deploy()
+            end;
+        
+        {error, Reason} ->
+            io:format("[mb::mnesia_builder]: deployment failed ~p~n", [Reason]),
+            {error, Reason}
     end.
 
 

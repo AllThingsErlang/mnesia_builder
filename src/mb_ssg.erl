@@ -1271,8 +1271,13 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
                             io:format(SrcIoDevice, "-export([deploy/0, table_size/1, table_sizes/0]).~n", []),
                             io:format(SrcIoDevice, "-export([schema_names/0, is_schema/1, is_field/2, schemas/0, get_schema/1, get_schema_attribute/2]).~n", []),
                             io:format(SrcIoDevice, "-export([fields/1, field_count/1, mandatory_field_count/1, field_names/1, key_name/1, key_type/1, field_position/2, get_field_attribute/3]).~n", []),
-                            io:format(SrcIoDevice, "-export([read/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
-                            io:format(SrcIoDevice, "-export([write/1, write/2, write/3, delete/1, delete/2, clear_all_tables/0]).~n", []),
+                            io:format(SrcIoDevice, "-export([read/2, read_no_trans/2, select/4, select_or/6, select_and/6, build_matchhead/1]).~n", []),
+                            io:format(SrcIoDevice, "-export([write/1, write/2, write/3]).~n", []),
+                            io:format(SrcIoDevice, "-export([write_new/1, write_new/2, write_new/3]).~n", []),
+                            io:format(SrcIoDevice, "-export([write_exists/1, write_exists/2, write_exists/3]).~n", []),
+                            io:format(SrcIoDevice, "-export([write_if/3, write_if/4, write_if/5]).~n", []),
+                            io:format(SrcIoDevice, "-export([delete/1, delete/2, clear_all_tables/0]).~n", []),
+                            
                             io:format(SrcIoDevice, "-export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).~n", []),
                             io:format(SrcIoDevice, "~n", []),
                             io:format(SrcIoDevice, "get_ssg() ->~n", []),
@@ -1312,7 +1317,8 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
                             io:format(SrcIoDevice, "%                     Query Functions~n",[]),
                             io:format(SrcIoDevice, "%-------------------------------------------------------~n",[]),
 
-                            generate_function(read, "SchemaName", "Key", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(read, "SchemaName", "Key", ?QUERY_MODULE, SrcIoDevice),
+                            generate_spec_function(read_no_trans, "SchemaName", "Key", ?QUERY_MODULE, SrcIoDevice),
 
                             generate_spec_function(select, "SchemaName", "Field", "Oper", "Value", ?QUERY_MODULE, SrcIoDevice),
                             generate_spec_function(select_or, "SchemaName", "Field", "Oper1", "Value1", "Oper2", "Value2", ?QUERY_MODULE, SrcIoDevice),
@@ -1327,6 +1333,18 @@ generate(Module, SrcPath, HrlPath, SSG) when is_atom(Module), is_list(SrcPath), 
                             generate_spec_function(write, "Record", ?MODIFY_MODULE, SrcIoDevice),
                             generate_spec_function(write, "SchemaName", "Record", ?MODIFY_MODULE, SrcIoDevice),
                             generate_spec_function(write, "SchemaName", "Key", "Data", ?MODIFY_MODULE, SrcIoDevice),
+
+                            generate_spec_function(write_new, "Record", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(write_new, "SchemaName", "Record", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(write_new, "SchemaName", "Key", "Data", ?MODIFY_MODULE, SrcIoDevice),
+
+                            generate_spec_function(write_exists, "Record", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(write_exists, "SchemaName", "Record", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(write_exists, "SchemaName", "Key", "Data", ?MODIFY_MODULE, SrcIoDevice),
+
+                            generate_spec_function(write_if, "CheckFun", "ArgList", "Record", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(write_if, "CheckFun", "ArgList", "SchemaName", "Record", ?MODIFY_MODULE, SrcIoDevice),
+                            generate_spec_function(write_if, "CheckFun", "ArgList", "SchemaName", "Key", "Data", ?MODIFY_MODULE, SrcIoDevice),
 
                             generate_spec_function(delete, "TableKey", ?MODIFY_MODULE, SrcIoDevice),
                             generate_spec_function(delete, "SchemaName", "Key", ?MODIFY_MODULE, SrcIoDevice),
@@ -1979,9 +1997,9 @@ is_field_list(_) -> false.
 %-------------------------------------------------------------
 %   
 %-------------------------------------------------------------
-generate_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
-    io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s).~n", 
-        [FunctionName, Arg1, Arg2, BaseModule, FunctionName, Arg1, Arg2]).
+%generate_function(FunctionName, Arg1, Arg2, BaseModule, IoDevice) ->
+%    io:format(IoDevice, "~n~p(~s, ~s) -> ~p:~p(~s, ~s).~n", 
+%        [FunctionName, Arg1, Arg2, BaseModule, FunctionName, Arg1, Arg2]).
 
 %-------------------------------------------------------------
 %   
@@ -2028,6 +2046,12 @@ generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, IoDevic
     io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, get_ssg()).~n", 
         [FunctionName, Arg1, Arg2, Arg3, Arg4, BaseModule, FunctionName, Arg1, Arg2, Arg3, Arg4]).
 
+%-------------------------------------------------------------
+%  
+%-------------------------------------------------------------
+generate_spec_function(FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, BaseModule, IoDevice) -> 
+    io:format(IoDevice, "~n~p(~s, ~s, ~s, ~s, ~s) -> ~p:~p(~s, ~s, ~s, ~s, ~s, get_ssg()).~n", 
+        [FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5, BaseModule, FunctionName, Arg1, Arg2, Arg3, Arg4, Arg5]).
 
 %-------------------------------------------------------------
 %  

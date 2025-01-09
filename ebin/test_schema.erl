@@ -1,4 +1,4 @@
--module(mnesia_builder_ssg).
+-module(test_schema).
 
 -export([get_ssg/0]).
 -export([deploy/0, table_size/1, table_sizes/0]).
@@ -13,29 +13,49 @@
 -export([build_schema_record_from_specifications/1, convert_schema_data_avp_list_into_record_tuple/1]).
 
 get_ssg() ->
-    #{name => mnesia_builder_ssg,owner => "AllThingsErlang",version => "0.2",
-      description => "MnesiaBuilder internal database",
-      created => {{2025,1,9},{12,24,4}},
-      email => "haitham.bouzeineddine@gmail.com",
+    #{name => test_schema,owner => "Test User",version => "0.2",
+      description => "Test module to validate the schema handling code",
+      created => {{2025,1,9},{12,24,9}},
+      email => "nowhere@nowehre.com",
       schemas =>
-          [{ssg_table,
-               #{name => ssg_table,type => set,description => [],
+          [{employees,
+               #{name => employees,type => set,description => [],
                  fields =>
-                     [{name,
-                          #{label => [],name => name,position => 1,
-                            priority => mandatory,type => atom,
-                            description => [],default_value => not_defined,
-                            role => key}},
-                      {ssg,
-                          #{label => [],name => ssg,position => 2,
-                            priority => mandatory,type => map,
-                            description => [],default_value => #{},
-                            role => field}},
-                      {worker_pid,
-                          #{label => [],name => worker_pid,position => 3,
-                            priority => mandatory,type => term,
-                            description => [],default_value => not_defined,
+                     [{employee_id,
+                          #{label => "Employee ID",name => employee_id,
+                            position => 1,priority => mandatory,
+                            type => integer,description => [],
+                            default_value => 0,role => key}},
+                      {employee_last_name,
+                          #{label => [],name => employee_last_name,
+                            position => 2,priority => mandatory,
+                            type => string,description => [],
+                            default_value => [],role => field}},
+                      {employee_first_name,
+                          #{label => "First Name",name => employee_first_name,
+                            position => 3,priority => optional,type => string,
+                            description => [],default_value => [],
                             role => field}}],
+                 disc_copies => ['blue@LAPTOP-6B8AG7F5'],
+                 disc_only_copies => [],ram_copies => []}},
+           {departments,
+               #{name => departments,type => set,description => [],
+                 fields =>
+                     [{department_id,
+                          #{label => [],name => department_id,position => 1,
+                            priority => mandatory,type => string,
+                            description => [],default_value => [],
+                            role => key}},
+                      {manager_last_name,
+                          #{label => [],name => manager_last_name,
+                            position => 2,priority => mandatory,
+                            type => string,description => [],
+                            default_value => [],role => field}},
+                      {manager_first_name,
+                          #{label => [],name => manager_first_name,
+                            position => 3,priority => mandatory,
+                            type => string,description => [],
+                            default_value => [],role => field}}],
                  disc_copies => ['blue@LAPTOP-6B8AG7F5'],
                  disc_only_copies => [],ram_copies => []}}]}.
 

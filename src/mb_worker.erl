@@ -203,15 +203,29 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG =  maps:get(?STATE_SSG, State),
 
-    case mb_ssg:set_ssg_name(Name, SSG) of 
-        {error, Reason} -> 
-            UpdatedState = State,
-            Result = {error, Reason};
+    case maps:get(?NAME, SSG) == Name of 
+        false -> 
+            case mb_ssg:set_ssg_name(Name, SSG) of 
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason};
 
-        UpdatedSSG ->
-            UpdatedStateInterim = maps:update(?STATE_SSG, UpdatedSSG, State),
-            % The module name is always the SSG name
-            UpdatedState = maps:update(?STATE_MODULE, Name, UpdatedStateInterim),
+                UpdatedSSG ->
+
+                    case mb_tables:assign_self(UpdatedSSG) of 
+                        ok -> 
+                            UpdatedStateInterim = maps:update(?STATE_SSG, UpdatedSSG, State),
+                            % The module name is always the SSG name
+                            UpdatedState = maps:update(?STATE_MODULE, Name, UpdatedStateInterim),
+                            Result = ok;
+                        {error, Reason} -> 
+                            UpdatedState = State,
+                            Result = {error, Reason}
+                    end
+            end;
+
+        true -> 
+            UpdatedState = State,
             Result = ok
     end,
 
