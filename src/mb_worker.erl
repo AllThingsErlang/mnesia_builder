@@ -1780,16 +1780,13 @@ handle_info(Info, State) ->
 
 
 %-------------------------------------------------------------
-%-------------------------------------------------------------
-terminate(shutdown, _State) -> ok;
-
-%-------------------------------------------------------------
 % Function: 
 % Purpose:  
 % Returns: 
 %-------------------------------------------------------------
-terminate(_Reason, State) ->
-    io:format("[mb::worker::~p]: terminated for session ~p~n", [self(), maps:get(?STATE_SESSION_ID, State)]),
+terminate(Reason, State) ->
+    io:format("[mb::worker::~p]: terminated for session ~p, reason ~p~n", [self(), maps:get(?STATE_SESSION_ID), Reason]),
+    mb_tables:unassign_self(maps:get(?STATE_SSG, State)),
     ok.
 
 %-------------------------------------------------------------
