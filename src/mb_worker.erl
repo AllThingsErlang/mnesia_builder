@@ -1792,7 +1792,7 @@ handle_info(Info, State) ->
 % Returns: 
 %-------------------------------------------------------------
 terminate(Reason, State) ->
-    io:format("[mb::worker::~p]: terminated for session ~p, reason ~p~n", [self(), maps:get(?STATE_SESSION_ID), Reason]),
+    io:format("[mb::worker::~p]: terminated for session ~p, reason ~p~n", [self(), maps:get(?STATE_SESSION_ID, State), Reason]),
     mb_tables:unassign_self(maps:get(?STATE_SSG, State)),
     ok.
 
