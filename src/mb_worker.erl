@@ -358,6 +358,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
                                         [] ->
                                             case mb_tables:update_ssg(NewSSG) of 
                                                 ok -> 
+                                                    OldSSG = maps:get(?STATE_SSG, State),
+                                                    mb_tables:unassign_self(OldSSG),
                                                     UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
                                                     Result = ok;
                                                 {error, Reason} -> 
