@@ -46,6 +46,9 @@
 -define(MB_SSG_NAME, mnesia_builder_ssg).
 -define(MB_SSG_MODULE, ?MB_SSG_NAME).
 
+-define(DEFAULT_SSG_NAME, not_defined).
+
+
 %-------------------------------------------------------------
 
 

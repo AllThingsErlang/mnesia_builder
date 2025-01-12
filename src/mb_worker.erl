@@ -3,7 +3,7 @@
 
 -include("../include/mb_ipc.hrl").
 -include("../include/mb_api.hrl").
--include("../include/mb.hrl").
+-include("../include/mb.hrl"). 
 
 -export([start/4, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
@@ -17,7 +17,6 @@
 -define(STATE_USE_MODULE, use_module).
 -define(STATE_SESSION_DIR, session_dir).
 
--define(DEFAULT_SSG_NAME, not_defined).
 
 %-------------------------------------------------------------
 % Function: 
@@ -180,8 +179,16 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             UpdatedState = State,
             Result = {error, Reason};
         NewSSG ->
-            UpdatedState = update_state_new_ssg(State, NewSSG),
-            Result = ok 
+            % Update the internal ssg table first.
+            % If that passes, update the state.
+            case mb_tables:update_ssg(NewSSG) of 
+                ok -> 
+                    UpdatedState = update_state_new_ssg(State, NewSSG),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason} 
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, Result),
@@ -211,8 +218,9 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
                     Result = {error, Reason};
 
                 UpdatedSSG ->
-
-                    case mb_tables:assign_self(UpdatedSSG) of 
+                    % Update the internal ssg table first.
+                    % If that passes, update the state.
+                    case mb_tables:update_ssg(UpdatedSSG) of 
                         ok -> 
                             UpdatedStateInterim = maps:update(?STATE_SSG, UpdatedSSG, State),
                             % The module name is always the SSG name
@@ -245,8 +253,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
     
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SSG_OWNER, Result),
@@ -265,8 +279,16 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            % Update the internal ssg table first.
+            % If that passes, update the state.
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} ->
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
     
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SSG_EMAIL, Result),
@@ -286,8 +308,16 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            % Update the internal ssg table first.
+            % If that passes, update the state.
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                 {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
     
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_SSG_DESCRIPTION, Result),
@@ -321,8 +351,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
                                     NewSSG = Module:get_ssg(),
                                     case mb_ssg:validate_ssg(NewSSG) of 
                                         [] ->
-                                            UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
-                                            Result = ok;
+                                            case mb_tables:update_ssg(NewSSG) of 
+                                                ok -> 
+                                                    UpdatedState = maps:update(?STATE_MODULE, Module, maps:update(?STATE_SSG, NewSSG, State)),
+                                                    Result = ok;
+                                                {error, Reason} -> 
+                                                    UpdatedState = State,
+                                                    Result = {error, Reason}
+                                            end;
                                         Errors -> 
                                             case ForceLoadFlag of 
                                                 true -> 
@@ -495,8 +531,16 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG ->
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok 
+            % Update the internal ssg table first.
+            % If that passes, update the state.
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_SCHEMA, Result),
@@ -510,8 +554,17 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
     SSG = maps:get(?STATE_SSG, State),
     UpdatedSSG = mb_ssg:delete_schema(SchemaName, SSG),
-    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SCHEMA, ok),
+
+    case mb_tables:update_ssg(UpdatedSSG) of 
+        ok -> 
+            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+            Result = ok;
+        {error, Reason} -> 
+            UpdatedState = State,
+            Result = {error, Reason}
+    end,
+
+    ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SCHEMA, Result),
     {reply, ReplyMessage, UpdatedState};
 
 %-------------------------------------------------------------
@@ -546,9 +599,6 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
 
 
 
-
-
-
 %-------------------------------------------------------------
 % 
 %-------------------------------------------------------------
@@ -562,8 +612,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_SERVER_NODE, Result),
@@ -582,8 +638,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_SERVER_NODE, Result),
@@ -602,17 +664,18 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_SERVER_NODE, Result),
     {reply, ReplyMessage, UpdatedState};
-
-
-
-
-
 
 
 %-------------------------------------------------------------
@@ -628,8 +691,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_REST_OF_CLUSTER, Result),
@@ -648,8 +717,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_REST_OF_CLUSTER, Result),
@@ -668,8 +743,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_REST_OF_CLUSTER, Result),
@@ -692,8 +773,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_NODES, Result),
@@ -712,8 +799,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_NODES, Result),
@@ -732,14 +825,18 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_NODES, Result),
     {reply, ReplyMessage, UpdatedState};
-
-
 
 
 
@@ -756,8 +853,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SERVER_NODE, Result),
@@ -777,8 +880,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SERVER_NODE, Result),
@@ -797,8 +906,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_SERVER_NODE, Result),
@@ -821,8 +936,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_REST_OF_CLUSTER, Result),
@@ -842,8 +963,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_REST_OF_CLUSTER, Result),
@@ -862,8 +989,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_REST_OF_CLUSTER, Result),
@@ -887,8 +1020,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_NODES, Result),
@@ -908,8 +1047,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_NODES, Result),
@@ -928,8 +1073,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_DELETE_NODES, Result),
@@ -954,8 +1105,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_NODES, Result),
@@ -1007,8 +1164,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok 
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_ADD_FIELD, Result),
@@ -1028,8 +1191,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_MOVE_FIELD, Result),
@@ -1048,8 +1217,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_MOVE_FIELD, Result),
@@ -1069,8 +1244,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_FIELD_DESCRIPTION, Result),
@@ -1089,8 +1270,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_FIELD_LABEL, Result),
@@ -1109,8 +1296,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_FIELD_PRIORITY, Result),
@@ -1129,8 +1322,14 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             Result = {error, Reason};
 
         UpdatedSSG -> 
-            UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
-            Result = ok
+            case mb_tables:update_ssg(UpdatedSSG) of 
+                ok -> 
+                    UpdatedState = maps:update(?STATE_SSG, UpdatedSSG, State),
+                    Result = ok;
+                {error, Reason} -> 
+                    UpdatedState = State,
+                    Result = {error, Reason}
+            end
     end,
 
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_SET_FIELD_DEFAULT_VALUE, Result),
@@ -1647,3 +1846,7 @@ update_state_new_ssg(State, NewSSG) ->
 get_client_directories() -> {filename:absname(?AUTO_GEN_CLIENT_SRC_DIR),
                              filename:absname(?AUTO_GEN_CLIENT_INCLUDE_DIR),
                              filename:absname(?AUTO_GEN_CLIENT_EBIN_DIR)}.
+
+
+
+
