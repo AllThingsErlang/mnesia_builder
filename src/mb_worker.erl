@@ -164,6 +164,9 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, _SessionId}, {?MSG_TYPE_REQUE
 %-------------------------------------------------------------
 handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUEST, ?REQUEST_NEW_SSG}}, {}}}, State) ->
 
+    OldSSG = maps:get(?STATE_SSG, State),
+    mb_tables:unassign_self(OldSSG),
+
     NewSSG =  maps:update(?NAME, ?DEFAULT_SSG_NAME, mb_ssg:new()),
     UpdatedState = update_state_new_ssg(State, NewSSG),
     ReplyMessage = mb_ipc:build_request_response(SessionId, ?REQUEST_NEW_SSG, ok),
@@ -183,6 +186,8 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
             % If that passes, update the state.
             case mb_tables:update_ssg(NewSSG) of 
                 ok -> 
+                    OldSSG = maps:get(?STATE_SSG, State),
+                    mb_tables:unassign_self(OldSSG),
                     UpdatedState = update_state_new_ssg(State, NewSSG),
                     Result = ok;
                 {error, Reason} -> 
