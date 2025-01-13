@@ -15,7 +15,7 @@
 get_ssg() ->
     #{name => mnesia_builder_ssg,owner => "AllThingsErlang",version => "0.2",
       description => "MnesiaBuilder internal database",
-      created => {{2025,1,12},{17,1,42}},
+      created => {{2025,1,12},{22,39,42}},
       email => "haitham.bouzeineddine@gmail.com",
       schemas =>
           [{ssg_table,

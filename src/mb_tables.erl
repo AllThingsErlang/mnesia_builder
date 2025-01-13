@@ -1,7 +1,7 @@
 -module(mb_tables).
 -include("../include/mb.hrl").
 
--export([update_ssg/1, unassign_self/1, unassign_worker/2]).
+-export([update_ssg/1, unassign_self/1, unassign_worker/2, unassign_all_workers/0]).
 
 
 % INTERNAL_SSG_TABLE 
@@ -30,6 +30,10 @@ unassign_worker(SSG, WorkerPid) ->
         true -> ?MB_SSG_MODULE:write_if(fun(ArgList) -> unassign_ssg_ok(ArgList, WorkerPid) end, [SSG], {?INTERNAL_SSG_TABLE, maps:get(?NAME, SSG), SSG, []});
         false -> {error, {internal_db_update_failed, {invalid_ssg_name, maps:get(?NAME, SSG)}}}
     end.
+
+unassign_all_workers() -> 
+    List = ?MB_SSG_MODULE:select(ssg_table, worker_pid, '/=', []),
+    force_remove_workers(List).
 
 
 
@@ -95,3 +99,10 @@ ssg_name_ok(SSG) ->
         ?DEFAULT_SSG_NAME -> false;
         _ -> true
     end.
+
+
+force_remove_workers([]) -> ok;
+force_remove_workers([{?INTERNAL_SSG_TABLE, _Name, SSG, WorkerPid} | Rest]) -> 
+    ?MB_SSG_MODULE:write_if(fun(ArgList) -> unassign_ssg_ok(ArgList, WorkerPid) end, [SSG], {?INTERNAL_SSG_TABLE, maps:get(?NAME, SSG), SSG, []}),
+    force_remove_workers(Rest).
+

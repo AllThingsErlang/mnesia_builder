@@ -30,6 +30,9 @@ start_link() ->
 init([]) -> 
     process_flag(trap_exit, true),
 
+    % Remove any lingering worker pids.
+    mb_tables:unassign_all_workers(),
+
     State = #{?STATE_SESSIONS=>[], ?STATE_SESSION_DIR=>?DIR_SESSIONS},
 
     io:format("[mb::server::~p]: linked processes: ~p~n", [self(), mb_utilities:get_linked_processes()]),
@@ -92,6 +95,16 @@ handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_COMMAND, ?COMMAN
     {reply, Message, State};
 
 %-------------------------------------------------------------
+% Function: 
+% Purpose:  
+% Returns: 
+%-------------------------------------------------------------
+handle_call({?PROT_VERSION, {{{session_id, {0,0,0}}, {?MSG_TYPE_COMMAND, ?COMMAND_TEST_CRASH}}, {}}}, _ClientPid, State) ->
+
+    Message = 0/0,
+    {reply, Message, State};
+
+%-------------------------------------------------------------
 %
 %-------------------------------------------------------------
 handle_call(Request, From, State) ->
@@ -145,27 +158,6 @@ handle_info({'EXIT', WorkerPid, Reason}, State) ->
 handle_info(Info, State) ->
     io:format("[mb::server::~p]: unsupported info notification: ~p~n", [self(), Info]),
     {noreply, State}.
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
-terminate(normal, State) ->
-    io:format("[mb::server::~p]: terminate: normal~n", [self()]),
-    shutdown_workers(maps:get(?STATE_SESSIONS, State));
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
-terminate(shutdown, State) ->
-    io:format("[mb::server::~p]: terminate: shutdown~n", [self()]),
-    shutdown_workers(maps:get(?STATE_SESSIONS, State));
-
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
-terminate({shutdown, _}, State) ->
-    io:format("[mb::server::~p]: terminate: shutdown~n", [self()]),
-    shutdown_workers(maps:get(?STATE_SESSIONS, State));
 
 %-------------------------------------------------------------
 % 

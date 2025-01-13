@@ -5,7 +5,6 @@
 
 -export([connect/0,
          disconnect/1,
-         get_sessions/0,
          new_ssg/1,
          new_ssg/5,
          set_ssg_name/2,
@@ -98,11 +97,7 @@
          add_record/4]).
 
 
-%-------------------------------------------------------------
-% IPC specific types
-%-------------------------------------------------------------
--type mb_session_id() :: {pid(), pid(), integer()}.
-%-------------------------------------------------------------
+-export([test_crash/0]).
 
 
 %-------------------------------------------------------------
@@ -172,41 +167,9 @@ disconnect(SessionId) ->
     Reply = mb_ipc:worker_call(SessionId, Message),
     request_response_result(Reply).
 
-%-------------------------------------------------------------
-% 
-%-------------------------------------------------------------
--spec get_sessions() -> {ok, []} | {ok, [mb_session_id()]} | mb_error().
-%-------------------------------------------------------------
-get_sessions() -> 
 
-    io:format("[db::api::~p]: get_sessions ...~n", [self()]),
 
-    GetSessionsMessage = mb_ipc:build_command(?COMMAND_GET_SESSIONS),
-    ServerPid = global:whereis_name(?SERVER_DB),
 
-    case ServerPid of 
-
-        undefined -> 
-            io:format("[db::api::~p]: server  ~p is not running~n", [self(), ?SERVER_DB]),
-            {error, server_not_running};
-
-        _ ->
-
-            case mb_ipc:call(ServerPid, GetSessionsMessage) of
-
-                {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_COMMAND_RESPONSE, ?COMMAND_GET_SESSIONS}}, {result, {ok, SessionsList}}}} ->
-                    io:format("[db::api::~p]: received sessions: ~n", [self()]),
-                    {ok, SessionsList};
-
-                {?PROT_VERSION, {{{session_id, {0, 0, 0}}, {?MSG_TYPE_COMMAND_RESPONSE, ?COMMAND_GET_SESSIONS}}, {{result, {error, Reason}}}}} ->
-                    io:format("[db::api::~p]: get_sessions failed: ~p~n", [self(), Reason]);
-
-                Error -> 
-                        io:format("[db::api::~p]: get_sessions aborted: ~p~n", [self(), Error]),
-                        {error, Error}
-            end
-    end.
-    
 %-------------------------------------------------------------
 % Specificiations Management APIs
 %-------------------------------------------------------------
@@ -1011,3 +974,18 @@ add_record(SessionId, SchemaName, Key, Data) ->
 %-------------------------------------------------------------
 request_response_result({?PROT_VERSION, {{_SessionId, {?MSG_TYPE_REQUEST_RESPONSE, _}}, {result, Result}}}) -> Result;
 request_response_result(Other) -> {error, {unrecognized_reply, Other}}.
+
+
+
+
+
+
+%-------------------------------------------------------------
+% 
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+test_crash() -> 
+
+    Message = mb_ipc:build_command(?COMMAND_TEST_CRASH),
+    ServerPid = global:whereis_name(?SERVER_DB),
+    mb_ipc:call(ServerPid, Message).

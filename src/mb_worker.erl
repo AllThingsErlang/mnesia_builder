@@ -227,6 +227,10 @@ handle_request({?PROT_VERSION, {{{?MSG_SESSION_ID, SessionId}, {?MSG_TYPE_REQUES
                     % If that passes, update the state.
                     case mb_tables:update_ssg(UpdatedSSG) of 
                         ok -> 
+                            % Remove the worker from the old SSG entry
+                            % in the ssg_table.
+                            mb_tables:unassign_self(SSG),
+                            
                             UpdatedStateInterim = maps:update(?STATE_SSG, UpdatedSSG, State),
                             % The module name is always the SSG name
                             UpdatedState = maps:update(?STATE_MODULE, Name, UpdatedStateInterim),

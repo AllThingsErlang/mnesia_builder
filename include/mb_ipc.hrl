@@ -62,6 +62,8 @@
 % Command message IDs
 % ---------------------------
 -define(COMMAND_GET_SESSIONS, get_sessions).
+-define(COMMAND_RESTART, restart_server).
+-define(COMMAND_TEST_CRASH, test_command_crash).
 
 
 -endif.

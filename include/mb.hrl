@@ -54,6 +54,8 @@
 
 
 %-------------------------------------------------------------
+-type mb_session_id() :: {pid(), pid(), integer()}.
+
 -type mb_error() :: {error, term()}.
 
 -type mb_module() :: atom().
